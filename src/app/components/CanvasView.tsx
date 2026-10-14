@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
-import { importImageFile } from '../../io/import';
-import { openImageDialog } from '../../io/openDialog';
+import { openFile } from '../../io/import';
+import { openFileDialog } from '../../io/openDialog';
 import { parseHexColor, srgbToLinear } from '../../render/color';
-import type { ViewColors } from '../../render/renderer';
-import { getRenderer } from '../../render/runtime';
-import { useAppStore } from '../../state/store';
+import type { ViewColors } from '../../render/engine';
+import { getEngine } from '../../render/runtime';
+import { useAppStore, useProject } from '../../state/store';
 import { panBy, zoomBy } from '../../state/viewActions';
+import { usePluginStore } from '../../effects/pluginStore';
 import { GpuStatus } from './GpuStatus';
 
 function cssColorLinear(style: CSSStyleDeclaration, name: string): [number, number, number] {
@@ -33,7 +34,11 @@ export function CanvasView({ theme }: { theme: 'light' | 'dark' }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gpuReady = useAppStore((s) => s.gpu.state === 'ready');
-  const image = useAppStore((s) => s.image);
+  const project = useProject();
+  const image = project;
+  const compareSplit = useAppStore((s) => s.compareSplit);
+  const setCompareSplit = useAppStore((s) => s.setCompareSplit);
+  const plugins = usePluginStore((s) => s.plugins);
   const view = useAppStore((s) => s.view);
   const viewport = useAppStore((s) => s.viewport);
   const [spaceDown, setSpaceDown] = useState(false);
@@ -43,11 +48,11 @@ export function CanvasView({ theme }: { theme: 'light' | 'dark' }) {
   // Leinwand an den Renderer koppeln.
   useEffect(() => {
     const canvas = canvasRef.current;
-    const renderer = getRenderer();
-    if (!gpuReady || !canvas || !renderer) return;
-    renderer.attachCanvas(canvas);
+    const engine = getEngine();
+    if (!gpuReady || !canvas || !engine) return;
+    engine.attachCanvas(canvas);
     return () => {
-      renderer.detachCanvas();
+      engine.detachCanvas();
     };
   }, [gpuReady]);
 
@@ -69,16 +74,17 @@ export function CanvasView({ theme }: { theme: 'light' | 'dark' }) {
     };
   }, []);
 
-  // Neu zeichnen, wenn sich Ansicht, Bild oder Theme ändern (zusammengefasst pro Frame).
+  // Neu rendern/zeichnen, wenn sich Projekt, Plugins, Ansicht oder Theme ändern (zusammengefasst pro Frame).
   useEffect(() => {
     if (!gpuReady) return;
     const id = requestAnimationFrame(() => {
-      getRenderer()?.drawView(view, window.devicePixelRatio || 1, readViewColors());
+      const splitX = compareSplit === null ? null : compareSplit * viewport.width;
+      getEngine()?.present(project, view, window.devicePixelRatio || 1, readViewColors(), splitX);
     });
     return () => {
       cancelAnimationFrame(id);
     };
-  }, [gpuReady, view, viewport, image, theme]);
+  }, [gpuReady, project, plugins, view, viewport, theme, compareSplit]);
 
   // Mausrad/Trackpad: Pinch bzw. ⌘/Strg + Rad zoomt um den Cursor, sonst verschieben.
   useEffect(() => {
@@ -86,7 +92,7 @@ export function CanvasView({ theme }: { theme: 'light' | 'dark' }) {
     if (!canvas) return;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
-      if (!useAppStore.getState().image) return;
+      if (!useAppStore.getState().history) return;
       const rect = canvas.getBoundingClientRect();
       const scale = e.deltaMode === WheelEvent.DOM_DELTA_LINE ? 16 : 1;
       if (e.ctrlKey || e.metaKey) {
@@ -162,7 +168,7 @@ export function CanvasView({ theme }: { theme: 'light' | 'dark' }) {
         e.preventDefault();
         setDragOver(false);
         const file = e.dataTransfer.files[0];
-        if (file) void importImageFile(file);
+        if (file) void openFile(file);
       }}
     >
       <canvas
@@ -181,13 +187,51 @@ export function CanvasView({ theme }: { theme: 'light' | 'dark' }) {
       {gpuReady && !image && (
         <div className="empty-state">
           <p className="empty-title">Bild hierher ziehen</p>
-          <p className="empty-sub">JPEG, PNG oder WebP</p>
-          <button className="button" onClick={openImageDialog} data-testid="open-button">
-            Bild öffnen …
+          <p className="empty-sub">JPEG, PNG, WebP oder Projektdatei (.blurstudio)</p>
+          <button className="button" onClick={openFileDialog} data-testid="open-button">
+            Datei öffnen …
           </button>
         </div>
       )}
+      {image && compareSplit !== null && (
+        <CompareHandle
+          x={compareSplit * viewport.width}
+          onMove={(x) => {
+            setCompareSplit(Math.min(1, Math.max(0, x / viewport.width)));
+          }}
+        />
+      )}
       <GpuStatus />
+    </div>
+  );
+}
+
+function CompareHandle({ x, onMove }: { x: number; onMove: (x: number) => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [drag, setDrag] = useState(false);
+  return (
+    <div
+      ref={ref}
+      className={`compare-handle${drag ? ' dragging' : ''}`}
+      style={{ left: x }}
+      data-testid="compare-handle"
+      onPointerDown={(e) => {
+        e.currentTarget.setPointerCapture(e.pointerId);
+        setDrag(true);
+      }}
+      onPointerMove={(e) => {
+        const parent = ref.current?.parentElement;
+        if (!drag || !parent) return;
+        onMove(e.clientX - parent.getBoundingClientRect().left);
+      }}
+      onPointerUp={(e) => {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+        setDrag(false);
+      }}
+    >
+      <span className="compare-label left">Vorher</span>
+      <span className="compare-grip" />
+      <span className="compare-label right">Nachher</span>
     </div>
   );
 }

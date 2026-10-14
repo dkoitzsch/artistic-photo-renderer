@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import { PNG } from 'pngjs';
+import { waitForProject } from './helpers';
 
 const FIXTURE = new URL('../fixtures/synthetic-400x300.png', import.meta.url).pathname;
 
@@ -8,7 +9,7 @@ async function openFixture(page: Page): Promise<void> {
   const chooser = page.waitForEvent('filechooser');
   await page.getByTestId('open-button').click();
   await (await chooser).setFiles(FIXTURE);
-  await expect(page.getByTestId('last-notice')).toContainText('geladen');
+  await waitForProject(page);
 }
 
 test.beforeEach(async ({ page }) => {

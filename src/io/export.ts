@@ -1,46 +1,59 @@
-import { getRenderer } from '../render/runtime';
-import { useAppStore } from '../state/store';
+import { effectReach } from '../effects/reach';
+import { projectReach } from '../render/compositor';
+import { getEngine } from '../render/runtime';
+import type { Project } from '../state/project';
+import { getProject, useAppStore } from '../state/store';
 
-/** Rendert die Komposition in voller Auflösung und kodiert sie als PNG (sRGB). */
-export async function renderPng(): Promise<Blob> {
-  const renderer = getRenderer();
-  const size = renderer?.imageSize;
-  if (!renderer || !size) throw new Error('Kein Bild geladen.');
+/** Kachelgröße des Exports (für Tests veränderbar). */
+export const exportSettings = { tileSize: 2048 };
 
-  const region = renderer.renderRegion({ x: 0, y: 0, ...size });
-  const pixels = await renderer.encodeToSrgb8(region);
-  region.destroy();
-
-  const canvas = new OffscreenCanvas(size.width, size.height);
+/** Rendert das Projekt in voller Auflösung (gekachelt) und kodiert es als PNG (sRGB). */
+export async function renderPng(project: Project): Promise<Blob> {
+  const engine = getEngine();
+  if (!engine) throw new Error('WebGPU ist nicht verfügbar.');
+  const { width, height } = project.canvas;
+  const overlap = projectReach(project.root, effectReach);
+  const pixels = await engine.renderFull(project, overlap, exportSettings.tileSize);
+  const canvas = new OffscreenCanvas(width, height);
   const ctx = canvas.getContext('2d', { colorSpace: 'srgb' });
   if (!ctx) throw new Error('2D-Kontext für den Export nicht verfügbar.');
-  ctx.putImageData(new ImageData(pixels, size.width, size.height, { colorSpace: 'srgb' }), 0, 0);
+  ctx.putImageData(new ImageData(pixels, width, height, { colorSpace: 'srgb' }), 0, 0);
   return canvas.convertToBlob({ type: 'image/png' });
 }
 
-function baseName(fileName: string): string {
-  return fileName.replace(/\.[^.]+$/, '') || 'export';
+export function safeFileName(name: string): string {
+  return name.replace(/[/\\?%*:|"<>]/g, '-').trim() || 'export';
 }
 
-/** Exportiert das aktuelle Bild als PNG-Download. */
+export function downloadBlob(blob: Blob, fileName: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  a.click();
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+  }, 10_000);
+}
+
+/** Exportiert das aktuelle Projekt als PNG-Download. */
 export async function exportPng(): Promise<void> {
-  const { image, notify } = useAppStore.getState();
-  if (!image) {
+  const { notify, setBusy } = useAppStore.getState();
+  const project = getProject();
+  if (!project) {
     notify('error', 'Nichts zu exportieren: Es ist kein Bild geladen.');
     return;
   }
+  setBusy('Export wird gerendert …');
   try {
-    const blob = await renderPng();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${baseName(image.fileName)}.png`;
-    a.click();
-    setTimeout(() => {
-      URL.revokeObjectURL(url);
-    }, 10_000);
-    notify('info', `Exportiert: ${a.download}`);
+    const t0 = performance.now();
+    const blob = await renderPng(project);
+    const name = `${safeFileName(project.name)}.png`;
+    downloadBlob(blob, name);
+    notify('info', `Exportiert: ${name} (${((performance.now() - t0) / 1000).toFixed(1)} s)`);
   } catch (e) {
     notify('error', `Export fehlgeschlagen: ${e instanceof Error ? e.message : String(e)}`);
+  } finally {
+    setBusy(null);
   }
 }

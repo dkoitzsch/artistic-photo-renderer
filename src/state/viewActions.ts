@@ -1,14 +1,21 @@
-import { useAppStore } from './store';
+import { getProject, useAppStore } from './store';
 import { centered, fitView, pan, zoomAt } from './viewMath';
 
+const canvasSize = () => {
+  const p = getProject();
+  return p ? { width: p.canvas.width, height: p.canvas.height } : null;
+};
+
 export function fitToViewport(): void {
-  const { image, viewport, setView } = useAppStore.getState();
-  if (image) setView(fitView(image, viewport));
+  const size = canvasSize();
+  const { viewport, setView } = useAppStore.getState();
+  if (size) setView(fitView(size, viewport));
 }
 
 export function zoomToActualSize(): void {
-  const { image, viewport, setView } = useAppStore.getState();
-  if (image) setView(centered(image, viewport, 1));
+  const size = canvasSize();
+  const { viewport, setView } = useAppStore.getState();
+  if (size) setView(centered(size, viewport, 1));
 }
 
 /** Zoom um einen Faktor, um einen Punkt der Leinwand (Standard: Mitte). */
@@ -20,4 +27,10 @@ export function zoomBy(factor: number, px?: number, py?: number): void {
 export function panBy(dx: number, dy: number): void {
   const { view, setView } = useAppStore.getState();
   setView(pan(view, dx, dy));
+}
+
+/** Vorher/Nachher ein-/ausschalten (Teilung in der Mitte). */
+export function toggleCompare(): void {
+  const { compareSplit, setCompareSplit } = useAppStore.getState();
+  if (getProject()) setCompareSplit(compareSplit === null ? 0.5 : null);
 }

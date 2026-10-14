@@ -9,26 +9,27 @@ Abweichungen nur mit Eintrag in [DECISIONS.md](DECISIONS.md) und Hinweis an den 
 
 ## Status
 
-Abgeschlossen: **Phase 0 – Gerüst**. Nächste: Phase 1 (wartet auf Freigabe). Erledigte Punkte werden in der Spec abgehakt.
+Abgeschlossen: **Phase 0 – Gerüst**, **Phase 1 – Ganzes Bild**. Nächste: Phase 2 (wartet auf Freigabe). Erledigte Punkte werden in der Spec abgehakt.
 
 ## Ordnerstruktur (✓ = existiert)
 
 ```
-src/
-  app/        React-UI, Panels, Theme, Design-Tokens
-  state/      Zustand-Store, Commands, History
-  render/     WebGPU-Kern (GpuContext), Pässe, Compositor, Texturpool
+src/                                                                     ✓
+  app/        React-UI: components/, controls/ (Regler), theme/          ✓
+  state/      Zustand-Store, Projektmodell, Befehle (commands.ts), History ✓
+  render/     WebGPU-Engine, Compositor, Effekt-Runner, Texturpool, Shader ✓
+  effects/    Plugin-Kern: Registry, Manifest-Validator, Uniform-Layout,  ✓
+              WGSL-Vorspiel, effect.ts-API (Kern! Effekte liegen in /effects)
+  io/         Import, Export, Projektdatei, OPFS-Speicher, Autosave       ✓
   ml/         Worker, Modell-Lader, MlBackend (Browser/Service)          – ab Phase 2
-  effects/    Plugin-Lader, Manifest-Validator, Regler-Generator          – ab Phase 1
-              (Kern! Die Effekte selbst liegen im Wurzelordner effects/)
-  io/         Import, Export, Projektdatei, PSD, Speicher (IndexedDB/OPFS)
-effects/      Effekt-Plugins, je ein Ordner + _template/ + README.md       – ab Phase 1
+effects/      Effekt-Plugins, je ein Ordner + _template/ + README.md     ✓
 models/       registry.json (einzige Quelle für Modelle/ML-Bibliotheken), MODELS.md – ab Phase 2
 ml-service/   Python-Dienst (uv, FastAPI)                                 – ab Phase 2
 tests/
-  unit/       Vitest (reine Logik)
-  e2e/        Playwright (Chrome mit WebGPU), Golden-Image-Tests
-  fixtures/   Testbilder (+ LICENSES.md für fremde Bilder)
+  unit/       Vitest (reine Logik)                                        ✓
+  e2e/        Playwright (Chrome mit WebGPU), CPU-Referenzen               ✓
+  golden/     Referenzbilder der Golden-Tests                             ✓
+  fixtures/   Testbilder (synthetisch; fremde Bilder + LICENSES.md ab Phase 2) ✓
 ```
 
 ## Konventionen
@@ -50,31 +51,45 @@ tests/
 
 Node ≥ 22.12 (`.nvmrc`). Dev-Server auf **Port 5317** (5173 ist auf diesem Rechner belegt).
 
-| Befehl              | Zweck                                                                  |
-| ------------------- | ---------------------------------------------------------------------- |
-| `npm run dev`       | Dev-Server (Vite, Hot Reload) auf http://localhost:5317                |
-| `npm run build`     | Typecheck + Produktions-Build nach `dist/`                             |
-| `npm run preview`   | Build lokal ansehen (Port 4317)                                        |
-| `npm run typecheck` | `tsc -b` (App + Node-Konfiguration)                                    |
-| `npm run lint`      | ESLint (typgeprüft, strict)                                            |
-| `npm run format`    | Prettier                                                               |
-| `npm test`          | Unit-Tests (Vitest, `tests/unit/`)                                     |
-| `npm run test:e2e`  | E2E- und Golden-Tests (Playwright, echtes Chrome mit WebGPU, headless) |
-| `npm run fixtures`  | synthetische Testbilder neu erzeugen                                   |
+| Befehl                             | Zweck                                                                  |
+| ---------------------------------- | ---------------------------------------------------------------------- |
+| `npm run dev`                      | Dev-Server (Vite, Hot Reload) auf http://localhost:5317                |
+| `npm run build`                    | Typecheck + Produktions-Build nach `dist/`                             |
+| `npm run preview`                  | Build lokal ansehen (Port 4317)                                        |
+| `npm run typecheck`                | `tsc -b` (App + Node-Konfiguration)                                    |
+| `npm run lint`                     | ESLint (typgeprüft, strict)                                            |
+| `npm run format`                   | Prettier                                                               |
+| `npm test`                         | Unit-Tests (Vitest, `tests/unit/`)                                     |
+| `npm run test:e2e`                 | E2E- und Golden-Tests (Playwright, echtes Chrome mit WebGPU, headless) |
+| `npm run fixtures`                 | synthetische Testbilder neu erzeugen                                   |
+| `UPDATE_GOLDEN=1 npm run test:e2e` | Golden-Referenzbilder neu schreiben (danach ansehen!)                  |
 
 Phasen-Abschluss: `npm run lint && npm run typecheck && npm test && npm run build && npm run test:e2e`
 
-## Architektur (Stand Phase 0)
+## Architektur (Stand Phase 1)
 
-- `src/render/gpu.ts` – `initGpu()`: Adapter/Gerät mit angehobenen Limits, Ergebnis `webgpu | webgl2 | none` mit Grund.
-- `src/render/runtime.ts` – Singleton für GPU-Objekte (außerhalb von React/Zustand).
-- `src/render/renderer.ts` – `Renderer`: Import (sRGB→linear, vormultipliziert, `rgba16float`), `drawView` (Zoom/Pan,
-  Schachbrett, Anti-Aliasing beim Verkleinern), `renderRegion(rect)` (Einstieg für den künftigen Compositor/Kachel-Export),
-  `encodeToSrgb8` (linear→sRGB, gerades Alpha, Readback).
-- `src/render/shaders/*.wgsl` – `color.wgsl` wird jedem Shader vorangestellt; Formeln identisch zu `src/render/color.ts`.
-- `src/state/store.ts` – Zustand-Store (GPU-Status, Bild, Ansicht, Hinweise, Theme); `viewMath.ts` reine Ansichtsmathematik.
-- `src/io/` – Import (Hash = `originalId`), PNG-Export, Dateidialog.
-- `src/app/` – Layout (TopBar, ToolBar, CanvasView, SidePanel, BottomPanel), Tastenkürzel, Theme + Design-Tokens.
+**Datenfluss:** UI → Befehl (`state/commands.ts`) → History (`state/history.ts`, unveränderliche Schnappschüsse) →
+Zustand-Store → `CanvasView` ruft pro Frame `Engine.present()` → Compositor rendert nur Geändertes → Anzeige.
+Autosave (`io/autosave.ts`) beobachtet den Store und schreibt ins OPFS.
+
+- `render/engine.ts` – `Engine`: Plugins kompilieren, Vorschau (lange Kante ≤ 2048 px, `ResultCache`), Vorher/Nachher,
+  Anzeige-Pass, `renderFull()` (Export in 2048-px-Kacheln mit Überlappung), `encode()` (linear → 8-Bit-sRGB), Live-Miniaturen.
+- `render/compositor.ts` – rendert den Baum hinten → vorn; Cache-Schlüssel je Layer und Effektschritt aus Eingang + Parametern.
+  `projectReach()` = Kachelüberlappung.
+- `render/effectRunner.ts` – kompiliert Plugins (Fehler mit Zeilennummer in `effect.wgsl`), feste Bindungen, Uniforms aus dem
+  Manifest, ein-/mehrstufige Pässe, danach Mischung nach `strength`/`region` (`shaders/mix.wgsl`).
+- `render/core.ts`, `texturePool.ts`, `sources.ts` – Kern-Pipelines (Import, Resample, Mix, Blend, Fill, Encode),
+  Texturpool + `Frame` (ein Encoder pro Frame), Originale auf der GPU (voll + verkleinert).
+- `effects/registry.ts` – findet `effects/*/` per `import.meta.glob`, validiert, lädt `effect.ts`; HMR-fähig.
+  `effects/layout.ts` (WGSL-Ausrichtung, Werte-Umrechnung), `effects/prelude.ts` (generiertes Vorspiel), `effects/expr.ts`
+  (sicherer Ausdrucksauswerter für `reach`/`visibleIf`).
+- `io/` – `import.ts` (Bild → Projekt, `.blurstudio`, gespeicherte Projekte), `projectFile.ts` (ZIP via fflate),
+  `projectSchema.ts` (Prüfung beim Laden), `storage.ts` (OPFS), `autosave.ts`, `session.ts`, `export.ts`.
+- `app/controls/` – Regler (linear/log, Doppelklick = Standard, Shift = fein, Zahleneingabe), Farbe + Pipette, Enum, Schalter,
+  `ParamControl` erzeugt sie aus dem Manifest.
+- `src/debug.ts` – nur im Dev-Server: `window.__bls` (Store, Befehle, Engine) für Tests.
+
+**Neuen Effekt anlegen:** siehe [effects/README.md](effects/README.md) – nur einen Ordner unter `effects/` anlegen.
 
 ## Referenz-Hardware
 
@@ -96,6 +111,9 @@ Eine neue Phase beginnt nur nach ausdrücklicher Freigabe durch den Nutzer.
 - HEIC wird nicht unterstützt (Chrome dekodiert es nicht).
 - PNG-Export kodiert über ein 2D-Canvas: halbtransparente Pixel können um ±1–2 Stufen abweichen (8-Bit-Vormultiplizieren).
   Wird durch einen eigenen PNG-Encoder ersetzt, sobald 16-Bit-PNG gebraucht wird.
-- Die Anzeige filtert beim Verkleinern per Mehrfachabtastung (max. 6 × 6), keine Mipmaps; ab Phase 1 gibt es die 2048-px-Vorschau.
-- Browser-Kürzel (⌘0, ⌘E, ⌘O) werden per `preventDefault` abgefangen; in Playwright getestet, im echten Chrome manuell zu prüfen.
 - Ohne WebGPU zeigt die App nur eine Meldung; es gibt keinen WebGL2-Render-Pfad (siehe DECISIONS.md).
+- Der Compositor mischt Ebenen bisher nur „Normal“ (weitere Mischmodi mit mehreren Ebenen ab Phase 2).
+- Legt man einen Plugin-Ordner an oder löscht ihn, lädt Vite die Seite neu; die App öffnet das Projekt danach wieder.
+  Änderungen an bestehenden Plugin-Dateien laden ohne Neuladen nach. Ein Produktions-Build braucht für neue Plugins einen Neubau.
+- Die Anzeige zeigt die Vorschau (≤ 2048 px); bei starkem Hineinzoomen in größere Bilder sieht man Vorschau-Pixel, nicht das Original.
+- Browser-Kürzel (⌘0, ⌘E, ⌘O, ⌘S) werden per `preventDefault` abgefangen; in Playwright getestet, im echten Chrome manuell zu prüfen.

@@ -1,0 +1,26 @@
+{
+  "id": "my-effect",
+  "name": "Mein Effekt",
+  "version": "1.0.0",
+  "category": "Eigene",
+  "description": "Kurzbeschreibung für den Effekt-Browser.",
+  "inputs": ["source"],
+  "passes": 1,
+  "params": [
+    { "key": "amount", "label": "Stärke", "type": "float", "min": 0, "max": 100, "default": 50, "unit": "%" },
+    {
+      "key": "offset",
+      "label": "Versatz",
+      "type": "float",
+      "min": 0,
+      "max": 200,
+      "default": 20,
+      "unit": "px",
+      "scale": "log"
+    },
+    { "key": "angle", "label": "Richtung", "type": "angle", "default": 45 },
+    { "key": "tint", "label": "Farbe", "type": "color", "default": [1, 0.8, 0.6] },
+    { "key": "invert", "label": "Umkehren", "type": "bool", "default": false }
+  ],
+  "reach": "offset"
+}

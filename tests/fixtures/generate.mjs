@@ -29,3 +29,28 @@ for (let y = 0; y < H; y++) {
 const out = new URL('./synthetic-400x300.png', import.meta.url);
 writeFileSync(out, PNG.sync.write(png));
 console.log('geschrieben:', out.pathname);
+
+// Scharfe Kanten und feine Linien (deckend) für Unschärfe-Golden-Tests
+{
+  const W2 = 256;
+  const H2 = 192;
+  const img = new PNG({ width: W2, height: H2 });
+  for (let y = 0; y < H2; y++) {
+    for (let x = 0; x < W2; x++) {
+      const i = (y * W2 + x) * 4;
+      let c = [235, 232, 225];
+      if (x >= 20 && x < 90 && y >= 30 && y < 160) c = [20, 20, 24];
+      if ((x - 170) ** 2 + (y - 70) ** 2 < 40 ** 2) c = [210, 40, 50];
+      if ((x - 200) ** 2 + (y - 150) ** 2 < 22 ** 2) c = [30, 90, 220];
+      if (x % 16 === 0 && y > 170) c = [0, 0, 0];
+      if (y === 10 || x === 250) c = [255, 200, 0];
+      img.data[i] = c[0];
+      img.data[i + 1] = c[1];
+      img.data[i + 2] = c[2];
+      img.data[i + 3] = 255;
+    }
+  }
+  const out2 = new URL('./sharp-256x192.png', import.meta.url);
+  writeFileSync(out2, PNG.sync.write(img));
+  console.log('geschrieben:', out2.pathname);
+}

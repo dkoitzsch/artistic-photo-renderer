@@ -369,11 +369,11 @@ Sieben Phasen (0–6); jede endet mit einer lauffähigen App. Das Plugin-System 
 
 ### Phase 1 – Ganzes Bild (a, c, i)
 
-- [ ] Plugin-Lader mit Manifest-Validator und automatischer Regler-UI
-- [ ] Effekte Gauß-Blur, Farb-Overlay, Schwarz-Weiß als Plugins; Effekt-Stack sortierbar
-- [ ] Echtzeitvorschau ≥ 30 fps bei 2048 px; Vorher/Nachher
-- [ ] Undo/Redo, Autosave, Projektdatei speichern/öffnen
-- [ ] Abnahme: Ein vom Nutzer neu angelegter Effekt-Ordner erscheint ohne Codeänderung im Effekt-Browser
+- [x] Plugin-Lader mit Manifest-Validator und automatischer Regler-UI
+- [x] Effekte Gauß-Blur, Farb-Overlay, Schwarz-Weiß als Plugins; Effekt-Stack sortierbar
+- [x] Echtzeitvorschau ≥ 30 fps bei 2048 px; Vorher/Nachher
+- [x] Undo/Redo, Autosave, Projektdatei speichern/öffnen
+- [x] Abnahme: Ein vom Nutzer neu angelegter Effekt-Ordner erscheint ohne Codeänderung im Effekt-Browser
 
 ### Phase 2 – Vordergrund, Fokus, Schatten (b, e)
 

@@ -10,6 +10,76 @@ Abweichungen von der Spec und Festlegungen bei unklaren Anforderungen. Neueste o
 - **Betrifft:** (Spec-Abschnitt / Phase)
 -->
 
+## 2026-10-14 – Undo/Redo: Befehle mit Zustands-Schnappschuss
+
+- **Frage:** Spec: „Undo/Redo über Command-Pattern“.
+- **Entscheidung:** Jede Änderung läuft als benannter Befehl (`src/state/commands.ts`) durch die History; gespeichert wird der unveränderliche Projektzustand danach (Memento) statt einer Umkehroperation. Reglergesten werden per `coalesceKey` zu einem Eintrag zusammengefasst. Limit 500 Schritte (Spec: ≥ 200).
+- **Begründung:** Das Projekt ist unveränderlich mit strukturellem Teilen – ein Schnappschuss kostet nur die geänderten Knoten, Umkehroperationen entfallen als Fehlerquelle. Masken (Phase 5) werden als unveränderliche Versionen referenziert, die Kachel-Deltas liegen im Maskenspeicher; das Modell trägt dort weiter.
+- **Betrifft:** Speichern, Undo, Export; Phase 1
+
+## 2026-10-14 – History nicht in der Projektdatei
+
+- **Entscheidung:** Die History ist Sitzungszustand. Autosave und `.blurstudio` enthalten nur den aktuellen Stand; das Feld `history` aus dem Spec-Typ `Project` entfällt im gespeicherten Format.
+- **Begründung:** Hält Dateien klein; Undo über Sitzungen hinweg ist kein Spec-Ziel.
+- **Betrifft:** Datenmodell, Projektdatei
+
+## 2026-10-14 – Manifest-Erweiterungen
+
+- **Frage:** Der Plugin-Vertrag der Spec kennt keine Reichweite, keine Presets und keine bedingte Sichtbarkeit; Schwarz-Weiß braucht Presets, Duotone braucht ausblendbare Farben, der Kachel-Export braucht die Reichweite.
+- **Entscheidung:** Optionale Felder `reach` (Ausdruck über Parameter, sicher ausgewertet, kein `eval`), `presets`, `visibleIf`, `description` und pro Parameter `hint`/`step`. Alle optional; das Spec-Beispiel bleibt gültig.
+- **Begründung:** Ohne `reach` entstehen Nähte im gekachelten Export; Presets und Sichtbarkeit sind generisch statt pro Effekt im Kern verdrahtet.
+- **Betrifft:** Effekt-Plugin-System; dokumentiert in `effects/README.md`
+
+## 2026-10-14 – Einheiten im Shader-Vertrag
+
+- **Entscheidung:** Farben werden im Projekt sRGB-kodiert gespeichert (wie im Farbwähler) und dem Shader linear übergeben; Winkel im Projekt in Grad, im Shader in Radiant; `enum` als Index, `bool` als 0/1; `px`-Parameter und `point` werden mit dem Skalierungsfaktor umgerechnet. Der Kern erzeugt `struct Params` (mit `resolution`, `origin`, `canvas_size`, `scale` vorneweg) und stellt Hilfsfunktionen voran. Einstufige Effekte definieren `fn effect(p: vec2i) -> vec4f`; mehrstufige definieren Einstiegspunkte und steuern sie über `effect.ts`.
+- **Begründung:** Plugin-Autoren rechnen nie selbst mit Ausrichtung, Skalierung oder Farbraum; `origin` macht ortsfeste Muster (Korn) kachelsicher.
+- **Betrifft:** Effekt-Plugin-System
+
+## 2026-10-14 – Mischmodi wahrnehmungsnah
+
+- **Frage:** Mischmodi linear oder auf sRGB-kodierten Werten (siehe Risiko D3 im Plan)?
+- **Entscheidung:** Unschärfe und Normal-Mischung rechnen linear. Kontrast-Mischmodi (Multiplizieren, Negativ multiplizieren, Ineinanderkopieren, Weiches Licht, Farbe, Farbton) rechnen auf sRGB-kodierten Werten (Formeln nach W3C Compositing Level 1) – so wie Bildprogramme, damit der PSD-Export später gleich aussieht. Umgesetzt im Farb-Overlay; der Compositor beherrscht in Phase 1 nur „Normal“ (es gibt noch keine überlagerten Ebenen), die übrigen Modi folgen in Phase 2 nach derselben Regel.
+- **Betrifft:** Render-Pipeline, Farb-Overlay, Phase 1–3
+
+## 2026-10-14 – Gauß-Radius und Pyramide
+
+- **Entscheidung:** „Stärke“ ist der Radius in px mit σ = Radius / 3. Große Radien laufen über eine 2×2-Box-Pyramide bis σ ≤ 6 Stufen-px; die Varianz von Box-Verkleinerung und bilinearem Hochskalieren wird herausgerechnet. Gemessen gegen eine exakte CPU-Faltung: max. 3/255 Abweichung, im Mittel < 0,2/255.
+- **Begründung:** Exakter Gauß-Charakter bei konstanter Laufzeit auch für 300 px.
+- **Betrifft:** Effekte/Unschärfe
+
+## 2026-10-14 – Keine Halbauflösung beim Ziehen (vorerst)
+
+- **Frage:** Spec: „Während des Ziehens bei sehr großen Radien Vorschau automatisch auf halbe Auflösung“.
+- **Entscheidung:** Nicht eingebaut, weil nicht nötig: 2048 px mit Gauß (1–300 px), Schwarz-Weiß mit Korn und Farb-Overlay brauchen pro geändertem Frame im Median 1,7 ms, p90 7,5 ms (Referenz-Mac) – weit unter 33 ms. Wird mit Linsenunschärfe (Phase 2) erneut gemessen und dann ggf. nachgerüstet.
+- **Betrifft:** Performance-Ziele
+
+## 2026-10-14 – Effekt-Browser mit Live-Miniaturen
+
+- **Entscheidung:** `preview.jpg` ist optional. Der Effekt-Browser zeigt den Effekt mit Standardwerten live am aktuellen Bild; `preview.jpg` dient als Ersatz ohne Bild.
+- **Begründung:** Neue Plugins brauchen kein Vorschaubild, und die Vorschau zeigt die Wirkung am eigenen Motiv.
+- **Betrifft:** Effekt-Plugin-System
+
+## 2026-10-14 – UI: „Mischung“ statt „Stärke“, Bereich ausgeblendet
+
+- **Entscheidung:** Der vom Kern verwaltete Wert `strength` heißt auf der Effektkarte „Mischung“ (Gauß-Blur und Schwarz-Weiß haben eigene Parameter namens „Stärke“). Die Auswahl `region` (ganz / fokusgewichtet / invers) ist implementiert, im UI aber ausgeblendet, bis es Fokuskarten gibt (Phase 2).
+- **Betrifft:** UI, Effekte
+
+## 2026-10-14 – Lokaler Speicher, Projektübersicht, Sitzung
+
+- **Entscheidung:** Speicherung vollständig im OPFS (`originals/<sha256>`, `projects/<id>.json`, `thumbs/<id>.webp`); IndexedDB wird nicht gebraucht. Autosave 1 s nach der letzten Änderung, inkl. Miniatur. Beim Start erscheint die Projektübersicht, wenn Projekte existieren; lädt man denselben Tab neu, öffnet sich das zuletzt offene Projekt wieder (auch nach einem von Vite ausgelösten Neuladen). Eine geöffnete `.blurstudio`-Datei wird als neues lokales Projekt (neue ID) angelegt, damit nichts überschrieben wird; Originale werden per SHA-256 geprüft.
+- **Betrifft:** Speichern, Undo, Export
+
+## 2026-10-14 – Ein Bild = ein Projekt (bis Phase 4)
+
+- **Entscheidung:** In Phase 1 legt jedes geöffnete Bild ein neues Projekt an (Wurzelgruppe „Bild“ mit einer Ebene); Leinwand = Bildgröße. Weitere Bilder als Ebenen kommen in Phase 4. Effekte lassen sich auf die Ebene oder die Wurzelgruppe legen (Spec a: „Effekt auf die Wurzelgruppe oder einen ungeteilten Layer“).
+- **Betrifft:** Phase 1/4
+
+## 2026-10-14 – Export-Kacheln
+
+- **Entscheidung:** Kacheln 2048 px; Überlappung = Summe der `reach`-Werte entlang des tiefsten Pfads + 8 px, auf 64 px ausgerichtet (gleiche Pyramidenraster in allen Kacheln). Gemessen: gekachelt (96 px) und ungekachelt sind pixelgleich.
+- **Betrifft:** Render-Pipeline, Export
+
 ## 2026-10-14 – Dev-Port 5317
 
 - **Frage:** Vite-Standardport 5173?
