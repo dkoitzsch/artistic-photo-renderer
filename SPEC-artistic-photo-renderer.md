@@ -362,10 +362,10 @@ Sieben Phasen (0–6); jede endet mit einer lauffähigen App. Das Plugin-System 
 
 ### Phase 0 – Gerüst
 
-- [ ] Vite + React + TS, WebGPU-Initialisierung mit verständlicher Meldung bzw. WebGL2-Fallback
-- [ ] Bild laden, Leinwand mit Zoom/Pan, Export als PNG
-- [ ] Design-Tokens, Dark/Light-Umschalter, Grundlayout mit leeren Panels
-- [ ] `CLAUDE.md` mit Architektur, Konventionen und Befehlen
+- [x] Vite + React + TS, WebGPU-Initialisierung mit verständlicher Meldung bzw. WebGL2-Fallback (nur Meldung, siehe DECISIONS.md)
+- [x] Bild laden, Leinwand mit Zoom/Pan, Export als PNG
+- [x] Design-Tokens, Dark/Light-Umschalter, Grundlayout mit leeren Panels
+- [x] `CLAUDE.md` mit Architektur, Konventionen und Befehlen
 
 ### Phase 1 – Ganzes Bild (a, c, i)
 

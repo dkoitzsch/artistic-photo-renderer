@@ -1,0 +1,95 @@
+/* Design-Tokens. Dark und Light vollständig; aktiv über [data-theme] auf <html>. */
+
+:root {
+  /* Typografie */
+  --font-sans: 'Inter Variable', system-ui, -apple-system, sans-serif;
+  --font-size-xs: 11px;
+  --font-size-sm: 12px;
+  --font-size-md: 13px;
+  --font-size-lg: 15px;
+  --font-weight-regular: 400;
+  --font-weight-medium: 520;
+  --font-weight-strong: 600;
+  --line-height: 1.4;
+
+  /* Abstände (4er-Raster) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  /* Radien */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+
+  /* Maße des Layouts */
+  --topbar-height: 44px;
+  --toolbar-width: 48px;
+  --sidepanel-width: 300px;
+  --bottompanel-height: 140px;
+  --min-app-width: 1280px;
+
+  /* Bewegung (Mikroanimationen ≤ 150 ms) */
+  --duration-fast: 90ms;
+  --duration-base: 150ms;
+  --easing: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Akzent (einzige Buntfarbe) */
+  --accent: #4f7cff;
+  --accent-strong: #3a66eb;
+  --accent-contrast: #ffffff;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg-app: #17171a;
+  --bg-panel: #1e1e22;
+  --bg-elevated: #26262b;
+  --bg-hover: #2e2e34;
+  --bg-active: #35353c;
+  --canvas-bg: #121214;
+  --checker-a: #3a3a3f;
+  --checker-b: #2e2e33;
+  --border: #2c2c31;
+  --border-strong: #3c3c43;
+  --text: #e9e9ec;
+  --text-muted: #9a9aa3;
+  --text-faint: #6a6a73;
+  --danger: #ff6b6b;
+  --danger-bg: #3a1f22;
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-md: 0 8px 24px rgb(0 0 0 / 0.45);
+  --focus-ring: 0 0 0 2px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg-app: #ecebe8;
+  --bg-panel: #f6f5f3;
+  --bg-elevated: #ffffff;
+  --bg-hover: #e8e6e2;
+  --bg-active: #dedcd7;
+  --canvas-bg: #e2e0dc;
+  --checker-a: #ffffff;
+  --checker-b: #e6e4e0;
+  --border: #dddad5;
+  --border-strong: #c9c5bf;
+  --text: #1d1d1f;
+  --text-muted: #66656a;
+  --text-faint: #9a989c;
+  --danger: #c4312f;
+  --danger-bg: #fbe5e4;
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.08);
+  --shadow-md: 0 8px 24px rgb(0 0 0 / 0.12);
+  --focus-ring: 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+  }
+}
