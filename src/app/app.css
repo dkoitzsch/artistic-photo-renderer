@@ -200,6 +200,8 @@ button:disabled {
 
 .canvas-area {
   position: relative;
+  /* eigener Stapelkontext: Overlays der Leinwand (Fokuspunkte, Teiler) bleiben unter Dialogen */
+  isolation: isolate;
   min-width: 0;
   min-height: 0;
   background: var(--canvas-bg);
@@ -925,12 +927,14 @@ button:disabled {
 .dialog-overlay {
   position: fixed;
   inset: 0;
+  z-index: 100;
   background: rgb(0 0 0 / 0.35);
   animation: fade-in var(--duration-base) var(--easing);
 }
 
 .dialog {
   position: fixed;
+  z-index: 101;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);

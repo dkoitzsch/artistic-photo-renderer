@@ -95,3 +95,57 @@ test('Vorher/Nachher: Teiler ist greifbar, auch über einem Fokuspunkt', async (
   // × ist im Vergleichsmodus nicht vorhanden
   await expect(page.getByTestId('focus-remove')).toHaveCount(0);
 });
+
+test('Dialoge liegen über Fokuspunkten: Effekt-Browser bleibt mit aktivem Fokus-Werkzeug bedienbar', async ({
+  page,
+}) => {
+  // Punkte rund um die Bildmitte – dort öffnet sich der Effekt-Browser
+  const size = await page.evaluate(() => {
+    const p = window.__bls.getProject();
+    return p ? { w: p.canvas.width, h: p.canvas.height } : { w: 0, h: 0 };
+  });
+  for (const [fx, fy] of [
+    [0.3, 0.4],
+    [0.5, 0.5],
+    [0.7, 0.6],
+  ] as const) {
+    const s = await screenPos(page, size.w * fx, size.h * fy);
+    await page.mouse.click(s.x, s.y);
+  }
+  expect(await points(page)).toHaveLength(3);
+  await expect(page.getByTestId('tool-focus')).toHaveClass(/active/);
+
+  // „+ Effekt“ mit weiterhin aktivem Fokus-Werkzeug
+  await page.getByTestId('add-effect').click();
+  const browser = page.getByTestId('effect-browser');
+  await expect(browser).toBeVisible();
+  const tile = page.getByTestId('effect-tile-gaussian-blur');
+  const box = await tile.boundingBox();
+  if (!box) throw new Error('keine Kachel');
+  // Oberstes Element an der Kachel ist die Kachel selbst, kein Fokuspunkt
+  const topIsTile = await page.evaluate(
+    ({ x, y }) =>
+      document.elementFromPoint(x, y)?.closest('[data-testid="effect-tile-gaussian-blur"]') !== null,
+    { x: box.x + box.width / 2, y: box.y + box.height / 2 },
+  );
+  expect(topIsTile).toBe(true);
+  // Kein Fokuspunkt ragt über den Dialog
+  const pointsAbove = await page.evaluate(() => {
+    const dlg = document.querySelector('[data-testid="effect-browser"]')?.getBoundingClientRect();
+    if (!dlg) return -1;
+    let n = 0;
+    for (let y = dlg.top + 5; y < dlg.bottom; y += 20)
+      for (let x = dlg.left + 5; x < dlg.right; x += 20) {
+        const el = document.elementFromPoint(x, y);
+        if (el?.closest('[data-testid="focus-overlay"]')) n++;
+      }
+    return n;
+  });
+  expect(pointsAbove).toBe(0);
+
+  await tile.click();
+  await expect(browser).toHaveCount(0);
+  await expect(page.getByTestId('effect-card-gaussian-blur')).toBeVisible();
+  // Klick auf die Kachel hat keinen Fokuspunkt erzeugt
+  expect(await points(page)).toHaveLength(3);
+});
