@@ -1155,3 +1155,380 @@ button:disabled {
     transform: translate(-50%, -48%);
   }
 }
+
+/* ---------- Phase 2: Inspektor-Abschnitte ---------- */
+
+.section-title {
+  margin: var(--space-2) 0 0;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-strong);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.inspector-section {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+}
+
+.inspector-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-1) var(--space-2);
+}
+
+.inspector-section-title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-weight: var(--font-weight-medium);
+  padding: 2px 0;
+}
+
+.inspector-section-title svg {
+  width: 14px;
+  height: 14px;
+  color: var(--text-muted);
+}
+
+.inspector-section-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 0 var(--space-3) var(--space-3);
+}
+
+.section-note {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--text-faint);
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.button.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.button.small {
+  height: 22px;
+  padding: 0 var(--space-2);
+  font-size: var(--font-size-xs);
+}
+
+.focus-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.focus-item {
+  padding-bottom: var(--space-1);
+  border-bottom: 1px solid var(--border);
+}
+
+.focus-item-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+}
+
+.focus-item-head span {
+  flex: 1;
+}
+
+.license-badge {
+  display: inline-block;
+  padding: 0 5px;
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-weight: var(--font-weight-strong);
+  line-height: 16px;
+  letter-spacing: 0.02em;
+  margin-right: var(--space-1);
+}
+
+.license-badge.commercial {
+  background: color-mix(in srgb, #2fa36b 18%, transparent);
+  color: #2fa36b;
+}
+
+.license-badge.nc {
+  background: color-mix(in srgb, #e5832a 22%, transparent);
+  color: #e5832a;
+}
+
+.license-pill {
+  height: 24px;
+  white-space: nowrap;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: transparent;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.license-pill.all {
+  border-color: #e5832a;
+  color: #e5832a;
+}
+
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-faint);
+  margin: 0 var(--space-1);
+}
+
+.status-dot.online {
+  background: #2fa36b;
+}
+
+.status-dot.offline {
+  background: #c9a227;
+}
+
+.view-modes button {
+  padding: 2px var(--space-2);
+}
+
+/* Ebenenliste mit Augen-Schalter */
+.layer-item {
+  display: flex;
+  align-items: center;
+}
+
+.layer-item .layer-row {
+  flex: 1;
+  min-width: 0;
+}
+
+.layer-item.hidden .layer-name {
+  color: var(--text-faint);
+  text-decoration: line-through;
+}
+
+.layer-eye {
+  flex: none;
+  opacity: 0.6;
+}
+
+.layer-item:hover .layer-eye {
+  opacity: 1;
+}
+
+/* ML-Aufgaben */
+.task-list {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--font-size-xs);
+}
+
+.task {
+  display: grid;
+  grid-template-columns: auto 1fr 160px;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.task-label {
+  font-weight: var(--font-weight-medium);
+}
+
+.task-detail {
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.task-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width var(--duration-base) linear;
+}
+
+.task-fill.indeterminate {
+  animation: indeterminate 1.2s ease-in-out infinite;
+}
+
+@keyframes indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(330%);
+  }
+}
+
+/* Dialoge */
+.dialog.narrow {
+  width: min(520px, calc(100vw - 64px));
+}
+
+.dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  overflow: auto;
+}
+
+.dialog-body p {
+  margin: 0;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.choice-list {
+  border: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.choice-list legend {
+  margin-bottom: var(--space-1);
+}
+
+.choice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.choice:hover {
+  background: var(--bg-hover);
+}
+
+.choice.disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.choice-note {
+  margin-left: auto;
+  font-size: var(--font-size-xs);
+  color: var(--text-faint);
+}
+
+.service-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+}
+
+.model-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-xs);
+}
+
+.model-table th,
+.model-table td {
+  text-align: left;
+  padding: 3px var(--space-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.warning-list {
+  margin: 0;
+  padding-left: var(--space-4);
+}
+
+/* Fokuspunkt-Werkzeug */
+.focus-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.focus-overlay.active {
+  pointer-events: auto;
+  cursor: crosshair;
+}
+
+.focus-hit {
+  fill: transparent;
+}
+
+.focus-ring {
+  fill: color-mix(in srgb, var(--accent) 8%, transparent);
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+}
+
+.focus-overlay.active .focus-ring {
+  cursor: ew-resize;
+}
+
+.focus-center {
+  fill: var(--accent);
+  stroke: #fff;
+  stroke-width: 1.5;
+}
+
+.focus-overlay.active .focus-center {
+  cursor: move;
+}
+
+.focus-point.off .focus-ring,
+.focus-point.off .focus-center {
+  opacity: 0.35;
+}
+
+.focus-label {
+  font-size: 11px;
+  fill: #fff;
+  paint-order: stroke;
+  stroke: rgb(0 0 0 / 0.6);
+  stroke-width: 3px;
+  pointer-events: none;
+}

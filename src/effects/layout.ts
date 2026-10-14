@@ -17,6 +17,7 @@ const CORE_FIELDS: { name: string; kind: FieldKind; doc: string }[] = [
   { name: 'origin', kind: 'vec2f', doc: 'Lage der Ausgabe auf der Leinwand in px (bei aktuellem scale)' },
   { name: 'canvas_size', kind: 'vec2f', doc: 'Leinwandgröße in px (bei aktuellem scale)' },
   { name: 'scale', kind: 'f32', doc: 'Pixel-Skalierung: Vorschau < 1, Export = 1' },
+  { name: 'flags', kind: 'u32', doc: 'Bit 0: Fokuskarte vorhanden' },
 ];
 
 function kindOf(p: ParamSpec): FieldKind {
@@ -76,6 +77,8 @@ export type CoreValues = {
   origin: [number, number];
   canvasSize: [number, number];
   scale: number;
+  /** Bit 0: Fokuskarte vorhanden */
+  flags?: number;
 };
 
 /** Wandelt einen Projektwert in den Shaderwert um (px skaliert, Grad→Radiant, sRGB→linear, enum→Index). */
@@ -133,6 +136,7 @@ export function packUniforms(
   write(f('origin'), core.origin);
   write(f('canvas_size'), core.canvasSize);
   write(f('scale'), core.scale);
+  write(f('flags'), core.flags ?? 0);
   for (const p of manifest.params) write(f(p.key), shaderValue(p, params[p.key], core.scale));
   return buf;
 }

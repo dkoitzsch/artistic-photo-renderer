@@ -1,0 +1,43 @@
+{
+  "id": "motion-blur",
+  "name": "Bewegungsunschärfe",
+  "version": "1.0.0",
+  "category": "Unschärfe",
+  "description": "Verwischt entlang einer Richtung wie bei bewegter Kamera.",
+  "inputs": ["source", "focus"],
+  "passes": 3,
+  "params": [
+    {
+      "key": "length",
+      "label": "Stärke",
+      "hint": "Länge der Bewegung",
+      "type": "float",
+      "min": 0,
+      "max": 400,
+      "default": 40,
+      "step": 0.1,
+      "unit": "px",
+      "scale": "log"
+    },
+    { "key": "angle", "label": "Winkel", "type": "angle", "default": 0 },
+    {
+      "key": "focusBlur",
+      "label": "Fokus-Unschärfe",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 0,
+      "unit": "%"
+    },
+    {
+      "key": "focusSoftness",
+      "label": "Fokus-Weichheit",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 60,
+      "unit": "%"
+    }
+  ],
+  "reach": "length / 2 + 2"
+}

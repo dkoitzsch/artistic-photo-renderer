@@ -18,9 +18,16 @@ import {
   PlusIcon,
   RedoIcon,
   SaveIcon,
+  SettingsIcon,
   SunIcon,
   UndoIcon,
 } from './Icons';
+
+const VIEW_MODES = [
+  { value: 'result', label: 'Ergebnis', key: '1' },
+  { value: 'mask', label: 'Maske', key: '2' },
+  { value: 'focus', label: 'Fokus', key: '3' },
+] as const;
 
 const SAVE_LABEL = {
   saved: 'Gespeichert',
@@ -37,6 +44,12 @@ export function TopBar({ theme }: { theme: 'light' | 'dark' }) {
   const compare = useAppStore((s) => s.compareSplit !== null);
   const saveState = useAppStore((s) => s.saveState);
   const setScreen = useAppStore((s) => s.setScreen);
+  const licenseMode = useAppStore((s) => s.licenseMode);
+  const service = useAppStore((s) => s.service.state);
+  const mlMode = useAppStore((s) => s.mlMode);
+  const viewMode = useAppStore((s) => s.viewMode);
+  const setViewMode = useAppStore((s) => s.setViewMode);
+  const setSettingsOpen = useAppStore((s) => s.setSettingsOpen);
   const hasImage = project !== null;
 
   return (
@@ -96,6 +109,24 @@ export function TopBar({ theme }: { theme: 'light' | 'dark' }) {
       </div>
 
       <div className="topbar-group">
+        <span className="segmented view-modes" role="radiogroup" aria-label="Ansicht">
+          {VIEW_MODES.map((m) => (
+            <button
+              key={m.value}
+              role="radio"
+              aria-checked={viewMode === m.value}
+              className={viewMode === m.value ? 'active' : ''}
+              disabled={!hasImage}
+              title={`${m.label} (${m.key})`}
+              onClick={() => {
+                setViewMode(m.value);
+              }}
+              data-testid={`view-${m.value}`}
+            >
+              {m.label}
+            </button>
+          ))}
+        </span>
         <button
           className={`icon-button${compare ? ' active' : ''}`}
           onClick={toggleCompare}
@@ -137,6 +168,38 @@ export function TopBar({ theme }: { theme: 'light' | 'dark' }) {
       </div>
 
       <div className="topbar-group">
+        <button
+          className={`license-pill ${licenseMode}`}
+          onClick={() => {
+            setSettingsOpen(true);
+          }}
+          title="Lizenzmodus (Einstellungen)"
+          data-testid="license-pill"
+        >
+          {licenseMode === 'commercial' ? 'Kommerziell' : 'Alle Modelle (NC)'}
+        </button>
+        <span
+          className={`status-dot ${mlMode === 'browser' ? 'unknown' : service}`}
+          title={
+            mlMode === 'browser'
+              ? 'ML: nur Browser'
+              : service === 'online'
+                ? 'ML-Dienst verbunden'
+                : 'ML-Dienst nicht erreichbar – Browser-Modelle'
+          }
+          data-testid="service-dot"
+        />
+        <button
+          className="icon-button"
+          onClick={() => {
+            setSettingsOpen(true);
+          }}
+          title="Einstellungen"
+          aria-label="Einstellungen"
+          data-testid="settings-button"
+        >
+          <SettingsIcon />
+        </button>
         <button
           className="icon-button"
           onClick={toggleTheme}

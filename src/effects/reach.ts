@@ -22,7 +22,10 @@ export function numericScope(manifest: EffectManifest, params: Record<string, un
 }
 
 /** Reichweite eines Effekts in px bei voller Auflösung (0, wenn das Manifest keine angibt). */
-export function effectReach(fx: EffectInstance): number {
+export function effectReach(
+  fx: EffectInstance,
+  canvas: { width: number; height: number } = { width: 0, height: 0 },
+): number {
   const manifest = getPlugin(fx.effectId)?.manifest;
   if (!manifest?.reach) return 0;
   let compiled = cache.get(manifest.reach);
@@ -30,6 +33,10 @@ export function effectReach(fx: EffectInstance): number {
     compiled = compileExpr(manifest.reach);
     cache.set(manifest.reach, compiled);
   }
-  const r = compiled.evaluate(numericScope(manifest, fx.params));
+  const r = compiled.evaluate({
+    ...numericScope(manifest, fx.params),
+    canvasWidth: canvas.width,
+    canvasHeight: canvas.height,
+  });
   return Number.isFinite(r) ? Math.max(0, r) : 0;
 }

@@ -10,6 +10,71 @@ Abweichungen von der Spec und Festlegungen bei unklaren Anforderungen. Neueste o
 - **Betrifft:** (Spec-Abschnitt / Phase)
 -->
 
+## 2026-10-14 – Browser-Vordergrundmodell: BiRefNet lite in 512 × 512
+
+- **Frage:** Spec: „BiRefNet (lite) oder vergleichbares Salient-Object-Modell“ im Browser.
+- **Entscheidung:** Browser nutzt den MIT-lizenzierten 512er-Re-Export `studioludens/birefnet-lite-512` (fp16, WebGPU). Die grobe Maske wird mit einem Guided Filter (Bild als Führung) auf volle Auflösung gebracht. Der Python-Dienst nutzt BiRefNet in voller Größe (1024).
+- **Begründung:** Alle 1024-ONNX-Fassungen scheitern in Chrome auf dem Referenz-Mac – nachgemessen: JSEP-WebGPU (ungültiges WGSL bei Slice, Concat mit 1024 Eingängen über der Verschachtelungsgrenze), nativer WebGPU-EP (11 Storage-Buffer, Chrome erlaubt 10; auch nach Aufteilen der großen Concat/Split-Knoten anschließend `std::bad_alloc`), WASM (`std::bad_alloc`). Der 512er-Export läuft: 3,6 s beim ersten Mal (Laden + Shader), danach 0,6 s; Spec-Ziel < 3 s. Alternativen verworfen: `onnx-community/ISNet-ONNX` (AGPL-3.0), MODNet (nur Porträts).
+- **Betrifft:** Technologie-Stack, Segmentierung, Phase 2
+
+## 2026-10-14 – ONNX Runtime: nativer WebGPU-EP mit eigenem Gerät
+
+- **Entscheidung:** `onnxruntime-web/webgpu` (nativer EP, Laufzeit `ort-wasm-simd-threaded.asyncify`) mit einem eigenen WebGPU-Gerät, das die Adapter-Limits anfordert (Standardgerät: nur 8 Storage-Buffer pro Stufe). Laufzeitdateien von ORT und MediaPipe liegen unter `/vendor/` (Vite-Plugin `vendorAssets`), nicht auf einem CDN.
+- **Begründung:** Der JSEP-Pfad erzeugt für BiRefNet ungültige Shader; die Spec verbietet Netzwerkanfragen außer Modellen.
+- **Betrifft:** ML-Worker
+
+## 2026-10-14 – MediaPipe im Modul-Worker
+
+- **Entscheidung:** Fokuspunkte laufen im selben ML-Worker (CPU-Delegate). Der Modul-Loader von MediaPipe wird selbst importiert und `ModuleFactory` vor jedem `createFromOptions` gesetzt (MediaPipe löscht sie nach dem ersten Landmarker, ein ES-Modul läuft aber nur einmal).
+- **Betrifft:** Fokuspunkte
+
+## 2026-10-14 – Fokuspunkte aus der Pose, wenn das Gesicht nicht erkannt wird
+
+- **Entscheidung:** Findet das Face-Mesh kein Gesicht (z. B. Hand vor dem Gesicht, Schwarz-Weiß-Foto), kommen Augen und Gesichtsmitte aus den Kopfpunkten des Pose-Landmarkers. Punkte bis 15 % außerhalb des Bildes werden an den Rand gesetzt (Brust bei Brustbildern), weiter draußen verworfen. Radien: Augen 0,22 × Gesichtsbreite, Gesicht 0,75 ×, Brust 0,55 × Schulterbreite, Hände 0,3 × Schulterbreite.
+- **Betrifft:** Segmentierung (b), Fokuskarte
+
+## 2026-10-14 – Hintergrund: Lochfüllung statt invertierter Maske
+
+- **Frage:** Spec: Hintergrund-Layer „invertierte Maske“ plus Lochfüllung.
+- **Entscheidung:** Der Hintergrund speichert die invertierte Maske, rendert mit eingeschalteter Lochfüllung aber das per Push-Pull aufgefüllte, deckende Bild (Loch = Vordergrundmaske, leicht erweitert; Pixel mit Vordergrundanteil zählen nicht). Abschaltbar im Inspektor; dann wirkt die invertierte Maske.
+- **Begründung:** Nur so bleiben Vordergrundfarben beim Weichzeichnen aus dem Hintergrund und es entsteht weder ein dunkler noch ein durchsichtiger Saum. Gemessen (synthetische Szene, 80 px Unschärfe): Ring außerhalb der Kante 225/225 mit Lochfüllung, 170 ohne.
+- **Betrifft:** Segmentierung (b), Render-Pipeline
+
+## 2026-10-14 – Fokuskarte und ortsabhängige Unschärfe
+
+- **Entscheidung:** Fokuskarte = max. über Punkte von (1 − Abstand / Radius); der Kern rendert sie pro Ausschnitt (kachelsicher) und reicht sie Effekten als `focus_tex` mit Flag `has_focus()` (ohne Fokuskarte: 0 = volle Wirkung). „Fokus-Weichheit“ formt den Übergang (`focus_sharpness(p, softness)` im Vorspiel). Ortsabhängiger Gauß: Stapel von Gauß-Stufen (Faktor √2) mit linearer Interpolation pro Pixel; Linse/Bewegung/Zoom: Radius pro Pixel. Pinsel auf der Fokuskarte folgt in Phase 5.
+- **Betrifft:** Effekte (a, b), Plugin-Vertrag
+
+## 2026-10-14 – Erweiterungen des Plugin-Vertrags (Phase 2)
+
+- **Entscheidung:** Neu im Vorspiel: Kernfeld `flags` (Bit 0 = Fokuskarte), zweiter Eingang `src_b` (Bindung 8, `ctx.run(…, { srcB })`), Hilfen `has_focus()`/`focus_sharpness()`. Neu in `effect.ts`: `ctx.gaussian()` (Kern-Gauß), `ctx.hasFocus`, `ctx.canvasSize`. `reach`-Ausdrücke dürfen `canvasWidth`/`canvasHeight` nutzen. Alles abwärtskompatibel; dokumentiert in `effects/README.md`.
+- **Betrifft:** Effekt-Plugin-System
+
+## 2026-10-14 – Schatten-Plugin: Parameter und Perspektive
+
+- **Entscheidung:** Plugin `effects/shadow` mit Richtung, Entfernung, Weichheit, Randausblendung, Verlaufsstärke, Farbe, Skalierung (`shadowScale`, weil `scale` reserviert ist), Neigung und Bodenlinie (Achse für Skalierung/Neigung). Deckkraft und Mischmodus (Standard 65 %, Multiplizieren) gehören zum Schatten-Layer. Die Verlaufsstärke misst den Abstand zum Objekt entlang der Richtung (bis 24 Abtastungen).
+- **Betrifft:** Schatten (e)
+
+## 2026-10-14 – Mischmodi im Compositor
+
+- **Entscheidung:** Alle Spec-Mischmodi (Normal, Multiplizieren, Negativ multiplizieren, Ineinanderkopieren, Weiches Licht, Aufhellen, Abdunkeln, Differenz) für Ebenen, Gruppen und Schatten; Mischfunktion auf sRGB-kodierten Werten, Alpha-Compositing linear (W3C), wie in der Entscheidung „Mischmodi wahrnehmungsnah“ vorgesehen.
+- **Betrifft:** Render-Pipeline
+
+## 2026-10-14 – Python-Dienst: Jobs, Lizenzprüfung, Remote-Code
+
+- **Entscheidung:** `/segment/foreground` liefert immer einen Job (Status/Fortschritt per `/jobs/{id}`, Ergebnis 16-Bit-PNG). NC-Modelle: HTTP 403, wenn die App nicht „Alle“ meldet; `/health` meldet sie als nicht verfügbar. Modelle über `transformers` mit `trust_remote_code=True`, Revision auf einen Commit festgelegt. MPS mit fp16. `npm run dev` startet App und Dienst (ohne `uv` nur die App); Tests starten nur Vite (`npm run dev:web`).
+- **Betrifft:** Lokaler Python-Dienst
+
+## 2026-10-14 – Masken speichern
+
+- **Entscheidung:** Masken in voller Originalgröße als 16-Bit-Graustufen-PNG (fast-png, MIT) im OPFS (`masks/<id>.png`) und in der Projektdatei (`masks/`); jede neue Maske bekommt eine neue ID (unveränderlich). Auf der GPU als `r16float`. Projektformat 2 (Format 1 wird beim Laden migriert).
+- **Betrifft:** Speichern, Datenmodell
+
+## 2026-10-14 – Dienst-Abfrage und Ansichten
+
+- **Entscheidung:** `/health` alle 5 s, solange der Dienst antwortet, sonst alle 20 s (jeder Fehlversuch erscheint in der Browser-Konsole); im ML-Modus „Browser“ gar nicht. Prüfansichten (Tasten 1–3): Ergebnis, Maske (rot = ausgeblendet), Fokuskarte (gelb, mit Punkten). Fokuspunkt-Werkzeug (F): Klick setzt Punkt, Mitte ziehen verschiebt, Ring ziehen ändert den Radius.
+- **Betrifft:** UI
+
 ## 2026-10-14 – Undo/Redo: Befehle mit Zustands-Schnappschuss
 
 - **Frage:** Spec: „Undo/Redo über Command-Pattern“.

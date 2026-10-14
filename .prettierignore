@@ -2,3 +2,7 @@ dist
 node_modules
 SPEC-artistic-photo-renderer.md
 package-lock.json
+ml-service/.venv
+ml-service/.pytest_cache
+tests/.cache
+**/__pycache__

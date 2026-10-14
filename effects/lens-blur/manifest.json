@@ -1,0 +1,74 @@
+{
+  "id": "lens-blur",
+  "name": "Linsenunschärfe",
+  "version": "1.0.0",
+  "category": "Unschärfe",
+  "description": "Bokeh wie bei einem Objektiv: Lichter werden zu Scheiben oder Sechsecken.",
+  "inputs": ["source", "focus"],
+  "passes": 3,
+  "params": [
+    {
+      "key": "radius",
+      "label": "Stärke",
+      "hint": "Radius der Unschärfescheibe",
+      "type": "float",
+      "min": 0,
+      "max": 300,
+      "default": 30,
+      "step": 0.1,
+      "unit": "px",
+      "scale": "log"
+    },
+    {
+      "key": "shape",
+      "label": "Blende",
+      "type": "enum",
+      "options": [
+        { "value": "disc", "label": "Scheibe" },
+        { "value": "hexagon", "label": "Sechseck" }
+      ],
+      "default": "disc"
+    },
+    { "key": "rotation", "label": "Drehung", "type": "angle", "default": 0 },
+    {
+      "key": "highlights",
+      "label": "Lichter",
+      "hint": "Hebt helle Stellen als Bokeh hervor",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 40,
+      "unit": "%"
+    },
+    {
+      "key": "threshold",
+      "label": "Lichter ab",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 70,
+      "unit": "%"
+    },
+    {
+      "key": "focusBlur",
+      "label": "Fokus-Unschärfe",
+      "hint": "Unschärfe an den Fokuspunkten relativ zur Stärke (0 % = scharf)",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 0,
+      "unit": "%"
+    },
+    {
+      "key": "focusSoftness",
+      "label": "Fokus-Weichheit",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 60,
+      "unit": "%"
+    }
+  ],
+  "visibleIf": { "rotation": "shape=hexagon", "threshold": "highlights!=0" },
+  "reach": "radius"
+}

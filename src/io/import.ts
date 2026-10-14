@@ -2,12 +2,13 @@
 
 import { getEngine } from '../render/runtime';
 import { openProject } from '../state/commands';
-import { createProjectFromImage, newId, type OriginalRef, type Project } from '../state/project';
+import { createProjectFromImage, maskIds, newId, type OriginalRef, type Project } from '../state/project';
+import { decodeMaskPng } from './maskCodec';
 import { useAppStore } from '../state/store';
 import { fitToViewport } from '../state/viewActions';
 import { sha256Hex } from './hash';
 import { PROJECT_EXTENSION, unpackProject } from './projectFile';
-import { loadOriginal, loadProject, saveOriginal, saveProject } from './storage';
+import { loadMask, loadOriginal, loadProject, saveMask, saveOriginal, saveProject } from './storage';
 
 export const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 export const ACCEPT_ATTRIBUTE = [...ACCEPTED_TYPES, PROJECT_EXTENSION].join(',');
@@ -26,22 +27,33 @@ async function decode(bytes: Blob): Promise<ImageBitmap> {
   return createImageBitmap(bytes, { premultiplyAlpha: 'none', colorSpaceConversion: 'default' });
 }
 
-/** Stellt sicher, dass alle Originale eines Projekts auf der GPU liegen. */
-async function uploadOriginals(
+type Bytes = (id: string) => Promise<Uint8Array | null>;
+
+/** Stellt sicher, dass alle Originale und Masken eines Projekts auf der GPU liegen. */
+export async function uploadAssets(
   project: Project,
-  getBytes: (o: OriginalRef) => Promise<Blob | null>,
+  getOriginal: (o: OriginalRef) => Promise<Blob | null>,
+  getMask: Bytes = loadMask,
 ): Promise<void> {
   const engine = getEngine();
   if (!engine) throw new Error('WebGPU ist nicht verfügbar.');
   for (const o of Object.values(project.originals)) {
     if (engine.sources.has(o.id)) continue;
-    const blob = await getBytes(o);
+    const blob = await getOriginal(o);
     if (!blob) throw new Error(`Original ${o.fileName} fehlt im lokalen Speicher.`);
     const bitmap = await decode(blob);
     engine.sources.add(o.id, bitmap);
     bitmap.close();
   }
-  engine.sources.retainOnly(new Set(Object.keys(project.originals)));
+  const masks = maskIds(project);
+  for (const id of masks) {
+    if (engine.sources.hasMask(id)) continue;
+    const bytes = await getMask(id);
+    if (!bytes) throw new Error(`Maske ${id.slice(0, 8)} fehlt im lokalen Speicher.`);
+    const m = decodeMaskPng(bytes);
+    engine.sources.addMask(id, m.width, m.height, m.data);
+  }
+  engine.sources.retainOnly(new Set(Object.keys(project.originals)), masks);
 }
 
 function show(project: Project): void {
@@ -104,8 +116,12 @@ export async function importImageFile(file: File): Promise<boolean> {
     getEngine()?.sources.add(id, bitmap);
     bitmap.close();
 
-    const project = createProjectFromImage({ id, fileName: file.name, mimeType: file.type, width, height });
-    await uploadOriginals(project, () => Promise.resolve(null));
+    const project = createProjectFromImage(
+      { id, fileName: file.name, mimeType: file.type, width, height },
+      undefined,
+      useAppStore.getState().licenseMode,
+    );
+    await uploadAssets(project, () => Promise.resolve(null));
     await saveProject(project);
     show(project);
     if (width * height > MAX_TARGET_PIXELS)
@@ -129,14 +145,15 @@ export async function openProjectFile(file: File): Promise<boolean> {
   if (!guard()) return false;
   setBusy(`${file.name} wird geöffnet …`);
   try {
-    const { project: loaded, originals } = unpackProject(new Uint8Array(await file.arrayBuffer()));
+    const { project: loaded, originals, masks } = unpackProject(new Uint8Array(await file.arrayBuffer()));
     for (const [id, bytes] of originals) {
       if ((await sha256Hex(bytes)) !== id)
         throw new Error('Ein Original ist beschädigt (Prüfsumme stimmt nicht).');
       await saveOriginal(id, bytes);
     }
+    for (const [id, bytes] of masks) await saveMask(id, bytes);
     const project: Project = { ...loaded, id: newId(), updatedAt: new Date().toISOString() };
-    await uploadOriginals(project, (o) => {
+    await uploadAssets(project, (o) => {
       const b = originals.get(o.id);
       return Promise.resolve(b ? new Blob([b], { type: o.mimeType }) : null);
     });
@@ -159,7 +176,7 @@ export async function openStoredProject(id: string): Promise<boolean> {
   setBusy('Projekt wird geöffnet …');
   try {
     const project = await loadProject(id);
-    await uploadOriginals(project, async (o) => {
+    await uploadAssets(project, async (o) => {
       const f = await loadOriginal(o.id);
       return f ? new Blob([f], { type: o.mimeType }) : null;
     });

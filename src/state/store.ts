@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { GpuInfo } from '../render/gpu';
 import { createHistory, present, type History } from './history';
-import type { Project } from './project';
+import type { LicenseMode, Project } from './project';
 import { type Size, type View } from './viewMath';
 
 export type GpuStatus =
@@ -15,6 +15,27 @@ export type Notice = { id: number; level: 'info' | 'error'; text: string };
 export type ThemePreference = 'system' | 'light' | 'dark';
 
 export type SaveState = 'saved' | 'pending' | 'saving' | 'error';
+
+export type MlMode = 'auto' | 'browser' | 'service';
+
+export type ServiceModel = {
+  id: string;
+  license: string;
+  commercialUse: boolean;
+  loaded: boolean;
+  available: boolean;
+  note?: string;
+};
+export type ServiceInfo = { device: string; version: string; models: ServiceModel[] };
+export type ServiceStatus = { state: 'unknown' | 'online' | 'offline'; info?: ServiceInfo };
+
+/** Laufende ML-Aufgabe (Fortschritt in der unteren Leiste) */
+export type MlTask = { id: number; label: string; detail: string; progress: number | null };
+
+export type ViewMode = 'result' | 'mask' | 'focus';
+export type Tool = 'move' | 'focus';
+
+export type ExportWarning = { layers: { id: string; name: string; modelId: string }[] };
 
 type AppState = {
   gpu: GpuStatus;
@@ -33,6 +54,15 @@ type AppState = {
   saveState: SaveState;
   /** Ein Bild/Projekt wird gerade geladen */
   busy: string | null;
+  licenseMode: LicenseMode;
+  mlMode: MlMode;
+  service: ServiceStatus;
+  tasks: MlTask[];
+  viewMode: ViewMode;
+  tool: Tool;
+  splitDialogLayerId: string | null;
+  settingsOpen: boolean;
+  exportWarning: ExportWarning | null;
 
   setGpu: (gpu: GpuStatus) => void;
   setScreen: (screen: AppState['screen']) => void;
@@ -48,6 +78,16 @@ type AppState = {
   setTheme: (theme: ThemePreference) => void;
   setSaveState: (s: SaveState) => void;
   setBusy: (b: string | null) => void;
+  setLicenseMode: (m: LicenseMode) => void;
+  setMlMode: (m: MlMode) => void;
+  setService: (s: ServiceStatus) => void;
+  upsertTask: (t: MlTask) => void;
+  removeTask: (id: number) => void;
+  setViewMode: (m: ViewMode) => void;
+  setTool: (t: Tool) => void;
+  openSplitDialog: (layerId: string | null) => void;
+  setSettingsOpen: (open: boolean) => void;
+  setExportWarning: (w: ExportWarning | null) => void;
 };
 
 let nextNoticeId = 1;
@@ -68,6 +108,15 @@ export const useAppStore = create<AppState>()((set) => ({
   theme: 'system',
   saveState: 'saved',
   busy: null,
+  licenseMode: 'commercial',
+  mlMode: 'auto',
+  service: { state: 'unknown' },
+  tasks: [],
+  viewMode: 'result',
+  tool: 'move',
+  splitDialogLayerId: null,
+  settingsOpen: false,
+  exportWarning: null,
 
   setGpu: (gpu) => set({ gpu }),
   setScreen: (screen) => set({ screen }),
@@ -88,6 +137,17 @@ export const useAppStore = create<AppState>()((set) => ({
   setTheme: (theme) => set({ theme }),
   setSaveState: (saveState) => set({ saveState }),
   setBusy: (busy) => set({ busy }),
+  setLicenseMode: (licenseMode) => set({ licenseMode }),
+  setMlMode: (mlMode) => set({ mlMode }),
+  setService: (service) => set({ service }),
+  upsertTask: (t) =>
+    set((s) => ({ tasks: [...s.tasks.filter((x) => x.id !== t.id), t].sort((a, b) => a.id - b.id) })),
+  removeTask: (id) => set((s) => ({ tasks: s.tasks.filter((t) => t.id !== id) })),
+  setViewMode: (viewMode) => set({ viewMode }),
+  setTool: (tool) => set({ tool }),
+  openSplitDialog: (splitDialogLayerId) => set({ splitDialogLayerId }),
+  setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
+  setExportWarning: (exportWarning) => set({ exportWarning }),
 }));
 
 /** Aktuelles Projekt (Gegenwart der History) oder null. */

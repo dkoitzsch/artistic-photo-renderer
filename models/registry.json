@@ -1,0 +1,174 @@
+{
+  "$comment": "Einzige Quelle für Modelle und ML-Bibliotheken. Lizenz vor dem Eintrag an der Quelle prüfen; Details in MODELS.md.",
+  "formatVersion": 1,
+  "models": [
+    {
+      "id": "birefnet-lite",
+      "family": "birefnet",
+      "name": "BiRefNet lite (512)",
+      "task": "foreground",
+      "runtime": "browser",
+      "license": "MIT",
+      "commercialUse": true,
+      "source": "https://huggingface.co/studioludens/birefnet-lite-512",
+      "revision": "962e67969ec6acec9c19fab76acee4f5e22e990c",
+      "files": [
+        {
+          "name": "birefnet-lite-512-fp16.onnx",
+          "url": "https://huggingface.co/studioludens/birefnet-lite-512/resolve/962e67969ec6acec9c19fab76acee4f5e22e990c/onnx/model_fp16.onnx",
+          "sha256": "eff9216bb2f9d3f023d9c2b7196845a7485739ab1f231593633e4d2344ffc516",
+          "size": 98484532
+        }
+      ],
+      "input": {
+        "size": 512,
+        "mean": [0.485, 0.456, 0.406],
+        "std": [0.229, 0.224, 0.225]
+      },
+      "output": "logits",
+      "checkedAt": "2026-10-14",
+      "$note": "512er-Re-Export von ZhengPeng7/BiRefNet_lite (MIT); die 1024er-ONNX-Fassungen laufen im Browser nicht (Speicher/WebGPU-Limits, siehe DECISIONS.md)."
+    },
+    {
+      "id": "rmbg-1.4",
+      "family": "rmbg",
+      "name": "BRIA RMBG 1.4",
+      "task": "foreground",
+      "runtime": "browser",
+      "license": "bria-rmbg-1.4 (CC, nicht-kommerziell)",
+      "commercialUse": false,
+      "source": "https://huggingface.co/briaai/RMBG-1.4",
+      "revision": "2ceba5a5efaec153162aedea169f76caf9b46cf8",
+      "files": [
+        {
+          "name": "rmbg-1.4-fp16.onnx",
+          "url": "https://huggingface.co/briaai/RMBG-1.4/resolve/2ceba5a5efaec153162aedea169f76caf9b46cf8/onnx/model_fp16.onnx",
+          "sha256": "9fdfdb41866d872e0acf4a010c35c1a8547bf0eebe0d1544406bbf1c824cb59d",
+          "size": 88217533
+        }
+      ],
+      "input": {
+        "size": 1024,
+        "mean": [0.5, 0.5, 0.5],
+        "std": [1, 1, 1]
+      },
+      "output": "probability-minmax",
+      "checkedAt": "2026-10-14"
+    },
+    {
+      "id": "mediapipe-face-landmarker",
+      "family": "mediapipe-face",
+      "name": "MediaPipe Face Landmarker",
+      "task": "landmarks",
+      "runtime": "browser",
+      "license": "Apache-2.0",
+      "commercialUse": true,
+      "source": "https://developers.google.com/edge/mediapipe/solutions/vision/face_landmarker",
+      "revision": "float16/1",
+      "files": [
+        {
+          "name": "face_landmarker.task",
+          "url": "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+          "sha256": "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff",
+          "size": 3758596
+        }
+      ],
+      "checkedAt": "2026-10-14"
+    },
+    {
+      "id": "mediapipe-pose-landmarker",
+      "family": "mediapipe-pose",
+      "name": "MediaPipe Pose Landmarker (full)",
+      "task": "landmarks",
+      "runtime": "browser",
+      "license": "Apache-2.0",
+      "commercialUse": true,
+      "source": "https://developers.google.com/edge/mediapipe/solutions/vision/pose_landmarker",
+      "revision": "float16/1",
+      "files": [
+        {
+          "name": "pose_landmarker_full.task",
+          "url": "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task",
+          "sha256": "5134a3aad27a58b93da0088d431f366da362b44e3ccfbe3462b3827a839011b1",
+          "size": 9398198
+        }
+      ],
+      "checkedAt": "2026-10-14"
+    },
+    {
+      "id": "birefnet",
+      "family": "birefnet",
+      "name": "BiRefNet (voll)",
+      "task": "foreground",
+      "runtime": "service",
+      "license": "MIT",
+      "commercialUse": true,
+      "source": "https://huggingface.co/ZhengPeng7/BiRefNet",
+      "revision": "e2bf8e4460fc8fa32bba5ea4d94b3233d367b0e4",
+      "hfRepo": "ZhengPeng7/BiRefNet",
+      "input": {
+        "size": 1024,
+        "mean": [0.485, 0.456, 0.406],
+        "std": [0.229, 0.224, 0.225]
+      },
+      "checkedAt": "2026-10-14"
+    },
+    {
+      "id": "rmbg-2.0",
+      "family": "rmbg",
+      "name": "BRIA RMBG 2.0",
+      "task": "foreground",
+      "runtime": "service",
+      "license": "bria-rmbg-2.0 (CC BY-NC 4.0, nicht-kommerziell)",
+      "commercialUse": false,
+      "source": "https://huggingface.co/briaai/RMBG-2.0",
+      "revision": "5df4c9c76d8170882c34f6986e848ee07fd0ba43",
+      "hfRepo": "briaai/RMBG-2.0",
+      "gated": true,
+      "input": {
+        "size": 1024,
+        "mean": [0.485, 0.456, 0.406],
+        "std": [0.229, 0.224, 0.225]
+      },
+      "checkedAt": "2026-10-14"
+    }
+  ],
+  "libraries": [
+    {
+      "id": "onnxruntime-web",
+      "version": "1.30.0",
+      "runtime": "browser",
+      "license": "MIT",
+      "commercialUse": true,
+      "source": "https://github.com/microsoft/onnxruntime",
+      "checkedAt": "2026-10-14"
+    },
+    {
+      "id": "@mediapipe/tasks-vision",
+      "version": "1.1.0",
+      "runtime": "browser",
+      "license": "Apache-2.0",
+      "commercialUse": true,
+      "source": "https://github.com/google-ai-edge/mediapipe",
+      "checkedAt": "2026-10-14"
+    },
+    {
+      "id": "torch",
+      "version": "2.14.1",
+      "runtime": "service",
+      "license": "BSD-3-Clause (mit weiteren freizügigen Lizenzen)",
+      "commercialUse": true,
+      "source": "https://pypi.org/project/torch/",
+      "checkedAt": "2026-10-14"
+    },
+    {
+      "id": "transformers",
+      "version": "5.19.0",
+      "runtime": "service",
+      "license": "Apache-2.0",
+      "commercialUse": true,
+      "source": "https://pypi.org/project/transformers/",
+      "checkedAt": "2026-10-14"
+    }
+  ]
+}

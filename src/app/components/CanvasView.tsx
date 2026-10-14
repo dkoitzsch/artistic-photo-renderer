@@ -7,6 +7,7 @@ import { getEngine } from '../../render/runtime';
 import { useAppStore, useProject } from '../../state/store';
 import { panBy, zoomBy } from '../../state/viewActions';
 import { usePluginStore } from '../../effects/pluginStore';
+import { FocusOverlay } from './FocusOverlay';
 import { GpuStatus } from './GpuStatus';
 
 function cssColorLinear(style: CSSStyleDeclaration, name: string): [number, number, number] {
@@ -39,6 +40,8 @@ export function CanvasView({ theme }: { theme: 'light' | 'dark' }) {
   const compareSplit = useAppStore((s) => s.compareSplit);
   const setCompareSplit = useAppStore((s) => s.setCompareSplit);
   const plugins = usePluginStore((s) => s.plugins);
+  const viewMode = useAppStore((s) => s.viewMode);
+  const selectedId = useAppStore((s) => s.selectedNodeId);
   const view = useAppStore((s) => s.view);
   const viewport = useAppStore((s) => s.viewport);
   const [spaceDown, setSpaceDown] = useState(false);
@@ -79,12 +82,13 @@ export function CanvasView({ theme }: { theme: 'light' | 'dark' }) {
     if (!gpuReady) return;
     const id = requestAnimationFrame(() => {
       const splitX = compareSplit === null ? null : compareSplit * viewport.width;
-      getEngine()?.present(project, view, window.devicePixelRatio || 1, readViewColors(), splitX);
+      const overlay = viewMode !== 'result' && selectedId ? { layerId: selectedId, kind: viewMode } : null;
+      getEngine()?.present(project, view, window.devicePixelRatio || 1, readViewColors(), splitX, overlay);
     });
     return () => {
       cancelAnimationFrame(id);
     };
-  }, [gpuReady, project, plugins, view, viewport, theme, compareSplit]);
+  }, [gpuReady, project, plugins, view, viewport, theme, compareSplit, viewMode, selectedId]);
 
   // Mausrad/Trackpad: Pinch bzw. ⌘/Strg + Rad zoomt um den Cursor, sonst verschieben.
   useEffect(() => {
@@ -201,6 +205,7 @@ export function CanvasView({ theme }: { theme: 'light' | 'dark' }) {
           }}
         />
       )}
+      <FocusOverlay />
       <GpuStatus />
     </div>
   );

@@ -25,6 +25,9 @@ export type ViewColors = {
 
 export type FrameStats = { cpuMs: number; gpuMs: number; effectRuns: number };
 
+/** Prüfansicht über dem Ergebnis: Maske (rot = ausgeblendet) oder Fokuskarte */
+export type Overlay = { layerId: string; kind: 'mask' | 'focus' };
+
 const VIEW_UNIFORM_FLOATS = 24;
 
 export function previewScale(project: Project): number {
@@ -51,6 +54,8 @@ export class Engine {
   private context: GPUCanvasContext | null = null;
   private lastAfter: GPUTexture | null = null;
   private lastBefore: GPUTexture | null = null;
+  private lastOverlay: GPUTexture | null = null;
+  private overlayKind = 0;
   private compiling = new Set<string>();
 
   lastStats: FrameStats = { cpuMs: 0, gpuMs: 0, effectRuns: 0 };
@@ -123,7 +128,14 @@ export class Engine {
   }
 
   /** Rendert die Vorschau (nur Geändertes) und zeichnet die Leinwand. */
-  present(project: Project | null, view: View, dpr: number, colors: ViewColors, splitX: number | null): void {
+  present(
+    project: Project | null,
+    view: View,
+    dpr: number,
+    colors: ViewColors,
+    splitX: number | null,
+    overlay: Overlay | null = null,
+  ): void {
     const t0 = performance.now();
     let effectRuns = 0;
     if (project) {
@@ -151,9 +163,23 @@ export class Engine {
       if (before?.owned) this.cache.set('before:final', before.key, before.tex);
       this.lastAfter = after.tex;
       this.lastBefore = before?.tex ?? null;
+      this.lastOverlay = null;
+      this.overlayKind = 0;
+      if (overlay) {
+        const tex = this.compositor.overlay(frame, project, overlay.layerId, overlay.kind, {
+          ...base,
+          ignoreEffects: false,
+          variant: 'overlay',
+        });
+        if (tex) {
+          this.lastOverlay = tex;
+          this.overlayKind = overlay.kind === 'mask' ? 1 : 2;
+        }
+      }
       this.drawInto(frame, project, view, dpr, colors, splitX);
       frame.submit();
       this.cache.endFrame();
+      this.sources.endFrame();
       effectRuns = this.compositor.effectRuns - runsBefore;
     } else {
       this.lastAfter = null;
@@ -184,7 +210,7 @@ export class Engine {
     u.set([...colors.background, 1], 8);
     u.set([...colors.checkerA, 1], 12);
     u.set([...colors.checkerB, 1], 16);
-    u.set([splitX ?? -1], 20);
+    u.set([splitX ?? -1, this.overlayKind], 20);
 
     const after = this.lastAfter ?? this.core.black;
     const before = this.lastBefore ?? after;
@@ -194,6 +220,7 @@ export class Engine {
         { binding: 0, resource: { buffer: frame.uniform(u) } },
         { binding: 1, resource: after.createView() },
         { binding: 2, resource: before.createView() },
+        { binding: 4, resource: (this.lastOverlay ?? this.core.black).createView() },
         // Ab 200 % (bezogen auf die Vorschau-Pixel) Pixel scharf darstellen, darunter bilinear.
         {
           binding: 3,
@@ -271,6 +298,7 @@ export class Engine {
           variant: 'export',
         });
         frame.submit();
+        this.sources.endFrame();
         const pixels = await this.encode(res.tex, [tile.x - x0, tile.y - y0], tile.width, tile.height);
         if (res.owned) this.core.pool.release(res.tex);
 
@@ -356,7 +384,7 @@ export class Engine {
         region: 'whole',
       },
       src,
-      { mask: this.core.white, focus: this.core.white, depth: this.core.black },
+      { mask: this.core.white, focus: this.core.black, depth: this.core.black },
       { scale: s, origin: [0, 0], canvasSize: [w, h] },
     );
     frame.submit();
@@ -364,4 +392,73 @@ export class Engine {
     this.core.pool.release(out);
     return new ImageData(pixels, w, h);
   }
+
+  // ---------- Masken ----------
+
+  /**
+   * Verfeinert eine grobe Maske (z. B. 1024 px aus dem Modell) kantenbewusst auf die volle Größe des Originals
+   * (Guided Filter mit dem Bild als Führung) und liefert sie als 16-Bit-Werte.
+   */
+  async refineMask(
+    originalId: string,
+    coarse: { data: Float32Array; width: number; height: number },
+  ): Promise<{ data: Uint16Array; width: number; height: number }> {
+    const image = this.sources.original(originalId);
+    const { width, height } = image;
+    const tmpId = `__coarse-${crypto.randomUUID()}`;
+    const u16 = new Uint16Array(coarse.data.length);
+    for (let i = 0; i < u16.length; i++)
+      u16[i] = Math.round(Math.min(1, Math.max(0, coarse.data[i] ?? 0)) * 65535);
+    this.sources.addMask(tmpId, coarse.width, coarse.height, u16);
+    const coarseTex = this.sources.mask(tmpId);
+    const out = this.core.pool.acquire(width, height, 'refined');
+    const frame = new Frame(this.device, this.core.pool, 'refine-mask');
+    const ratio = width / coarse.width;
+    if (ratio <= 1.05) {
+      this.core.loadMask(frame, coarseTex, out);
+    } else {
+      this.core.guidedUpscale(frame, image, coarseTex, out, Math.max(4, Math.round(2 * ratio + 2)), 1e-3);
+    }
+    frame.submit();
+    const data = await this.readR16(out);
+    this.core.pool.release(out);
+    this.sources.retainOnlyMaskDrop(tmpId);
+    return { data, width, height };
+  }
+
+  /** Liest den r-Kanal einer Arbeitstextur (rgba16float) als 16-Bit-Werte (0…65535). */
+  async readR16(tex: GPUTexture): Promise<Uint16Array> {
+    const { width, height } = tex;
+    const bytesPerRow = paddedBytesPerRow(width, 8);
+    const buffer = this.device.createBuffer({
+      size: bytesPerRow * height,
+      usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+    });
+    const enc = this.device.createCommandEncoder({ label: 'read-r16' });
+    enc.copyTextureToBuffer({ texture: tex }, { buffer, bytesPerRow }, [width, height]);
+    this.device.queue.submit([enc.finish()]);
+    await buffer.mapAsync(GPUMapMode.READ);
+    const src = new Uint16Array(buffer.getMappedRange());
+    const out = new Uint16Array(width * height);
+    const stride = bytesPerRow / 2;
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        out[y * width + x] = Math.round(
+          Math.min(1, Math.max(0, halfToFloat(src[y * stride + x * 4] ?? 0))) * 65535,
+        );
+      }
+    }
+    buffer.unmap();
+    buffer.destroy();
+    return out;
+  }
+}
+
+function halfToFloat(h: number): number {
+  const e = (h >> 10) & 0x1f;
+  const m = h & 0x3ff;
+  const s = h & 0x8000 ? -1 : 1;
+  if (e === 0) return s * 2 ** -14 * (m / 1024);
+  if (e === 31) return m ? NaN : s * Infinity;
+  return s * 2 ** (e - 15) * (1 + m / 1024);
 }

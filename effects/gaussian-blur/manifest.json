@@ -1,10 +1,10 @@
 {
   "id": "gaussian-blur",
   "name": "Gauß-Blur",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "category": "Unschärfe",
-  "description": "Weiche Unschärfe mit Radius bis 300 px; große Radien laufen über eine Pyramide in Echtzeit.",
-  "inputs": ["source"],
+  "description": "Weiche Unschärfe mit Radius bis 300 px; mit Fokuskarte bleiben Fokuspunkte schärfer.",
+  "inputs": ["source", "focus"],
   "passes": 4,
   "params": [
     {
@@ -20,13 +20,42 @@
       "scale": "log"
     },
     {
+      "key": "focusBlur",
+      "label": "Fokus-Unschärfe",
+      "hint": "Unschärfe an den Fokuspunkten relativ zur Stärke (0 % = scharf)",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 0,
+      "unit": "%"
+    },
+    {
+      "key": "focusSoftness",
+      "label": "Fokus-Weichheit",
+      "hint": "Wie weich die Fokuspunkte in die volle Unschärfe übergehen",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 60,
+      "unit": "%"
+    },
+    {
       "key": "edge",
       "label": "Kantenbehandlung",
       "type": "enum",
       "options": [
-        { "value": "mirror", "label": "Spiegeln" },
-        { "value": "clamp", "label": "Klemmen" },
-        { "value": "transparent", "label": "Transparent" }
+        {
+          "value": "mirror",
+          "label": "Spiegeln"
+        },
+        {
+          "value": "clamp",
+          "label": "Klemmen"
+        },
+        {
+          "value": "transparent",
+          "label": "Transparent"
+        }
       ],
       "default": "mirror"
     }

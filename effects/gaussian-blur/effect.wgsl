@@ -64,3 +64,35 @@ fn up(@builtin(global_invocation_id) id: vec3u) {
   let lp = (vec2f(id.xy) + 0.5) / pass_data.v0.x;
   textureStore(dst, id.xy, sample_src(lp / vec2f(src_size())));
 }
+
+// ---------- Ortsabhängige Unschärfe (Fokuskarte) ----------
+// Stufenstapel B_k mit σ_k; pro Pixel wird zwischen den beiden passenden Stufen linear interpoliert.
+// pass_data.v0 = (σ_{k-1}, σ_k, σ_{k+1}, erste Stufe?) · v1 = (Radius, Fokus-Radius, Weichheit, letzte Stufe?)
+// src = B_k, src_b = bisherige Summe
+
+fn pixel_sigma(p: vec2i) -> f32 {
+  let s = focus_sharpness(p, pass_data.v1.z);
+  return mix(pass_data.v1.x, pass_data.v1.y, s) / 3.0;
+}
+
+@compute @workgroup_size(8, 8)
+fn accumulate(@builtin(global_invocation_id) id: vec3u) {
+  let size = textureDimensions(dst);
+  if (id.x >= size.x || id.y >= size.y) { return; }
+  let p = vec2i(id.xy);
+  let sigma = pixel_sigma(p);
+  let lo = pass_data.v0.x;
+  let mid = pass_data.v0.y;
+  let hi = pass_data.v0.z;
+  var w = 0.0;
+  if (sigma <= mid) {
+    w = select(clamp((sigma - lo) / max(mid - lo, 1e-6), 0.0, 1.0), 1.0, pass_data.v0.w > 0.5);
+  } else {
+    w = select(clamp((hi - sigma) / max(hi - mid, 1e-6), 0.0, 1.0), 1.0, pass_data.v1.w > 0.5);
+  }
+  var acc = vec4f(0.0);
+  if (pass_data.v0.w < 0.5) {
+    acc = textureLoad(src_b, p, 0);
+  }
+  textureStore(dst, p, acc + textureLoad(src, p, 0) * w);
+}

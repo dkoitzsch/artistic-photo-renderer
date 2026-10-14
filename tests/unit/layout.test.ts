@@ -39,15 +39,16 @@ describe('buildLayout', () => {
       origin: 8,
       canvas_size: 16,
       scale: 24,
-      radius: 28,
-      tint: 32, // vec3f auf 16 ausgerichtet
-      on: 44, // passt in das Loch nach vec3f
-      pos: 48,
-      mode: 56,
-      angle: 60,
-      n: 64,
+      flags: 28,
+      radius: 32,
+      tint: 48, // vec3f auf 16 ausgerichtet
+      on: 60, // passt in das Loch nach vec3f
+      pos: 64,
+      mode: 72,
+      angle: 76,
+      n: 80,
     });
-    expect(l.size).toBe(80);
+    expect(l.size).toBe(96);
     expect(l.struct).toContain('tint: vec3f');
     expect(l.struct).toContain('n: i32');
   });
@@ -82,9 +83,9 @@ describe('shaderValue / packUniforms', () => {
     expect(dv.getFloat32(0, true)).toBe(800);
     expect(dv.getFloat32(12, true)).toBe(128);
     expect(dv.getFloat32(24, true)).toBe(0.5);
-    expect(dv.getFloat32(28, true)).toBe(20);
-    expect(dv.getUint32(44, true)).toBe(1);
-    expect(dv.getUint32(56, true)).toBe(1);
-    expect(dv.getInt32(64, true)).toBe(7);
+    expect(dv.getFloat32(32, true)).toBe(20);
+    expect(dv.getUint32(60, true)).toBe(1);
+    expect(dv.getUint32(72, true)).toBe(1);
+    expect(dv.getInt32(80, true)).toBe(7);
   });
 });

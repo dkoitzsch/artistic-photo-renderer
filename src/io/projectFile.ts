@@ -1,14 +1,18 @@
-// Projektdatei .blurstudio (= ZIP): project.json + originals/<hash>.<ext> (+ masks/, focus/, depth/ ab Phase 2).
+// Projektdatei .blurstudio (= ZIP): project.json + originals/<hash>.<ext> + masks/<id>.png (16 Bit).
 
 import { strFromU8, strToU8, unzipSync, zipSync, type Zippable } from 'fflate';
-import type { Project } from '../state/project';
+import { maskIds, type Project } from '../state/project';
 import { parseProject } from './projectSchema';
 
 export const PROJECT_EXTENSION = '.blurstudio';
 
 const EXT: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
 
-export function packProject(project: Project, originals: Map<string, Uint8Array>): Uint8Array {
+export function packProject(
+  project: Project,
+  originals: Map<string, Uint8Array>,
+  masks: Map<string, Uint8Array> = new Map(),
+): Uint8Array {
   const files: Zippable = {
     'project.json': strToU8(JSON.stringify(project, null, 2)),
   };
@@ -18,12 +22,18 @@ export function packProject(project: Project, originals: Map<string, Uint8Array>
     // Bilder sind bereits komprimiert → speichern statt erneut komprimieren.
     files[`originals/${o.id}.${EXT[o.mimeType] ?? 'bin'}`] = [bytes, { level: 0 }];
   }
+  for (const id of maskIds(project)) {
+    const bytes = masks.get(id);
+    if (!bytes) throw new Error(`Maske ${id.slice(0, 8)} fehlt.`);
+    files[`masks/${id}.png`] = [bytes, { level: 0 }];
+  }
   return zipSync(files, { level: 6 });
 }
 
 export function unpackProject(zip: Uint8Array): {
   project: Project;
   originals: Map<string, Uint8Array<ArrayBuffer>>;
+  masks: Map<string, Uint8Array<ArrayBuffer>>;
 } {
   let entries: Record<string, Uint8Array>;
   try {
@@ -41,11 +51,16 @@ export function unpackProject(zip: Uint8Array): {
   }
   const project = parseProject(data);
   const originals = new Map<string, Uint8Array<ArrayBuffer>>();
+  const masks = new Map<string, Uint8Array<ArrayBuffer>>();
   for (const [path, bytes] of Object.entries(entries)) {
-    const m = /^originals\/([0-9a-f]{64})\.\w+$/.exec(path);
-    if (m?.[1]) originals.set(m[1], bytes as Uint8Array<ArrayBuffer>);
+    const o = /^originals\/([0-9a-f]{64})\.\w+$/.exec(path);
+    if (o?.[1]) originals.set(o[1], bytes as Uint8Array<ArrayBuffer>);
+    const m = /^masks\/([\w-]+)\.png$/.exec(path);
+    if (m?.[1]) masks.set(m[1], bytes as Uint8Array<ArrayBuffer>);
   }
   for (const id of Object.keys(project.originals))
     if (!originals.has(id)) throw new Error(`Original ${id.slice(0, 8)} fehlt in der Projektdatei.`);
-  return { project, originals };
+  for (const id of maskIds(project))
+    if (!masks.has(id)) throw new Error(`Maske ${id.slice(0, 8)} fehlt in der Projektdatei.`);
+  return { project, originals, masks };
 }

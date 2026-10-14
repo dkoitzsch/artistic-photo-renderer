@@ -7,7 +7,7 @@
     "node": ">=22.12"
   },
   "scripts": {
-    "dev": "vite",
+    "dev": "node scripts/dev.mjs",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -b",
@@ -16,12 +16,19 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "fixtures": "node tests/fixtures/generate.mjs"
+    "fixtures": "node tests/fixtures/generate.mjs",
+    "dev:web": "vite",
+    "service": "uv run --project ml-service ml-service",
+    "test:service": "uv run --project ml-service pytest -q",
+    "models:fetch": "node scripts/fetch-models.mjs"
   },
   "dependencies": {
     "@fontsource-variable/inter": "5.3.0",
+    "@mediapipe/tasks-vision": "1.1.0",
     "@radix-ui/react-dialog": "1.3.1",
+    "fast-png": "8.0.0",
     "fflate": "0.8.3",
+    "onnxruntime-web": "1.30.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "zustand": "5.0.15"

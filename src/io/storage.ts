@@ -2,8 +2,9 @@
 //   originals/<hash>        unveränderte Bilddateien (geteilt zwischen Projekten)
 //   projects/<id>.json      Projektbaum
 //   thumbs/<id>.webp        Miniatur für die Projektübersicht
+//   masks/<id>.png          16-Bit-Masken (unveränderlich, jede Änderung = neue ID)
 
-import type { Project } from '../state/project';
+import { maskIds, type Project } from '../state/project';
 import { parseProject } from './projectSchema';
 
 export type ProjectSummary = { id: string; name: string; updatedAt: string; width: number; height: number };
@@ -44,6 +45,17 @@ export async function saveOriginal(id: string, data: Blob | Uint8Array<ArrayBuff
 
 export async function loadOriginal(id: string): Promise<File | null> {
   return readFile(await dir('originals'), id);
+}
+
+export async function saveMask(id: string, png: Uint8Array<ArrayBuffer>): Promise<void> {
+  const d = await dir('masks');
+  if (await readFile(d, `${id}.png`)) return;
+  await writeFile(d, `${id}.png`, png);
+}
+
+export async function loadMask(id: string): Promise<Uint8Array | null> {
+  const f = await readFile(await dir('masks'), `${id}.png`);
+  return f ? new Uint8Array(await f.arrayBuffer()) : null;
 }
 
 export async function saveProject(project: Project): Promise<void> {
@@ -91,10 +103,15 @@ export async function deleteProject(id: string): Promise<void> {
   await projects.removeEntry(`${id}.json`).catch(() => undefined);
   await (await dir('thumbs')).removeEntry(`${id}.webp`).catch(() => undefined);
   const used = new Set<string>();
+  const usedMasks = new Set<string>();
   for (const s of await listProjects()) {
     const p = await loadProject(s.id).catch(() => null);
-    if (p) for (const o of Object.keys(p.originals)) used.add(o);
+    if (!p) continue;
+    for (const o of Object.keys(p.originals)) used.add(o);
+    for (const m of maskIds(p)) usedMasks.add(`${m}.png`);
   }
   const originals = await dir('originals');
   for await (const name of originals.keys()) if (!used.has(name)) await originals.removeEntry(name);
+  const masks = await dir('masks');
+  for await (const name of masks.keys()) if (!usedMasks.has(name)) await masks.removeEntry(name);
 }

@@ -377,16 +377,16 @@ Sieben Phasen (0–6); jede endet mit einer lauffähigen App. Das Plugin-System 
 
 ### Phase 2 – Vordergrund, Fokus, Schatten (b, e)
 
-- [ ] Python-Dienst mit `/health` und `/segment/foreground`; `MlBackend` mit Browser- und Dienst-Implementierung, Umschalter Auto / Browser / Dienst
-- [ ] Modell-Register, Lizenzmodus-Umschalter, Modellwahl pro Aufgabe, Herkunft und Export-Warnung
-- [ ] Vordergrund/Hintergrund-Aufteilung mit Lochfüllung, als Gruppe (BiRefNet und RMBG-2.0 wählbar)
-- [ ] Kantenhärte-Regler von hart bis sehr weich, Kantenversatz
-- [ ] Fokuskarte aus Face/Pose-Landmarkern (Augen, Gesichtsmitte, Brust, Hände), Fokus-Unschärfe-Regler
-- [ ] Linsen-, Bewegungs- und Zoom-Unschärfe
-- [ ] Schatten-Layer mit allen Parametern aus Abschnitt Effekte
-- [ ] Abnahme: Portrait mit scharfen Augen, weich verlaufender Gesichtsunschärfe, stark unscharfem Hintergrund und Schatten nach rechts unten in unter 1 Minute einstellbar; kein sichtbarer Halo an der Kante
-- [ ] Abnahme: Dienst gestoppt → App fällt ohne Fehler auf Browser-Modelle zurück
-- [ ] Abnahme: Im Modus „Kommerziell“ wird kein NC-Modell geladen (prüfbar im Netzwerk-Log und in `/health`); ein Export mit RMBG-Maske zeigt die Warnung
+- [x] Python-Dienst mit `/health` und `/segment/foreground`; `MlBackend` mit Browser- und Dienst-Implementierung, Umschalter Auto / Browser / Dienst
+- [x] Modell-Register, Lizenzmodus-Umschalter, Modellwahl pro Aufgabe, Herkunft und Export-Warnung
+- [x] Vordergrund/Hintergrund-Aufteilung mit Lochfüllung, als Gruppe (BiRefNet und RMBG-2.0 wählbar) (Browser: BiRefNet lite 512 / RMBG-1.4; Dienst: BiRefNet / RMBG-2.0, siehe DECISIONS.md)
+- [x] Kantenhärte-Regler von hart bis sehr weich, Kantenversatz
+- [x] Fokuskarte aus Face/Pose-Landmarkern (Augen, Gesichtsmitte, Brust, Hände), Fokus-Unschärfe-Regler
+- [x] Linsen-, Bewegungs- und Zoom-Unschärfe
+- [x] Schatten-Layer mit allen Parametern aus Abschnitt Effekte
+- [x] Abnahme: Portrait mit scharfen Augen, weich verlaufender Gesichtsunschärfe, stark unscharfem Hintergrund und Schatten nach rechts unten in unter 1 Minute einstellbar; kein sichtbarer Halo an der Kante
+- [x] Abnahme: Dienst gestoppt → App fällt ohne Fehler auf Browser-Modelle zurück
+- [x] Abnahme: Im Modus „Kommerziell“ wird kein NC-Modell geladen (prüfbar im Netzwerk-Log und in `/health`); ein Export mit RMBG-Maske zeigt die Warnung
 
 ### Phase 3 – Tiefenebenen und Gruppen (d, h)
 

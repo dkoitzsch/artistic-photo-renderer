@@ -1,0 +1,58 @@
+{
+  "id": "zoom-blur",
+  "name": "Zoom-Unschärfe",
+  "version": "1.0.0",
+  "category": "Unschärfe",
+  "description": "Radial zum Zentrum hin verwischt, wie beim Zoomen während der Belichtung.",
+  "inputs": ["source", "focus"],
+  "passes": 3,
+  "params": [
+    {
+      "key": "amount",
+      "label": "Stärke",
+      "hint": "Länge der Spur relativ zum Abstand vom Zentrum",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 15,
+      "unit": "%"
+    },
+    {
+      "key": "centerX",
+      "label": "Zentrum X",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 50,
+      "unit": "%"
+    },
+    {
+      "key": "centerY",
+      "label": "Zentrum Y",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 50,
+      "unit": "%"
+    },
+    {
+      "key": "focusBlur",
+      "label": "Fokus-Unschärfe",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 0,
+      "unit": "%"
+    },
+    {
+      "key": "focusSoftness",
+      "label": "Fokus-Weichheit",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 60,
+      "unit": "%"
+    }
+  ],
+  "reach": "amount / 100 * max(canvasWidth, canvasHeight) + 2"
+}

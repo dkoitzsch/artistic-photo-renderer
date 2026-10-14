@@ -49,7 +49,7 @@ effects/
 
 - `"unit": "px"`: Der Kern multipliziert den Wert mit dem Skalierungsfaktor (Vorschau < 1, Export = 1), damit Vorschau und Export gleich aussehen. Andere Einheiten (`"%"`) dienen nur der Anzeige.
 - `"scale": "log"`: logarithmischer Regler (gut für Radien).
-- Reservierte Namen: `resolution`, `origin`, `canvas_size`, `scale`.
+- Reservierte Namen: `resolution`, `origin`, `canvas_size`, `scale`, `flags`.
 
 ## Shader-Vertrag (effect.wgsl)
 
@@ -73,7 +73,10 @@ struct Params {
 @group(0) @binding(7) var dst: texture_storage_2d<rgba16float, write>;
 ```
 
+Ab Phase 2 außerdem: Kernfeld `flags` (Bit 0 = Ebene hat eine Fokuskarte), Bindung 8 `src_b` (zweiter Eingang, sonst = `src`).
+
 Hilfsfunktionen: `src_size()`, `load_src(p)`, `sample_src(uv)`, `load_mask(p)`, `load_focus(p)`, `load_depth(p)`,
+`has_focus()`, `focus_sharpness(p, softness)` (1 = scharf; ohne Fokuskarte 0),
 `canvas_pos(p)` (Position in Leinwand-px bei voller Auflösung – für ortsfeste Muster wie Korn),
 `unpremultiply(c)`, `premultiply(c)`, `luminance(rgb)`, `hash21(vec2u)`, `srgb_to_linear(rgb)`, `linear_to_srgb(rgb)`.
 
@@ -102,7 +105,15 @@ export default defineEffect({
 ```
 
 `ctx.params` enthält die Shaderwerte (px skaliert, Radiant, linear), `ctx.raw` die gespeicherten Rohwerte.
-Beispiel: `effects/gaussian-blur/`.
+Weitere Hilfen: `ctx.gaussian(src, dst, radius, edge)` (Kern-Gauß), `ctx.hasFocus`, `ctx.canvasSize` (Leinwand in Render-px,
+wichtig für kachelsichere Entscheidungen), `ctx.run(…, { srcB })` für Pässe mit zwei Eingängen.
+Beispiele: `effects/gaussian-blur/` (Pyramide, Fokus-Stapel), `effects/lens-blur/`, `effects/shadow/`.
+
+### Fokuskarte nutzen
+
+Effekte, die an Fokuspunkten schwächer wirken sollen, nehmen `focus` in `inputs` auf und Parameter wie
+`focusBlur` (Wirkung an den Punkten in % der Stärke) und `focusSoftness` (0…100 %). Pro Pixel:
+`radius = mix(stärke, stärke · focusBlur / 100, focus_sharpness(p, focusSoftness / 100))`.
 
 ## Prüfung
 

@@ -5,3 +5,7 @@ test-results/
 playwright-report/
 .DS_Store
 .vite/
+tests/.cache/
+ml-service/.venv/
+.pytest_cache/
+__pycache__/

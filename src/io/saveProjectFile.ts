@@ -1,7 +1,8 @@
 import { getProject, useAppStore } from '../state/store';
 import { downloadBlob, safeFileName } from './export';
 import { packProject, PROJECT_EXTENSION } from './projectFile';
-import { loadOriginal } from './storage';
+import { maskIds } from '../state/project';
+import { loadMask, loadOriginal } from './storage';
 
 type SavePicker = (opts: {
   suggestedName: string;
@@ -21,7 +22,13 @@ export async function saveProjectFile(): Promise<void> {
       if (!f) throw new Error(`Original ${o.fileName} fehlt im lokalen Speicher.`);
       originals.set(o.id, new Uint8Array(await f.arrayBuffer()));
     }
-    const zip = packProject(project, originals);
+    const masks = new Map<string, Uint8Array>();
+    for (const id of maskIds(project)) {
+      const bytes = await loadMask(id);
+      if (!bytes) throw new Error(`Maske ${id.slice(0, 8)} fehlt im lokalen Speicher.`);
+      masks.set(id, bytes);
+    }
+    const zip = packProject(project, originals, masks);
     const blob = new Blob([zip as Uint8Array<ArrayBuffer>], { type: 'application/zip' });
     const picker = (window as unknown as { showSaveFilePicker?: SavePicker }).showSaveFilePicker;
     if (picker) {

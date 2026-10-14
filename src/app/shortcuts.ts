@@ -3,6 +3,7 @@ import { exportPng } from '../io/export';
 import { openFileDialog } from '../io/openDialog';
 import { saveProjectFile } from '../io/saveProjectFile';
 import { redoCommand, undoCommand } from '../state/commands';
+import { useAppStore } from '../state/store';
 import { fitToViewport, toggleCompare, zoomBy, zoomToActualSize } from '../state/viewActions';
 
 type Shortcut = { key: string; meta: boolean; shift?: boolean; inText?: boolean; run: () => void };
@@ -38,6 +39,48 @@ const SHORTCUTS: Shortcut[] = [
     },
   },
   { key: '\\', meta: false, run: toggleCompare },
+  {
+    key: '1',
+    meta: false,
+    run: () => {
+      useAppStore.getState().setViewMode('result');
+    },
+  },
+  {
+    key: '2',
+    meta: false,
+    run: () => {
+      useAppStore.getState().setViewMode('mask');
+    },
+  },
+  {
+    key: '3',
+    meta: false,
+    run: () => {
+      useAppStore.getState().setViewMode('focus');
+    },
+  },
+  {
+    key: 'v',
+    meta: false,
+    run: () => {
+      useAppStore.getState().setTool('move');
+    },
+  },
+  {
+    key: 'f',
+    meta: false,
+    run: () => {
+      useAppStore.getState().setTool('focus');
+    },
+  },
+  {
+    key: 'escape',
+    meta: false,
+    run: () => {
+      useAppStore.getState().setTool('move');
+    },
+  },
 ];
 
 function isEditable(target: EventTarget | null): boolean {

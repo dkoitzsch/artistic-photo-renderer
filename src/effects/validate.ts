@@ -9,8 +9,10 @@ export type ValidationResult = { ok: true; manifest: EffectManifest } | { ok: fa
 const ID_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const KEY_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const SEMVER_RE = /^\d+\.\d+\.\d+$/;
+/** Zusätzliche Namen in reach-Ausdrücken (Leinwand in px bei voller Auflösung). */
+export const REACH_GLOBALS = ['canvasWidth', 'canvasHeight'];
 /** Namen, die der Kern im WGSL-Params-Struct selbst belegt. */
-export const RESERVED_KEYS = ['resolution', 'origin', 'canvas_size', 'scale'];
+export const RESERVED_KEYS = ['resolution', 'origin', 'canvas_size', 'scale', 'flags'];
 
 const isObj = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -107,7 +109,9 @@ export function validateManifest(raw: unknown, folder?: string): ValidationResul
     if (typeof reach !== 'string') errors.push('"reach" muss ein Ausdruck (Text) sein.');
     else {
       try {
-        const unknown = compileExpr(reach).identifiers.filter((n) => !keys.has(n));
+        const unknown = compileExpr(reach).identifiers.filter(
+          (n) => !keys.has(n) && !REACH_GLOBALS.includes(n),
+        );
         if (unknown.length) errors.push(`"reach" verwendet unbekannte Parameter: ${unknown.join(', ')}.`);
       } catch (e) {
         errors.push(`"reach": ${(e as Error).message}`);

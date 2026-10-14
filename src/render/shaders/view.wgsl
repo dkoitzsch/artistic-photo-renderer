@@ -12,7 +12,7 @@ struct View {
   checker_a: vec4f,   // linear
   checker_b: vec4f,   // linear
   split_x: f32,       // CSS-Pixel; < 0 = keine Teilung (links „vorher“)
-  _p0: f32,
+  overlay: f32,       // 0 aus, 1 Maske (rot = ausgeblendet), 2 Fokuskarte
   _p1: f32,
   _p2: f32,
 }
@@ -21,6 +21,7 @@ struct View {
 @group(0) @binding(1) var after_tex: texture_2d<f32>;
 @group(0) @binding(2) var before_tex: texture_2d<f32>;
 @group(0) @binding(3) var samp: sampler;
+@group(0) @binding(4) var overlay_tex: texture_2d<f32>;
 
 @vertex
 fn vs(@builtin(vertex_index) i: u32) -> @builtin(position) vec4f {
@@ -64,6 +65,14 @@ fn fs(@builtin(position) pos: vec4f) -> @location(0) vec4f {
       s = sample_image(after_tex, px);
     }
     color = s.rgb + checker * (1.0 - s.a);
+    if (view.overlay > 0.5) {
+      let o = textureSampleLevel(overlay_tex, samp, px / view.image_size, 0.0).r;
+      if (view.overlay < 1.5) {
+        color = mix(color, vec3f(0.8, 0.05, 0.05), 0.6 * (1.0 - o));
+      } else {
+        color = mix(color * 0.45, vec3f(1.0, 0.75, 0.1), 0.75 * o);
+      }
+    }
   }
   return vec4f(linear_to_srgb(color), 1.0);
 }

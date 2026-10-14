@@ -1,6 +1,7 @@
-// Prüft geladene Projektdaten (Projektdatei, Autosave), bevor sie in den Store kommen.
+// Prüft geladene Projektdaten (Projektdatei, Autosave), bevor sie in den Store kommen,
+// und hebt ältere Formatversionen an.
 
-import { PROJECT_FORMAT_VERSION, type Project } from '../state/project';
+import { DEFAULT_MASK_EDGE, PROJECT_FORMAT_VERSION, type Project } from '../state/project';
 
 const isObj = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -19,14 +20,45 @@ function checkEffects(v: unknown, where: string): void {
   });
 }
 
+function checkProvenance(v: unknown, where: string): void {
+  if (!isObj(v) || !isStr(v.modelId) || typeof v.commercialUse !== 'boolean')
+    fail(`${where}.provenance unvollständig`);
+}
+
+function checkLayer(n: Record<string, unknown>, where: string, originals: Record<string, unknown>): void {
+  if (!isStr(n.originalId) || !(n.originalId in originals))
+    fail(`${where} verweist auf ein fehlendes Original`);
+  const mask = n.mask;
+  if (!isObj(mask) || !isObj(n.transform)) fail(`${where}.mask/transform fehlt`);
+  if (mask.kind === 'stored') {
+    if (!isStr(mask.id) || !isNum(mask.width) || !isNum(mask.height)) fail(`${where}.mask unvollständig`);
+    checkProvenance(mask.provenance, `${where}.mask`);
+  } else if (mask.kind !== 'full') fail(`${where}.mask.kind unbekannt`);
+  const edge = n.maskEdge;
+  if (!isObj(edge) || !isNum(edge.hardness) || !isNum(edge.offset) || !isStr(edge.curve))
+    fail(`${where}.maskEdge unvollständig`);
+  if (n.focusMap !== undefined) {
+    const fm = n.focusMap;
+    if (!isObj(fm) || !Array.isArray(fm.points)) fail(`${where}.focusMap unvollständig`);
+    fm.points.forEach((p: unknown, i) => {
+      if (!isObj(p) || !isStr(p.id) || !isNum(p.x) || !isNum(p.y) || !isNum(p.radius))
+        fail(`${where}.focusMap.points[${i}] unvollständig`);
+    });
+  }
+  if (n.shadow !== undefined) {
+    const sh = n.shadow;
+    if (!isObj(sh) || !isStr(sh.id) || !isObj(sh.params) || !isNum(sh.opacity))
+      fail(`${where}.shadow unvollständig`);
+    checkEffects(sh.effects, `${where}.shadow`);
+  }
+}
+
 function checkNode(n: unknown, where: string, originals: Record<string, unknown>): void {
   if (!isObj(n) || !isStr(n.id) || !isStr(n.name)) fail(`${where} unvollständig`);
   checkEffects(n.effects, where);
   if (!isNum(n.opacity)) fail(`${where}.opacity fehlt`);
   if (n.kind === 'layer') {
-    if (!isStr(n.originalId) || !(n.originalId in originals))
-      fail(`${where} verweist auf ein fehlendes Original`);
-    if (!isObj(n.mask) || !isObj(n.transform)) fail(`${where}.mask/transform fehlt`);
+    checkLayer(n, where, originals);
   } else if (n.kind === 'group') {
     if (!Array.isArray(n.children)) fail(`${where}.children fehlt`);
     n.children.forEach((c: unknown, i) => {
@@ -35,14 +67,28 @@ function checkNode(n: unknown, where: string, originals: Record<string, unknown>
   } else fail(`${where}.kind unbekannt`);
 }
 
-export function parseProject(json: unknown): Project {
-  if (!isObj(json)) fail('kein Objekt');
-  if (!isNum(json.formatVersion)) fail('formatVersion fehlt');
-  if (json.formatVersion > PROJECT_FORMAT_VERSION)
-    fail(`Formatversion ${json.formatVersion} ist neuer als diese App (${PROJECT_FORMAT_VERSION}).`);
+/** Format 1 → 2: Lizenzmodus, Kantenübergang und Lochfüllung ergänzen. */
+function migrate(json: Record<string, unknown>): Record<string, unknown> {
+  if (json.formatVersion !== 1) return json;
+  const fixNode = (n: unknown): unknown => {
+    if (!isObj(n)) return n;
+    if (n.kind === 'layer') return { maskEdge: { ...DEFAULT_MASK_EDGE }, holeFill: false, ...n };
+    if (n.kind === 'group' && Array.isArray(n.children)) return { ...n, children: n.children.map(fixNode) };
+    return n;
+  };
+  return { ...json, formatVersion: 2, licenseMode: 'commercial', root: fixNode(json.root) };
+}
+
+export function parseProject(raw: unknown): Project {
+  if (!isObj(raw)) fail('kein Objekt');
+  if (!isNum(raw.formatVersion)) fail('formatVersion fehlt');
+  if (raw.formatVersion > PROJECT_FORMAT_VERSION)
+    fail(`Formatversion ${raw.formatVersion} ist neuer als diese App (${PROJECT_FORMAT_VERSION}).`);
+  const json = migrate(raw);
   if (!isStr(json.id) || !isStr(json.name)) fail('id/name fehlt');
   const canvas = json.canvas;
   if (!isObj(canvas) || !isNum(canvas.width) || !isNum(canvas.height)) fail('canvas fehlt');
+  if (json.licenseMode !== 'commercial' && json.licenseMode !== 'all') fail('licenseMode fehlt');
   if (!isObj(json.originals)) fail('originals fehlt');
   for (const [id, o] of Object.entries(json.originals))
     if (!isObj(o) || o.id !== id || !isStr(o.mimeType) || !isNum(o.width) || !isNum(o.height))

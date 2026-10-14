@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { startAutosave } from '../io/autosave';
+import { startServiceMonitor } from '../ml/backend';
 import { openStoredProject } from '../io/import';
 import { rememberedProjectId, startSessionMemory } from '../io/session';
 import { listProjects } from '../io/storage';
@@ -7,6 +8,7 @@ import { initRuntime } from '../render/runtime';
 import { useAppStore } from '../state/store';
 import { BottomPanel } from './components/BottomPanel';
 import { CanvasView } from './components/CanvasView';
+import { ExportWarningDialog, SettingsDialog, SplitDialog } from './components/Dialogs';
 import { EffectBrowser } from './components/EffectBrowser';
 import { ProjectOverview } from './components/ProjectOverview';
 import { SidePanel } from './components/SidePanel';
@@ -47,10 +49,12 @@ export function App() {
   useEffect(() => {
     void startup();
     const stopSession = startSessionMemory();
+    const stopMonitor = startServiceMonitor();
     const stopAutosave = startAutosave();
     return () => {
       stopSession();
       stopAutosave();
+      stopMonitor();
     };
   }, []);
 
@@ -65,6 +69,9 @@ export function App() {
       </div>
       <BottomPanel />
       <EffectBrowser />
+      <SplitDialog />
+      <SettingsDialog />
+      <ExportWarningDialog />
     </div>
   );
 }

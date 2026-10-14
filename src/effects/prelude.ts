@@ -13,6 +13,7 @@ export const BINDINGS = {
   depth: 5,
   sampler: 6,
   dst: 7,
+  srcB: 8,
 } as const;
 
 const HELPERS = /* wgsl */ `
@@ -25,10 +26,11 @@ struct PassData {
 @group(0) @binding(1) var<uniform> pass_data: PassData;
 @group(0) @binding(2) var src: texture_2d<f32>;        // linear, vormultipliziert
 @group(0) @binding(3) var mask_tex: texture_2d<f32>;   // r: 0..1 (Standard 1)
-@group(0) @binding(4) var focus_tex: texture_2d<f32>;  // r: 1 = scharf (Standard 1)
+@group(0) @binding(4) var focus_tex: texture_2d<f32>;  // r: 1 = scharf (ohne Fokuskarte: 0)
 @group(0) @binding(5) var depth_tex: texture_2d<f32>;  // r: 0 = nah, 1 = fern (Standard 0)
 @group(0) @binding(6) var linear_sampler: sampler;     // linear, clamp-to-edge
 @group(0) @binding(7) var dst: texture_storage_2d<rgba16float, write>;
+@group(0) @binding(8) var src_b: texture_2d<f32>;      // zweiter Eingang (effect.ts: ctx.run(..., { srcB })), sonst = src
 
 fn src_size() -> vec2i {
   return vec2i(textureDimensions(src));
@@ -51,6 +53,18 @@ fn aux_load(t: texture_2d<f32>, p: vec2i) -> f32 {
 }
 
 fn load_mask(p: vec2i) -> f32 { return aux_load(mask_tex, p); }
+
+/** true, wenn die Ebene eine Fokuskarte hat */
+fn has_focus() -> bool { return (params.flags & 1u) != 0u; }
+
+/**
+ * Schärfe an einem Pixel aus der Fokuskarte: 1 = scharf, 0 = volle Wirkung.
+ * softness (0…1): 0 = harter Rand um die Fokuspunkte, 1 = weicher Verlauf über den ganzen Radius.
+ */
+fn focus_sharpness(p: vec2i, softness: f32) -> f32 {
+  if (!has_focus()) { return 0.0; }
+  return smoothstep(0.0, max(softness, 1e-3), load_focus(p));
+}
 fn load_focus(p: vec2i) -> f32 { return aux_load(focus_tex, p); }
 fn load_depth(p: vec2i) -> f32 { return aux_load(depth_tex, p); }
 

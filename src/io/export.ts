@@ -1,4 +1,5 @@
 import { effectReach } from '../effects/reach';
+import { ncLayers } from '../ml/split';
 import { projectReach } from '../render/compositor';
 import { getEngine } from '../render/runtime';
 import type { Project } from '../state/project';
@@ -12,7 +13,7 @@ export async function renderPng(project: Project): Promise<Blob> {
   const engine = getEngine();
   if (!engine) throw new Error('WebGPU ist nicht verfügbar.');
   const { width, height } = project.canvas;
-  const overlap = projectReach(project.root, effectReach);
+  const overlap = projectReach(project.root, (fx) => effectReach(fx, project.canvas));
   const pixels = await engine.renderFull(project, overlap, exportSettings.tileSize);
   const canvas = new OffscreenCanvas(width, height);
   const ctx = canvas.getContext('2d', { colorSpace: 'srgb' });
@@ -36,8 +37,21 @@ export function downloadBlob(blob: Blob, fileName: string): void {
   }, 10_000);
 }
 
-/** Exportiert das aktuelle Projekt als PNG-Download. */
+/** Exportiert das aktuelle Projekt; enthält es NC-Ergebnisse, erscheint zuerst die Export-Warnung. */
 export async function exportPng(): Promise<void> {
+  const project = getProject();
+  if (project) {
+    const nc = ncLayers(project);
+    if (nc.length) {
+      useAppStore.getState().setExportWarning({ layers: nc });
+      return;
+    }
+  }
+  await exportPngConfirmed();
+}
+
+/** Exportiert das aktuelle Projekt als PNG-Download (ohne Lizenzprüfung). */
+export async function exportPngConfirmed(): Promise<void> {
   const { notify, setBusy } = useAppStore.getState();
   const project = getProject();
   if (!project) {

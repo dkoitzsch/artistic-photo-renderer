@@ -5,11 +5,13 @@ import './app/theme/tokens.css';
 import './app/app.css';
 import './effects/registry';
 import { App } from './app/App';
+import { loadSettings } from './app/settings';
 import { loadThemePreference } from './app/theme/theme';
 import { installDebugApi } from './debug';
 import { useAppStore } from './state/store';
 
 useAppStore.getState().setTheme(loadThemePreference());
+loadSettings();
 if (import.meta.env.DEV) installDebugApi();
 
 const root = document.getElementById('root');

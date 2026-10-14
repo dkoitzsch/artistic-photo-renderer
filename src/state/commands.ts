@@ -5,14 +5,21 @@ import { getPlugin } from '../effects/pluginStore';
 import { jump, push, redo, sealCoalescing, undo } from './history';
 import {
   addEffect,
-  findNode,
+  findHost,
   firstLayer,
   moveEffect,
   newId,
   removeEffect,
   setEffectParams,
   updateEffect,
+  updateHost,
+  updateLayer,
+  type BlendMode,
   type EffectInstance,
+  type FocusMapSpec,
+  type FocusPoint,
+  type LicenseMode,
+  type MaskEdge,
   type Project,
 } from './project';
 import { getProject, newHistory, useAppStore } from './store';
@@ -69,7 +76,7 @@ export function targetNodeId(): string | null {
   const p = getProject();
   if (!p) return null;
   const id = useAppStore.getState().selectedNodeId;
-  return id && findNode(p.root, id) ? id : p.root.id;
+  return id && findHost(p.root, id) ? id : p.root.id;
 }
 
 export function renameProject(name: string): void {
@@ -95,7 +102,7 @@ export function addEffectCommand(effectId: string, nodeId = targetNodeId()): str
 const effectName = (fx: EffectInstance) => getPlugin(fx.effectId)?.manifest?.name ?? fx.effectId;
 
 function findEffect(p: Project, nodeId: string, instanceId: string): EffectInstance | undefined {
-  return findNode(p.root, nodeId)?.effects.find((e) => e.instanceId === instanceId);
+  return findHost(p.root, nodeId)?.host.effects.find((e) => e.instanceId === instanceId);
 }
 
 export function removeEffectCommand(nodeId: string, instanceId: string): void {
@@ -164,4 +171,146 @@ export function resetEffectCommand(nodeId: string, instanceId: string): void {
   commit(`Zurückgesetzt: ${manifest.name}`, (proj) =>
     updateEffect(proj, nodeId, instanceId, { params: defaultParams(manifest), strength: 1 }),
   );
+}
+
+// ---------- Phase 2: Ebenen, Masken, Fokus, Schatten ----------
+
+export function setNodeOpacityCommand(nodeId: string, opacity: number, gesture: boolean): void {
+  commit(
+    'Deckkraft geändert',
+    (p) => updateHost(p, nodeId, (n) => ({ ...n, opacity })),
+    gesture ? `opacity:${nodeId}` : undefined,
+  );
+  if (!gesture) endGesture();
+}
+
+export function setNodeBlendCommand(nodeId: string, blendMode: BlendMode): void {
+  commit('Mischmodus geändert', (p) => updateHost(p, nodeId, (n) => ({ ...n, blendMode })));
+}
+
+export function setNodeVisibleCommand(nodeId: string, visible: boolean): void {
+  commit(visible ? 'Eingeblendet' : 'Ausgeblendet', (p) => updateHost(p, nodeId, (n) => ({ ...n, visible })));
+}
+
+export function setMaskEdgeCommand(layerId: string, patch: Partial<MaskEdge>, gesture: boolean): void {
+  commit(
+    'Kantenübergang geändert',
+    (p) => updateLayer(p, layerId, (l) => ({ ...l, maskEdge: { ...l.maskEdge, ...patch } })),
+    gesture ? `edge:${layerId}:${Object.keys(patch).join()}` : undefined,
+  );
+  if (!gesture) endGesture();
+}
+
+export function setHoleFillCommand(layerId: string, holeFill: boolean): void {
+  commit(holeFill ? 'Lochfüllung ein' : 'Lochfüllung aus', (p) =>
+    updateLayer(p, layerId, (l) => ({ ...l, holeFill })),
+  );
+}
+
+export function setFocusMapCommand(layerId: string, focusMap: FocusMapSpec | undefined, label: string): void {
+  commit(label, (p) =>
+    updateLayer(p, layerId, (l) => {
+      if (focusMap) return { ...l, focusMap };
+      const { focusMap: _drop, ...rest } = l;
+      return rest;
+    }),
+  );
+}
+
+export function updateFocusPointCommand(
+  layerId: string,
+  pointId: string,
+  patch: Partial<FocusPoint>,
+  gesture: boolean,
+): void {
+  commit(
+    'Fokuspunkt geändert',
+    (p) =>
+      updateLayer(p, layerId, (l) =>
+        l.focusMap
+          ? {
+              ...l,
+              focusMap: {
+                ...l.focusMap,
+                points: l.focusMap.points.map((pt) => (pt.id === pointId ? { ...pt, ...patch } : pt)),
+              },
+            }
+          : l,
+      ),
+    gesture ? `focus:${pointId}:${Object.keys(patch).join()}` : undefined,
+  );
+  if (!gesture) endGesture();
+}
+
+export function addFocusPointCommand(layerId: string, point: FocusPoint): void {
+  commit('Fokuspunkt hinzugefügt', (p) =>
+    updateLayer(p, layerId, (l) => ({
+      ...l,
+      focusMap: { ...(l.focusMap ?? { points: [] }), points: [...(l.focusMap?.points ?? []), point] },
+    })),
+  );
+}
+
+export function removeFocusPointCommand(layerId: string, pointId: string): void {
+  commit('Fokuspunkt entfernt', (p) =>
+    updateLayer(p, layerId, (l) =>
+      l.focusMap
+        ? { ...l, focusMap: { ...l.focusMap, points: l.focusMap.points.filter((pt) => pt.id !== pointId) } }
+        : l,
+    ),
+  );
+}
+
+/** Schatten-Layer anlegen (mit Standardwerten des Plugins „shadow“) oder entfernen. */
+export function setShadowCommand(layerId: string, enabled: boolean): void {
+  const manifest = getPlugin('shadow')?.manifest;
+  if (enabled && !manifest) {
+    useAppStore.getState().notify('error', 'Das Schatten-Plugin ist nicht verfügbar.');
+    return;
+  }
+  commit(enabled ? 'Schatten hinzugefügt' : 'Schatten entfernt', (p) =>
+    updateLayer(p, layerId, (l) => {
+      if (!enabled) {
+        const { shadow: _drop, ...rest } = l;
+        return rest;
+      }
+      if (l.shadow || !manifest) return l;
+      return {
+        ...l,
+        shadow: {
+          id: newId(),
+          visible: true,
+          opacity: 0.65,
+          blendMode: 'multiply',
+          effectVersion: manifest.version,
+          params: defaultParams(manifest),
+          effects: [],
+        },
+      };
+    }),
+  );
+}
+
+export function setShadowParamCommand(
+  layerId: string,
+  key: string,
+  value: ParamValue,
+  gesture: boolean,
+): void {
+  commit(
+    'Schatten geändert',
+    (p) =>
+      updateLayer(p, layerId, (l) =>
+        l.shadow ? { ...l, shadow: { ...l.shadow, params: { ...l.shadow.params, [key]: value } } } : l,
+      ),
+    gesture ? `shadow:${layerId}:${key}` : undefined,
+  );
+  if (!gesture) endGesture();
+}
+
+export function setLicenseModeOfProject(mode: LicenseMode): void {
+  commit(mode === 'all' ? 'Lizenzmodus: Alle' : 'Lizenzmodus: Kommerziell', (p) => ({
+    ...p,
+    licenseMode: mode,
+  }));
 }

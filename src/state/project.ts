@@ -3,15 +3,63 @@
 
 import type { ParamValue } from '../effects/manifest';
 
-export const PROJECT_FORMAT_VERSION = 1;
+export const PROJECT_FORMAT_VERSION = 2;
 
 export type BlendMode =
   'normal' | 'multiply' | 'screen' | 'overlay' | 'soft-light' | 'lighten' | 'darken' | 'difference';
 
 export type OriginalRef = { id: string; fileName: string; mimeType: string; width: number; height: number };
 
-/** Phase 1: nur "full" (keine Maske). Gespeicherte Masken folgen in Phase 2. */
-export type MaskRef = { kind: 'full' } | { kind: 'stored'; id: string; version: number; bits: 8 | 16 };
+export type LicenseMode = 'commercial' | 'all';
+
+/** Herkunft eines ML-Ergebnisses (Maske, Fokuspunkte, …) – für Lizenz-Badges und Export-Warnung. */
+export type Provenance = { modelId: string; commercialUse: boolean; createdAt: string };
+
+/**
+ * Maske einer Ebene. "stored": unveränderliche 16-Bit-Maske im Speicher (masks/<id>.png), Größe = Original.
+ * inverted: Ebene nutzt 1 − Maske (z. B. Hintergrund).
+ */
+export type MaskRef =
+  | { kind: 'full' }
+  | { kind: 'stored'; id: string; width: number; height: number; inverted: boolean; provenance: Provenance };
+
+/** Kantenübergang (Kern-Stufe, siehe DECISIONS.md). */
+export type MaskEdge = {
+  /** 0 = binär mit Antialiasing … 100 = bis 150 px weich */
+  hardness: number;
+  /** −30 … +30 px: schrumpfen / erweitern */
+  offset: number;
+  curve: 'linear' | 'smooth' | 'steep';
+};
+
+export const DEFAULT_MASK_EDGE: MaskEdge = { hardness: 4, offset: 0, curve: 'linear' };
+
+export type FocusPointKind = 'eye' | 'face' | 'chest' | 'hand' | 'custom';
+
+export type FocusPoint = {
+  id: string;
+  kind: FocusPointKind;
+  label: string;
+  /** Leinwand-px (volle Auflösung) */
+  x: number;
+  y: number;
+  radius: number;
+  enabled: boolean;
+};
+
+export type FocusMapSpec = { points: FocusPoint[]; provenance?: Provenance };
+
+/** Verknüpfter Schatten-Layer direkt unter seiner Ebene; Bild erzeugt das Plugin "shadow". */
+export type ShadowLayer = {
+  id: string;
+  visible: boolean;
+  opacity: number;
+  blendMode: BlendMode;
+  effectVersion: string;
+  params: Record<string, ParamValue>;
+  /** eigener Effekt-Stack des Schattens */
+  effects: EffectInstance[];
+};
 
 export type EffectRegion = 'whole' | 'focus-weighted' | 'inverse-focus';
 
@@ -35,6 +83,11 @@ export type Layer = {
   originalId: string;
   mask: MaskRef;
   maskSource: 'auto' | 'depth' | 'brush' | 'full';
+  maskEdge: MaskEdge;
+  /** Lochfüllung: den durch die Maske ausgeblendeten Bereich aus der Umgebung auffüllen; Ebene wird deckend. */
+  holeFill: boolean;
+  focusMap?: FocusMapSpec;
+  shadow?: ShadowLayer;
   depth?: number;
   transform: Transform;
   opacity: number;
@@ -55,6 +108,7 @@ export type Group = {
   opacity: number;
   blendMode: BlendMode;
   visible: boolean;
+  origin?: { kind: 'auto-fg-bg' | 'depth-split' | 'sam-objects'; sourceLayerId: string };
 };
 
 /** Heißt in der Spec "Node" (kollidiert mit dem DOM-Typ). */
@@ -69,11 +123,17 @@ export type Project = {
   canvas: { width: number; height: number; background: string };
   originals: Record<string, OriginalRef>;
   root: Group;
+  /** Lizenzmodus, in dem zuletzt gearbeitet wurde (Spec: Projektdatei speichert ihn) */
+  licenseMode: LicenseMode;
 };
 
 export const newId = (): string => crypto.randomUUID();
 
-export function createProjectFromImage(original: OriginalRef, name?: string): Project {
+export function createProjectFromImage(
+  original: OriginalRef,
+  name?: string,
+  licenseMode: LicenseMode = 'commercial',
+): Project {
   const now = new Date().toISOString();
   const layer: Layer = {
     kind: 'layer',
@@ -82,6 +142,8 @@ export function createProjectFromImage(original: OriginalRef, name?: string): Pr
     originalId: original.id,
     mask: { kind: 'full' },
     maskSource: 'full',
+    maskEdge: { ...DEFAULT_MASK_EDGE },
+    holeFill: false,
     transform: { x: 0, y: 0, scale: 1, rotation: 0 },
     opacity: 1,
     blendMode: 'normal',
@@ -108,10 +170,23 @@ export function createProjectFromImage(original: OriginalRef, name?: string): Pr
       blendMode: 'normal',
       visible: true,
     },
+    licenseMode,
   };
 }
 
 // ---------- Baum-Hilfen ----------
+
+/** Effekt-Träger: Ebene, Gruppe oder Schatten einer Ebene. */
+export type EffectHost = SceneNode | ShadowLayer;
+
+/** Findet Knoten oder Schatten (über die Schatten-ID). */
+export function findHost(root: Group, id: string): { host: EffectHost; layer?: Layer } | undefined {
+  for (const n of walk(root)) {
+    if (n.id === id) return { host: n };
+    if (n.kind === 'layer' && n.shadow?.id === id) return { host: n.shadow, layer: n };
+  }
+  return undefined;
+}
 
 export function findNode(root: Group, id: string): SceneNode | undefined {
   if (root.id === id) return root;
@@ -144,6 +219,31 @@ export function updateNode(project: Project, id: string, fn: (n: SceneNode) => S
   return { ...project, root };
 }
 
+export function updateLayer(project: Project, id: string, fn: (l: Layer) => Layer): Project {
+  return updateNode(project, id, (n) => (n.kind === 'layer' ? fn(n) : n));
+}
+
+/** Ändert einen Effekt-Träger (auch einen Schatten über seine ID). */
+export function updateHost(project: Project, id: string, fn: (h: EffectHost) => EffectHost): Project {
+  const found = findHost(project.root, id);
+  if (!found) return project;
+  if (found.layer) {
+    return updateLayer(project, found.layer.id, (l) =>
+      l.shadow ? { ...l, shadow: fn(l.shadow) as ShadowLayer } : l,
+    );
+  }
+  return updateNode(project, id, (n) => fn(n) as SceneNode);
+}
+
+export function* walkLayers(root: Group): Generator<Layer> {
+  for (const n of walk(root)) if (n.kind === 'layer') yield n;
+}
+
+/** Ersetzt einen Knoten (gleiche Position im Baum). */
+export function replaceNode(project: Project, id: string, next: SceneNode): Project {
+  return updateNode(project, id, () => next);
+}
+
 // ---------- Effekt-Stack ----------
 
 function updateEffects(
@@ -151,7 +251,7 @@ function updateEffects(
   nodeId: string,
   fn: (e: EffectInstance[]) => EffectInstance[],
 ): Project {
-  return updateNode(project, nodeId, (n) => ({ ...n, effects: fn(n.effects) }));
+  return updateHost(project, nodeId, (n) => ({ ...n, effects: fn(n.effects) }));
 }
 
 export function addEffect(project: Project, nodeId: string, effect: EffectInstance, index?: number): Project {
@@ -196,6 +296,13 @@ export function setEffectParams(
   return updateEffects(project, nodeId, (list) =>
     list.map((e) => (e.instanceId === instanceId ? { ...e, params: { ...e.params, ...values } } : e)),
   );
+}
+
+/** IDs aller gespeicherten Masken eines Projekts. */
+export function maskIds(project: Project): Set<string> {
+  const ids = new Set<string>();
+  for (const l of walkLayers(project.root)) if (l.mask.kind === 'stored') ids.add(l.mask.id);
+  return ids;
 }
 
 /** Erste sichtbare Ebene (für die Auswahl beim Öffnen). */

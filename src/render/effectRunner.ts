@@ -20,6 +20,8 @@ export type AuxInputs = { mask: GPUTexture; focus: GPUTexture; depth: GPUTexture
 
 export type EffectPlacement = {
   scale: number;
+  /** Ebene hat eine Fokuskarte (aux.focus) */
+  hasFocus?: boolean;
   /** Lage der Eingangstextur auf der Leinwand, in px bei aktuellem scale */
   origin: [number, number];
   canvasSize: [number, number];
@@ -62,6 +64,7 @@ export class EffectRunner {
           visibility: GPUShaderStage.COMPUTE,
           storageTexture: { access: 'write-only', format: WORK_FORMAT },
         },
+        tex(BINDINGS.srcB),
       ],
     });
     this.pipelineLayout = core.device.createPipelineLayout({ bindGroupLayouts: [this.bindGroupLayout] });
@@ -71,8 +74,17 @@ export class EffectRunner {
     return this.compiled.get(plugin.folder)?.revision === plugin.revision;
   }
 
+  /** Kette, die Kompilierungen nacheinander ausführt (WebGPU-Fehlerbereiche dürfen sich nicht überschneiden). */
+  private queue: Promise<unknown> = Promise.resolve();
+
   /** Kompiliert ein Plugin; liefert Fehlermeldungen (leer = ok). */
-  async compile(plugin: Plugin): Promise<string[]> {
+  compile(plugin: Plugin): Promise<string[]> {
+    const run = this.queue.then(() => this.compileNow(plugin));
+    this.queue = run.catch(() => undefined);
+    return run;
+  }
+
+  private async compileNow(plugin: Plugin): Promise<string[]> {
     const { device } = this.core;
     if (!plugin.layout || plugin.wgsl === null) return ['Plugin unvollständig.'];
     const prelude = buildPrelude(plugin.layout);
@@ -80,8 +92,10 @@ export class EffectRunner {
     const code = `${prelude}\n${plugin.wgsl}\n${single ? SINGLE_PASS_MAIN : ''}`;
     const offset = lineCount(prelude) + 1;
 
+    device.pushErrorScope('validation');
     const module = device.createShaderModule({ label: `effect ${plugin.folder}`, code });
     const info = await module.getCompilationInfo();
+    const moduleError = await device.popErrorScope();
     const errors = info.messages
       .filter((m) => m.type === 'error')
       .map((m) => {
@@ -89,6 +103,7 @@ export class EffectRunner {
         return line > 0 ? `effect.wgsl Zeile ${line}:${m.linePos}: ${m.message}` : `Shader: ${m.message}`;
       });
     if (errors.length) return errors;
+    if (moduleError) return [`Shader: ${moduleError.message}`];
 
     const entries = single ? ['main'] : computeEntryPoints(plugin.wgsl);
     if (!entries.length) return ['effect.wgsl enthält keinen @compute-Einstiegspunkt.'];
@@ -145,10 +160,11 @@ export class EffectRunner {
         origin: placement.origin,
         canvasSize: placement.canvasSize,
         scale: placement.scale,
+        flags: placement.hasFocus ? 1 : 0,
       }),
     );
 
-    const runPass = (entryPoint: string, { src, dst, data }: PassOptions) => {
+    const runPass = (entryPoint: string, { src, dst, data, srcB }: PassOptions) => {
       const pipeline = compiled.pipelines.get(entryPoint);
       if (!pipeline) throw new Error(`Einstiegspunkt "${entryPoint}" fehlt in ${plugin.folder}/effect.wgsl.`);
       const passData = new Float32Array(8);
@@ -164,6 +180,7 @@ export class EffectRunner {
           { binding: BINDINGS.depth, resource: aux.depth.createView() },
           { binding: BINDINGS.sampler, resource: this.core.linearSampler },
           { binding: BINDINGS.dst, resource: dst.createView() },
+          { binding: BINDINGS.srcB, resource: (srcB ?? src).createView() },
         ],
       });
       dispatch2d(frame, pipeline, bindGroup, dst.width, dst.height, `${plugin.folder}:${entryPoint}`);
@@ -179,10 +196,15 @@ export class EffectRunner {
         width,
         height,
         scale: placement.scale,
+        canvasSize: placement.canvasSize,
         params: values,
         raw,
         source: input,
         output,
+        hasFocus: placement.hasFocus ?? false,
+        gaussian: (src, dst, radius, edge) => {
+          this.core.gaussian(frame, src, dst, radius, edge);
+        },
         texture: (w, h) => {
           const t = pool.acquire(w, h, `${plugin.folder}-temp`);
           temps.push(t);

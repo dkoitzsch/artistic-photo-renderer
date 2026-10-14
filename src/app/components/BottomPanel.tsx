@@ -31,6 +31,7 @@ export function BottomPanel() {
   const notices = useAppStore((s) => s.notices);
   const gpu = useAppStore((s) => s.gpu);
   const busy = useAppStore((s) => s.busy);
+  const tasks = useAppStore((s) => s.tasks);
   const last = notices.at(-1);
 
   return (
@@ -50,6 +51,22 @@ export function BottomPanel() {
             <HistoryList />
           )}
         </div>
+      )}
+      {tasks.length > 0 && (
+        <ul className="task-list" data-testid="ml-tasks">
+          {tasks.map((t) => (
+            <li key={t.id} className="task">
+              <span className="task-label">{t.label}</span>
+              <span className="task-detail">{t.detail}</span>
+              <span className="task-bar">
+                <span
+                  className={`task-fill${t.progress === null ? ' indeterminate' : ''}`}
+                  style={{ width: `${Math.round((t.progress ?? 0.3) * 100)}%` }}
+                />
+              </span>
+            </li>
+          ))}
+        </ul>
       )}
       <div className="statusbar">
         <button

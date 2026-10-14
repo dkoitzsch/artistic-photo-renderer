@@ -9,7 +9,7 @@ Abweichungen nur mit Eintrag in [DECISIONS.md](DECISIONS.md) und Hinweis an den 
 
 ## Status
 
-Abgeschlossen: **Phase 0 – Gerüst**, **Phase 1 – Ganzes Bild**. Nächste: Phase 2 (wartet auf Freigabe). Erledigte Punkte werden in der Spec abgehakt.
+Abgeschlossen: **Phase 0 – Gerüst**, **Phase 1 – Ganzes Bild**, **Phase 2 – Vordergrund, Fokus, Schatten**. Nächste: Phase 3 (wartet auf Freigabe). Erledigte Punkte werden in der Spec abgehakt.
 
 ## Ordnerstruktur (✓ = existiert)
 
@@ -21,15 +21,18 @@ src/                                                                     ✓
   effects/    Plugin-Kern: Registry, Manifest-Validator, Uniform-Layout,  ✓
               WGSL-Vorspiel, effect.ts-API (Kern! Effekte liegen in /effects)
   io/         Import, Export, Projektdatei, OPFS-Speicher, Autosave       ✓
-  ml/         Worker, Modell-Lader, MlBackend (Browser/Service)          – ab Phase 2
+  ml/         ML-Worker (ORT + MediaPipe), MlBackend (Browser/Dienst),    ✓
+              Aufteilen, Fokuspunkte, Register-Zugriff
 effects/      Effekt-Plugins, je ein Ordner + _template/ + README.md     ✓
-models/       registry.json (einzige Quelle für Modelle/ML-Bibliotheken), MODELS.md – ab Phase 2
-ml-service/   Python-Dienst (uv, FastAPI)                                 – ab Phase 2
+models/       registry.json (einzige Quelle für Modelle/ML-Bibliotheken)  ✓  (Übersicht: MODELS.md)
+ml-service/   Python-Dienst (uv, FastAPI, PyTorch/MPS) + pytest           ✓
+scripts/      dev.mjs (App + Dienst), fetch-models.mjs (Test-Cache)       ✓
 tests/
   unit/       Vitest (reine Logik)                                        ✓
   e2e/        Playwright (Chrome mit WebGPU), CPU-Referenzen               ✓
   golden/     Referenzbilder der Golden-Tests                             ✓
-  fixtures/   Testbilder (synthetisch; fremde Bilder + LICENSES.md ab Phase 2) ✓
+  fixtures/   Testbilder (synthetisch + CC0-Fotos, Herkunft in LICENSES.md) ✓
+  .cache/     Modelle für Tests (npm run models:fetch, nicht im Repo)
 ```
 
 ## Konventionen
@@ -40,7 +43,9 @@ tests/
 - **Effekte nur als Plugins** unter `effects/`; der Kern kennt keine konkreten Effekte.
   Ausnahmen (Kern-Stufen, siehe DECISIONS.md): Kantenübergang der Maske (`maskEdge`) und die Mischmodi des Compositors.
 - **Modelle nur über `models/registry.json`**; Lizenz vorher an der Quelle prüfen und in `MODELS.md` eintragen.
-  Gilt auch für ML-Bibliotheken; Bibliothekslizenzen allgemein vor dem Einbau prüfen.
+  Gilt auch für ML-Bibliotheken; Bibliothekslizenzen allgemein vor dem Einbau prüfen (`DEPENDENCIES.md`).
+- **Lizenzmodus**: NC-Modelle nur im Modus „Alle“; Prüfung an drei Stellen (UI, ML-Worker `assertAllowed`, Dienst HTTP 403).
+  Jedes ML-Ergebnis trägt `provenance` (Modell, kommerziell ja/nein).
 - **Keine Netzwerkanfragen** außer dem einmaligen Laden der Modelle. Keine Telemetrie, keine CDN-Fonts, kein CDN-WASM.
 - Originale sind unveränderlich; alle Bearbeitungen nicht-destruktiv.
 - Datenmodell-Typ `Node` heißt im Code `SceneNode` (Kollision mit dem DOM-Typ `Node`).
@@ -53,7 +58,11 @@ Node ≥ 22.12 (`.nvmrc`). Dev-Server auf **Port 5317** (5173 ist auf diesem Rec
 
 | Befehl                             | Zweck                                                                  |
 | ---------------------------------- | ---------------------------------------------------------------------- |
-| `npm run dev`                      | Dev-Server (Vite, Hot Reload) auf http://localhost:5317                |
+| `npm run dev`                      | Web-App (http://localhost:5317) **und** ML-Dienst (127.0.0.1:8765)     |
+| `npm run dev:web`                  | nur Web-App (Vite, Hot Reload)                                         |
+| `npm run service`                  | nur ML-Dienst (`uv run --project ml-service ml-service`)               |
+| `npm run test:service`             | pytest des Dienstes                                                    |
+| `npm run models:fetch`             | Browser-Modelle für Tests nach `tests/.cache/models` (SHA-256-geprüft) |
 | `npm run build`                    | Typecheck + Produktions-Build nach `dist/`                             |
 | `npm run preview`                  | Build lokal ansehen (Port 4317)                                        |
 | `npm run typecheck`                | `tsc -b` (App + Node-Konfiguration)                                    |
@@ -64,9 +73,10 @@ Node ≥ 22.12 (`.nvmrc`). Dev-Server auf **Port 5317** (5173 ist auf diesem Rec
 | `npm run fixtures`                 | synthetische Testbilder neu erzeugen                                   |
 | `UPDATE_GOLDEN=1 npm run test:e2e` | Golden-Referenzbilder neu schreiben (danach ansehen!)                  |
 
-Phasen-Abschluss: `npm run lint && npm run typecheck && npm test && npm run build && npm run test:e2e`
+Phasen-Abschluss: `npm run lint && npm run typecheck && npm test && npm run test:service && npm run build && npm run test:e2e`
+(E2E mit Modellen braucht einmalig `npm run models:fetch`, sonst werden diese Tests übersprungen.)
 
-## Architektur (Stand Phase 1)
+## Architektur (Stand Phase 2)
 
 **Datenfluss:** UI → Befehl (`state/commands.ts`) → History (`state/history.ts`, unveränderliche Schnappschüsse) →
 Zustand-Store → `CanvasView` ruft pro Frame `Engine.present()` → Compositor rendert nur Geändertes → Anzeige.
@@ -87,7 +97,21 @@ Autosave (`io/autosave.ts`) beobachtet den Store und schreibt ins OPFS.
   `projectSchema.ts` (Prüfung beim Laden), `storage.ts` (OPFS), `autosave.ts`, `session.ts`, `export.ts`.
 - `app/controls/` – Regler (linear/log, Doppelklick = Standard, Shift = fein, Zahleneingabe), Farbe + Pipette, Enum, Schalter,
   `ParamControl` erzeugt sie aus dem Manifest.
-- `src/debug.ts` – nur im Dev-Server: `window.__bls` (Store, Befehle, Engine) für Tests.
+- `src/debug.ts` – nur im Dev-Server: `window.__bls` (Store, Befehle, Engine, ML) für Tests.
+
+**Phase 2:**
+
+- Ebene: Original → (Lochfüllung **oder** Maske mit Kantenübergang `core.processMask`) → Effekte (Zusatzeingänge Maske und
+  Fokuskarte, lazy) → Compositor mit Mischmodi; ein Schatten-Layer wird direkt darunter aus der maskierten Ebene erzeugt
+  (Plugin `shadow` + eigener Effekt-Stapel). Abgeleitete Texturen (aufbereitete Maske, Lochfüllung) cacht `SourceStore.derive`
+  mit LRU-Budget.
+- Kern-Shader: `gauss` (auch `ctx.gaussian`), `maskops` (Skalieren/Invertieren, Min/Max, Schwelle, Kurve), `guided`
+  (Guided Filter zum Hochskalieren der Modellmaske), `pushpull` (Lochfüllung), `focusmap`, `blend` (alle Mischmodi).
+- `ml/worker.ts` – Modelle aus dem Register: Download mit Fortschritt, SHA-256, OPFS-Cache; ORT (nativer WebGPU-EP mit eigenem
+  Gerät) für Segmentierung, MediaPipe (CPU) für Landmarken. `ml/backend.ts` – `MlBackend` (Browser/Dienst), Auswahl Auto/Browser/
+  Dienst, Rückfall, `/health`-Überwachung. `ml/split.ts` – Aufteilen (Gruppe „Motiv“), Fokuspunkte, NC-Prüfung, Neuberechnung.
+  `ml/focus.ts` – Landmarken → Fokuspunkte.
+- `ml-service/` – FastAPI: `/health`, `/segment/foreground` (Job), `/jobs/{id}[/result]`; liest dasselbe Register.
 
 **Neuen Effekt anlegen:** siehe [effects/README.md](effects/README.md) – nur einen Ordner unter `effects/` anlegen.
 
@@ -110,10 +134,13 @@ Eine neue Phase beginnt nur nach ausdrücklicher Freigabe durch den Nutzer.
 
 - HEIC wird nicht unterstützt (Chrome dekodiert es nicht).
 - PNG-Export kodiert über ein 2D-Canvas: halbtransparente Pixel können um ±1–2 Stufen abweichen (8-Bit-Vormultiplizieren).
-  Wird durch einen eigenen PNG-Encoder ersetzt, sobald 16-Bit-PNG gebraucht wird.
 - Ohne WebGPU zeigt die App nur eine Meldung; es gibt keinen WebGL2-Render-Pfad (siehe DECISIONS.md).
-- Der Compositor mischt Ebenen bisher nur „Normal“ (weitere Mischmodi mit mehreren Ebenen ab Phase 2).
+- Browser-Segmentierung: BiRefNet lite mit 512 × 512 Eingang (1024er-Fassungen laufen in Chrome nicht); feinste Haarkanten
+  liefert der Python-Dienst (BiRefNet voll). RMBG-2.0 im Dienst braucht einen Hugging-Face-Zugang (`HF_TOKEN`).
+- Lochfüllung (Push-Pull) setzt deckende Fotos voraus; Transparenz im Original wird im gefüllten Hintergrund deckend.
+- Bei 24 MP belegen Original, aufbereitete Maske und Lochfüllung je ~190 MB GPU-Speicher pro Ebene (LRU-Budget 1,5 GB).
 - Legt man einen Plugin-Ordner an oder löscht ihn, lädt Vite die Seite neu; die App öffnet das Projekt danach wieder.
   Änderungen an bestehenden Plugin-Dateien laden ohne Neuladen nach. Ein Produktions-Build braucht für neue Plugins einen Neubau.
-- Die Anzeige zeigt die Vorschau (≤ 2048 px); bei starkem Hineinzoomen in größere Bilder sieht man Vorschau-Pixel, nicht das Original.
+- Die Anzeige zeigt die Vorschau (≤ 2048 px); bei starkem Hineinzoomen in größere Bilder sieht man Vorschau-Pixel.
+- Ist der Dienst aus, meldet die Browser-Konsole alle 20 s einen fehlgeschlagenen `/health`-Aufruf (ML-Modus „Browser“ vermeidet das).
 - Browser-Kürzel (⌘0, ⌘E, ⌘O, ⌘S) werden per `preventDefault` abgefangen; in Playwright getestet, im echten Chrome manuell zu prüfen.

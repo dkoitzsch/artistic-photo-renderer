@@ -1,0 +1,93 @@
+{
+  "id": "shadow",
+  "name": "Schatten",
+  "version": "1.0.0",
+  "category": "Schatten",
+  "description": "Erzeugt aus der Maske einer Ebene einen weichen, versetzten Schatten (verknüpfter Schatten-Layer).",
+  "inputs": ["source", "mask"],
+  "passes": 6,
+  "params": [
+    {
+      "key": "direction",
+      "label": "Richtung",
+      "hint": "0° = rechts, 90° = unten",
+      "type": "angle",
+      "default": 45
+    },
+    {
+      "key": "distance",
+      "label": "Entfernung",
+      "type": "float",
+      "min": 0,
+      "max": 500,
+      "default": 40,
+      "step": 0.5,
+      "unit": "px",
+      "scale": "log"
+    },
+    {
+      "key": "softness",
+      "label": "Weichheit",
+      "type": "float",
+      "min": 0,
+      "max": 200,
+      "default": 30,
+      "step": 0.5,
+      "unit": "px",
+      "scale": "log"
+    },
+    {
+      "key": "edgeFade",
+      "label": "Randausblendung",
+      "hint": "Maske schrumpfen und weich abfallen lassen",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 15,
+      "unit": "%"
+    },
+    {
+      "key": "gradient",
+      "label": "Verlaufsstärke",
+      "hint": "Schatten wird mit Abstand zum Objekt schwächer",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 40,
+      "unit": "%"
+    },
+    { "key": "color", "label": "Farbe", "type": "color", "default": [0, 0, 0] },
+    {
+      "key": "shadowScale",
+      "label": "Skalierung",
+      "hint": "Höhe des Schattens (Bodenschatten < 100 %)",
+      "type": "float",
+      "min": 50,
+      "max": 150,
+      "default": 100,
+      "unit": "%"
+    },
+    {
+      "key": "tilt",
+      "label": "Neigung",
+      "hint": "Perspektive für Bodenschatten",
+      "type": "float",
+      "min": -60,
+      "max": 60,
+      "default": 0,
+      "unit": "°"
+    },
+    {
+      "key": "groundLine",
+      "label": "Bodenlinie",
+      "hint": "Höhe, um die skaliert und geneigt wird",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 100,
+      "unit": "%"
+    }
+  ],
+  "visibleIf": { "groundLine": "shadowScale!=100" },
+  "reach": "distance * 2.5 + softness + 24 + abs(shadowScale - 100) / 100 * canvasHeight + abs(tilt) / 60 * canvasHeight + 4"
+}

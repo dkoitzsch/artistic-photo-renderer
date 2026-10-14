@@ -3,6 +3,8 @@ import type { usePluginStore } from '../../src/effects/pluginStore';
 import type { getEngine } from '../../src/render/runtime';
 import type * as commands from '../../src/state/commands';
 import type { getProject, useAppStore } from '../../src/state/store';
+import type { detectLandmarks } from '../../src/ml/backend';
+import type * as split from '../../src/ml/split';
 
 declare global {
   interface Window {
@@ -14,6 +16,11 @@ declare global {
       getEngine: typeof getEngine;
       exportSettings: typeof exportSettings;
       renderPng: typeof renderPng;
+      ml: {
+        detectLandmarks: typeof detectLandmarks;
+        split: typeof split;
+        splitWithMask: (layerId: string, data: Uint16Array, width: number, height: number) => Promise<string>;
+      };
     };
   }
 }

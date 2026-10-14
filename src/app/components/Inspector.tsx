@@ -1,45 +1,32 @@
 import { useState, type DragEvent } from 'react';
 import { moveEffectCommand, targetNodeId } from '../../state/commands';
-import { findNode } from '../../state/project';
+import { findHost, type EffectInstance } from '../../state/project';
 import { useAppStore, useProject } from '../../state/store';
 import { EFFECT_DRAG_TYPE, EffectCard } from './EffectCard';
 import { PlusIcon } from './Icons';
+import { FocusSection, MaskSection, NodeSection, ShadowParams, ShadowSection } from './LayerSections';
 
-export function Inspector() {
-  const project = useProject();
-  useAppStore((s) => s.selectedNodeId);
+function EffectStack({ hostId, effects }: { hostId: string; effects: EffectInstance[] }) {
   const setBrowserOpen = useAppStore((s) => s.setEffectBrowserOpen);
   const [drop, setDrop] = useState<{ index: number; side: 'before' | 'after' } | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
-
-  const nodeId = targetNodeId();
-  const node = project && nodeId ? findNode(project.root, nodeId) : undefined;
-  if (!project || !node || !nodeId) {
-    return <p className="panel-empty">Kein Bild geladen.</p>;
-  }
-
   const sideOf = (e: DragEvent) => {
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
     return e.clientY < r.top + r.height / 2 ? 'before' : 'after';
   };
-
   return (
-    <div className="inspector-body">
-      <div className="inspector-node">
-        <span className="inspector-node-kind">{node.kind === 'group' ? 'Gruppe' : 'Ebene'}</span>
-        <span className="inspector-node-name">{node.name}</span>
-      </div>
+    <>
       <div
         className="effect-stack"
         onDragLeave={() => {
           setDrop(null);
         }}
       >
-        {node.effects.length === 0 && <p className="panel-empty">Noch keine Effekte.</p>}
-        {node.effects.map((fx, i) => (
+        {effects.length === 0 && <p className="panel-empty">Noch keine Effekte.</p>}
+        {effects.map((fx, i) => (
           <EffectCard
             key={fx.instanceId}
-            nodeId={nodeId}
+            nodeId={hostId}
             effect={fx}
             dropIndicator={drop?.index === i && dragId !== fx.instanceId ? drop.side : null}
             onDragStart={(e) => {
@@ -55,13 +42,13 @@ export function Inspector() {
             onDrop={(e) => {
               e.preventDefault();
               const id = e.dataTransfer.getData(EFFECT_DRAG_TYPE);
-              const from = node.effects.findIndex((x) => x.instanceId === id);
+              const from = effects.findIndex((x) => x.instanceId === id);
               setDrop(null);
               setDragId(null);
               if (from < 0) return;
               let to = sideOf(e) === 'before' ? i : i + 1;
               if (from < to) to--; // Index bezieht sich auf die Liste ohne das verschobene Element
-              if (to !== from) moveEffectCommand(nodeId, id, to);
+              if (to !== from) moveEffectCommand(hostId, id, to);
             }}
           />
         ))}
@@ -76,6 +63,52 @@ export function Inspector() {
         <PlusIcon />
         Effekt
       </button>
+    </>
+  );
+}
+
+export function Inspector() {
+  const project = useProject();
+  useAppStore((s) => s.selectedNodeId);
+  const hostId = targetNodeId();
+  const found = project && hostId ? findHost(project.root, hostId) : undefined;
+  if (!project || !found || !hostId) {
+    return <p className="panel-empty">Kein Bild geladen.</p>;
+  }
+  const { host, layer } = found;
+
+  // Schatten-Layer
+  if (layer?.shadow && host === layer.shadow) {
+    return (
+      <div className="inspector-body">
+        <div className="inspector-node">
+          <span className="inspector-node-kind">Schatten von</span>
+          <span className="inspector-node-name">{layer.name}</span>
+        </div>
+        <ShadowParams layer={layer} />
+        <h3 className="section-title">Effekte des Schattens</h3>
+        <EffectStack hostId={hostId} effects={host.effects} />
+      </div>
+    );
+  }
+  if (!('kind' in host)) return null;
+
+  return (
+    <div className="inspector-body">
+      <div className="inspector-node">
+        <span className="inspector-node-kind">{host.kind === 'group' ? 'Gruppe' : 'Ebene'}</span>
+        <span className="inspector-node-name">{host.name}</span>
+      </div>
+      <NodeSection node={host} isRoot={host.id === project.root.id} />
+      {host.kind === 'layer' && (
+        <>
+          <MaskSection layer={host} />
+          <FocusSection layer={host} />
+          <ShadowSection layer={host} />
+        </>
+      )}
+      <h3 className="section-title">Effekte</h3>
+      <EffectStack hostId={hostId} effects={host.effects} />
     </div>
   );
 }
