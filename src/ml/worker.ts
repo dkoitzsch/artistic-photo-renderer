@@ -233,6 +233,80 @@ async function segment(
   return { mask, width: W, height: H };
 }
 
+// ---------- Tiefe (Depth Anything) ----------
+
+/**
+ * Relative Tiefe 0 = nah … 1 = fern in der Größe des Eingabebilds.
+ * Eingabe mit erhaltenem Seitenverhältnis, kurze Kante = input.size, Kanten auf Vielfache von 14.
+ */
+async function estimateDepth(
+  model: ModelEntry,
+  image: ImageBitmap,
+  onProgress: (p: Progress) => void,
+): Promise<{ mask: Float32Array; width: number; height: number }> {
+  const input = model.input;
+  if (!input) throw new Error(`${model.name}: Eingabeformat fehlt im Register.`);
+  const sess = await session(model, onProgress);
+  onProgress({ stage: 'infer', label: model.name, loaded: 0, total: 1 });
+  const s = input.size / Math.min(image.width, image.height);
+  const iw = Math.max(14, Math.round((image.width * s) / 14) * 14);
+  const ih = Math.max(14, Math.round((image.height * s) / 14) * 14);
+  const canvas = new OffscreenCanvas(iw, ih);
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) throw new Error('2D-Kontext im Worker nicht verfügbar.');
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(image, 0, 0, iw, ih);
+  const px = ctx.getImageData(0, 0, iw, ih).data;
+  const n = iw * ih;
+  const chw = new Float32Array(3 * n);
+  const [m0 = 0, m1 = 0, m2 = 0] = input.mean;
+  const [s0 = 1, s1 = 1, s2 = 1] = input.std;
+  for (let i = 0; i < n; i++) {
+    chw[i] = ((px[i * 4] ?? 0) / 255 - m0) / s0;
+    chw[n + i] = ((px[i * 4 + 1] ?? 0) / 255 - m1) / s1;
+    chw[2 * n + i] = ((px[i * 4 + 2] ?? 0) / 255 - m2) / s2;
+  }
+  const meta = sess.inputMetadata[0];
+  const isHalf = meta?.isTensor === true && meta.type === 'float16';
+  const tensor = isHalf
+    ? new ort.Tensor('float16', toHalf(chw), [1, 3, ih, iw])
+    : new ort.Tensor('float32', chw, [1, 3, ih, iw]);
+  const outputs = await sess.run({ [sess.inputNames[0] ?? 'pixel_values']: tensor });
+  const out = outputs[sess.outputNames[0] ?? ''];
+  if (!out) throw new Error(`${model.name}: keine Ausgabe.`);
+  const raw = tensorToFloat32(out);
+  const dims = out.dims;
+  const oh = dims[dims.length - 2] ?? ih;
+  const ow = dims[dims.length - 1] ?? iw;
+  for (const t of Object.values(outputs)) t.dispose();
+  // Disparität (groß = nah) robust normieren (1 %/99 %) und umkehren: 0 = nah, 1 = fern
+  const sorted = Float32Array.from(raw).sort();
+  const lo = sorted[Math.floor(sorted.length * 0.01)] ?? 0;
+  const hi = sorted[Math.floor(sorted.length * 0.99)] ?? 1;
+  const span = hi - lo || 1;
+  const W = image.width;
+  const H = image.height;
+  const depth = new Float32Array(W * H);
+  for (let y = 0; y < H; y++) {
+    const fy = Math.max(0, ((y + 0.5) * oh) / H - 0.5);
+    const y0 = Math.min(oh - 1, Math.floor(fy));
+    const y1 = Math.min(oh - 1, y0 + 1);
+    const ty = fy - y0;
+    for (let x = 0; x < W; x++) {
+      const fx = Math.max(0, ((x + 0.5) * ow) / W - 0.5);
+      const x0 = Math.min(ow - 1, Math.floor(fx));
+      const x1 = Math.min(ow - 1, x0 + 1);
+      const tx = fx - x0;
+      const a = (raw[y0 * ow + x0] ?? 0) * (1 - tx) + (raw[y0 * ow + x1] ?? 0) * tx;
+      const b = (raw[y1 * ow + x0] ?? 0) * (1 - tx) + (raw[y1 * ow + x1] ?? 0) * tx;
+      const d = (a * (1 - ty) + b * ty - lo) / span;
+      depth[y * W + x] = 1 - Math.min(1, Math.max(0, d));
+    }
+  }
+  onProgress({ stage: 'infer', label: model.name, loaded: 1, total: 1 });
+  return { mask: depth, width: W, height: H };
+}
+
 // ---------- Fokuspunkte (MediaPipe) ----------
 
 let landmarkers: Promise<{ face: FaceLandmarker; pose: PoseLandmarker }> | null = null;
@@ -343,12 +417,15 @@ self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
   };
   const t0 = performance.now();
   try {
-    if (req.type === 'segment') {
+    if (req.type === 'segment' || req.type === 'depth') {
       const model = modelById(req.modelId);
       if (!model || model.runtime !== 'browser')
         throw new Error(`Unbekanntes Browser-Modell ${req.modelId}.`);
       assertAllowed(model, req.licenseMode);
-      const r = await segment(model, req.image, onProgress);
+      const r =
+        req.type === 'depth'
+          ? await estimateDepth(model, req.image, onProgress)
+          : await segment(model, req.image, onProgress);
       post({ type: 'segment-result', id: req.id, ...r, ms: performance.now() - t0 }, [r.mask.buffer]);
     } else {
       const result = await detectLandmarks(req.image, req.licenseMode, onProgress);

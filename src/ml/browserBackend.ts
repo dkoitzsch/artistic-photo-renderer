@@ -77,6 +77,17 @@ export async function browserSegment(
   return res;
 }
 
+export async function browserDepth(
+  model: ModelEntry,
+  image: ImageBitmap,
+  licenseMode: LicenseMode,
+  onProgress: (p: Progress) => void,
+): Promise<{ mask: Float32Array; width: number; height: number; ms: number }> {
+  const res = await request({ type: 'depth', modelId: model.id, licenseMode, image }, onProgress);
+  if (res.type !== 'segment-result') throw new Error('Unerwartete Antwort des ML-Workers.');
+  return res;
+}
+
 export async function browserLandmarks(
   image: ImageBitmap,
   licenseMode: LicenseMode,

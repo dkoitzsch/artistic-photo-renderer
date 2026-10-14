@@ -214,6 +214,7 @@ test.describe('mit Modellen', () => {
 
     // Export warnt und listet die Ebenen
     await page.getByTestId('export-button').click();
+    await page.getByTestId('export-start').click();
     const warning = page.getByTestId('export-warning');
     await expect(warning).toBeVisible();
     await expect(warning).toContainText('rmbg-1.4');

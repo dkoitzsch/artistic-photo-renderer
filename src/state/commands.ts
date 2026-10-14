@@ -14,6 +14,14 @@ import {
   updateEffect,
   updateHost,
   updateLayer,
+  updateNode,
+  parentOf,
+  setParamInGroup,
+  setStrengthInGroup,
+  moveNode,
+  wrapInGroup,
+  ungroup,
+  findNode,
   type BlendMode,
   type EffectInstance,
   type FocusMapSpec,
@@ -132,12 +140,67 @@ export function setParamCommand(
   const p = getProject();
   const fx = p ? findEffect(p, nodeId, instanceId) : undefined;
   const label = fx ? getPlugin(fx.effectId)?.manifest?.params.find((x) => x.key === key)?.label : undefined;
+  // Gruppenmodus: Änderung auch in alle Geschwister mit diesem Effekt schreiben (außer entkoppelte)
+  const parent = p ? parentOf(p.root, nodeId) : undefined;
+  const target = parent?.editMode === 'group' && fx ? { groupId: parent.id, effectId: fx.effectId } : null;
   commit(
-    `${label ?? key} geändert`,
-    (proj) => setEffectParams(proj, nodeId, instanceId, { [key]: value }),
+    `${label ?? key} geändert${target ? ' (Gruppe)' : ''}`,
+    (proj) => {
+      const next = setEffectParams(proj, nodeId, instanceId, { [key]: value });
+      return target ? setParamInGroup(next, target.groupId, target.effectId, key, value, nodeId) : next;
+    },
     gesture ? `param:${instanceId}:${key}` : undefined,
   );
   if (!gesture) endGesture();
+}
+
+/** Gemeinsame Bearbeitung in der Gruppe: Parameter in alle Kinder mit diesem Effekt schreiben. */
+export function setGroupParamCommand(
+  groupId: string,
+  effectId: string,
+  key: string,
+  value: ParamValue,
+  gesture: boolean,
+): void {
+  const label = getPlugin(effectId)?.manifest?.params.find((x) => x.key === key)?.label ?? key;
+  commit(
+    `${label} geändert (Gruppe)`,
+    (p) => setParamInGroup(p, groupId, effectId, key, value),
+    gesture ? `group:${groupId}:${effectId}:${key}` : undefined,
+  );
+  if (!gesture) endGesture();
+}
+
+export function setGroupStrengthCommand(
+  groupId: string,
+  effectId: string,
+  strength: number,
+  gesture: boolean,
+): void {
+  commit(
+    'Mischung geändert (Gruppe)',
+    (p) => setStrengthInGroup(p, groupId, effectId, strength),
+    gesture ? `group:${groupId}:${effectId}:strength` : undefined,
+  );
+  if (!gesture) endGesture();
+}
+
+export function setEditModeCommand(groupId: string, editMode: 'group' | 'individual'): void {
+  commit(editMode === 'group' ? 'Bearbeitung: Gruppe' : 'Bearbeitung: Einzeln', (p) =>
+    updateNode(p, groupId, (n) => (n.kind === 'group' ? { ...n, editMode } : n)),
+  );
+}
+
+/** Parameter eines Effekts von der Gruppenbearbeitung entkoppeln bzw. wieder koppeln (Schloss). */
+export function toggleDecoupledCommand(nodeId: string, instanceId: string, key: string): void {
+  const p = getProject();
+  const fx = p ? findEffect(p, nodeId, instanceId) : undefined;
+  if (!fx) return;
+  const on = !(fx.decoupled ?? []).includes(key);
+  const decoupled = on ? [...(fx.decoupled ?? []), key] : (fx.decoupled ?? []).filter((k) => k !== key);
+  commit(on ? 'Parameter entkoppelt' : 'Parameter gekoppelt', (proj) =>
+    updateEffect(proj, nodeId, instanceId, { decoupled }),
+  );
 }
 
 export function setStrengthCommand(
@@ -146,9 +209,16 @@ export function setStrengthCommand(
   strength: number,
   gesture: boolean,
 ): void {
+  const p0 = getProject();
+  const fx = p0 ? findEffect(p0, nodeId, instanceId) : undefined;
+  const parent = p0 ? parentOf(p0.root, nodeId) : undefined;
+  const target = parent?.editMode === 'group' && fx ? { groupId: parent.id, effectId: fx.effectId } : null;
   commit(
     'Stärke geändert',
-    (p) => updateEffect(p, nodeId, instanceId, { strength }),
+    (p) => {
+      const next = updateEffect(p, nodeId, instanceId, { strength });
+      return target ? setStrengthInGroup(next, target.groupId, target.effectId, strength, nodeId) : next;
+    },
     gesture ? `strength:${instanceId}` : undefined,
   );
   if (!gesture) endGesture();
@@ -313,4 +383,28 @@ export function setLicenseModeOfProject(mode: LicenseMode): void {
     ...p,
     licenseMode: mode,
   }));
+}
+
+// ---------- Ebenenliste: umsortieren, gruppieren ----------
+
+export function moveNodeCommand(nodeId: string, targetGroupId: string, index: number): void {
+  commit('Ebene verschoben', (p) => moveNode(p, nodeId, targetGroupId, index));
+}
+
+export function groupNodeCommand(nodeId: string): void {
+  let groupId = '';
+  commit('Gruppiert', (p) => {
+    const r = wrapInGroup(p, nodeId);
+    groupId = r.groupId;
+    return r.project;
+  });
+  if (groupId) useAppStore.getState().select(groupId);
+}
+
+export function ungroupCommand(groupId: string): void {
+  const p = getProject();
+  const first = p ? findNode(p.root, groupId) : undefined;
+  commit('Gruppe aufgelöst', (proj) => ungroup(proj, groupId));
+  if (first?.kind === 'group' && first.children.at(-1))
+    useAppStore.getState().select(first.children.at(-1)?.id ?? null);
 }

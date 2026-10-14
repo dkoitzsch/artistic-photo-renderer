@@ -12,6 +12,7 @@ gesondert in `models/registry.json` und `MODELS.md` (ab Phase 2).
 | @radix-ui/react-dialog     | 1.3.1   | MIT                     | github.com/radix-ui/primitives (LICENSE) | 2026-10-14 |
 | fflate                     | 0.8.3   | MIT                     | github.com/101arrowz/fflate (LICENSE)    | 2026-10-14 |
 | @fontsource-variable/inter | 5.3.0   | OFL-1.1 (Schrift Inter) | github.com/fontsource/fontsource         | 2026-10-14 |
+| ag-psd                     | 31.0.3  | MIT                     | github.com/Agamnentzar/ag-psd (LICENSE)  | 2026-10-14 |
 
 ## Entwicklung (nicht im Bundle)
 
@@ -24,5 +25,7 @@ gesondert in `models/registry.json` und `MODELS.md` (ab Phase 2).
 | eslint, @eslint/js, typescript-eslint, eslint-plugin-react-hooks, globals | 10.12.0, 10.0.1, 8.71.2, 7.1.1, 17.13.0 | MIT          |
 | prettier                                                                  | 3.9.10                                  | MIT          |
 | pngjs                                                                     | 7.0.0                                   | MIT          |
+
+Nur zur einmaligen Prüfung (nicht installiert, nicht im Repo): psd-tools (MIT) über `uv run --with psd-tools`.
 
 Alle Lizenzen erlauben kommerzielle Nutzung.

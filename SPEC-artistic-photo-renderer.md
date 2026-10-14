@@ -390,13 +390,13 @@ Sieben Phasen (0–6); jede endet mit einer lauffähigen App. Das Plugin-System 
 
 ### Phase 3 – Tiefenebenen und Gruppen (d, h)
 
-- [ ] Tiefenkarte (Browser und Dienst-Endpunkt `/depth`), Aufteilung in 2–8 Ebenen mit Histogramm-Grenzen und Überlappung
-- [ ] Tiefen-Preset (Unschärfe und Dunst nach Entfernung)
-- [ ] Gruppenmodus „Gruppe / Einzeln“, Parameter entkoppeln, verschachtelte Gruppen
-- [ ] Parallax-Vorschau
-- [ ] PSD-Export mit Ebenen, Gruppen, Masken und Mischmodi
-- [ ] Abnahme: Landschaftsfoto in 4 Ebenen zerlegt; Ändern der Gruppen-Unschärfe wirkt auf alle, ein entkoppelter Layer behält seinen Wert
-- [ ] Abnahme: exportierte PSD öffnet sich in einem Bildprogramm (z. B. Photopea) mit korrekter Ebenen- und Gruppenstruktur
+- [x] Tiefenkarte (Browser und Dienst-Endpunkt `/depth`), Aufteilung in 2–8 Ebenen mit Histogramm-Grenzen und Überlappung
+- [x] Tiefen-Preset (Unschärfe und Dunst nach Entfernung)
+- [x] Gruppenmodus „Gruppe / Einzeln“, Parameter entkoppeln, verschachtelte Gruppen
+- [x] Parallax-Vorschau
+- [x] PSD-Export mit Ebenen, Gruppen, Masken und Mischmodi
+- [x] Abnahme: Landschaftsfoto in 4 Ebenen zerlegt; Ändern der Gruppen-Unschärfe wirkt auf alle, ein entkoppelter Layer behält seinen Wert
+- [x] Abnahme: exportierte PSD öffnet sich in einem Bildprogramm (z. B. Photopea) mit korrekter Ebenen- und Gruppenstruktur
 
 ### Phase 4 – Weitere Bilder (f)
 

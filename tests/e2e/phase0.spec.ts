@@ -48,6 +48,7 @@ test('PNG-Export entspricht dem Original (Golden)', async ({ page }) => {
   await openFixture(page);
   const download = page.waitForEvent('download');
   await page.getByTestId('export-button').click();
+  await page.getByTestId('export-start').click();
   const file = await (await download).path();
   const got = PNG.sync.read(readFileSync(file));
   const want = PNG.sync.read(readFileSync(FIXTURE));

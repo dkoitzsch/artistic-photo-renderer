@@ -1,8 +1,8 @@
 import { getProject, useAppStore } from '../state/store';
 import { downloadBlob, safeFileName } from './export';
 import { packProject, PROJECT_EXTENSION } from './projectFile';
-import { maskIds } from '../state/project';
-import { loadMask, loadOriginal } from './storage';
+import { depthIds, maskIds } from '../state/project';
+import { loadDepth, loadMask, loadOriginal } from './storage';
 
 type SavePicker = (opts: {
   suggestedName: string;
@@ -28,7 +28,13 @@ export async function saveProjectFile(): Promise<void> {
       if (!bytes) throw new Error(`Maske ${id.slice(0, 8)} fehlt im lokalen Speicher.`);
       masks.set(id, bytes);
     }
-    const zip = packProject(project, originals, masks);
+    const depth = new Map<string, Uint8Array>();
+    for (const id of depthIds(project)) {
+      const bytes = await loadDepth(id);
+      if (!bytes) throw new Error(`Tiefenkarte ${id.slice(0, 8)} fehlt im lokalen Speicher.`);
+      depth.set(id, bytes);
+    }
+    const zip = packProject(project, originals, masks, depth);
     const blob = new Blob([zip as Uint8Array<ArrayBuffer>], { type: 'application/zip' });
     const picker = (window as unknown as { showSaveFilePicker?: SavePicker }).showSaveFilePicker;
     if (picker) {

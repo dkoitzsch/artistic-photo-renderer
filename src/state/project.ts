@@ -3,7 +3,7 @@
 
 import type { ParamValue } from '../effects/manifest';
 
-export const PROJECT_FORMAT_VERSION = 2;
+export const PROJECT_FORMAT_VERSION = 3;
 
 export type BlendMode =
   'normal' | 'multiply' | 'screen' | 'overlay' | 'soft-light' | 'lighten' | 'darken' | 'difference';
@@ -21,7 +21,25 @@ export type Provenance = { modelId: string; commercialUse: boolean; createdAt: s
  */
 export type MaskRef =
   | { kind: 'full' }
-  | { kind: 'stored'; id: string; width: number; height: number; inverted: boolean; provenance: Provenance };
+  | { kind: 'stored'; id: string; width: number; height: number; inverted: boolean; provenance: Provenance }
+  | DepthBandMask;
+
+/**
+ * Tiefenband aus einer Tiefenkarte (0 = nah … 1 = fern): sichtbar ist [near, far], um overlap px weich erweitert.
+ * fillBelow: Bereiche näher als dieser Wert sind „Loch“ für die Lochfüllung (Inhalte vorderer Ebenen).
+ */
+export type DepthBandMask = {
+  kind: 'depth';
+  depthId: string;
+  near: number;
+  far: number;
+  /** Leinwand-px */
+  overlap: number;
+  fillBelow: number;
+};
+
+/** Tiefenkarte eines Originals (16 Bit, volle Größe; depth/<id>.png) */
+export type DepthMapRef = { id: string; width: number; height: number; provenance: Provenance };
 
 /** Kantenübergang (Kern-Stufe, siehe DECISIONS.md). */
 export type MaskEdge = {
@@ -72,6 +90,8 @@ export type EffectInstance = {
   strength: number;
   params: Record<string, ParamValue>;
   region: EffectRegion;
+  /** Gruppenmodus: diese Parameter werden von der Gruppenbearbeitung nicht überschrieben (Schloss) */
+  decoupled?: string[];
 };
 
 export type Transform = { x: number; y: number; scale: number; rotation: number };
@@ -88,6 +108,9 @@ export type Layer = {
   holeFill: boolean;
   focusMap?: FocusMapSpec;
   shadow?: ShadowLayer;
+  /** Tiefenkarte des Originals (Ansicht „Tiefe“, Effekt-Eingang depth) */
+  depthMap?: DepthMapRef;
+  /** mittlere Tiefe 0…1 (Tiefenebenen) */
   depth?: number;
   transform: Transform;
   opacity: number;
@@ -298,6 +321,22 @@ export function setEffectParams(
   );
 }
 
+/** IDs aller Tiefenkarten eines Projekts. */
+export function depthIds(project: Project): Set<string> {
+  const ids = new Set<string>();
+  for (const l of walkLayers(project.root)) {
+    if (l.depthMap) ids.add(l.depthMap.id);
+    if (l.mask.kind === 'depth') ids.add(l.mask.depthId);
+  }
+  return ids;
+}
+
+/** Elterngruppe eines Knotens */
+export function parentOf(root: Group, id: string): Group | undefined {
+  for (const n of walk(root)) if (n.kind === 'group' && n.children.some((c) => c.id === id)) return n;
+  return undefined;
+}
+
 /** IDs aller gespeicherten Masken eines Projekts. */
 export function maskIds(project: Project): Set<string> {
   const ids = new Set<string>();
@@ -309,4 +348,128 @@ export function maskIds(project: Project): Set<string> {
 export function firstLayer(project: Project): Layer | undefined {
   for (const n of walk(project.root)) if (n.kind === 'layer') return n;
   return undefined;
+}
+
+// ---------- Gruppenbearbeitung (Spec h) ----------
+
+/**
+ * Schreibt einen Parameter in alle direkten Kinder der Gruppe, die den Effekt haben (jeweils dessen erste Instanz),
+ * außer dort, wo der Parameter entkoppelt ist. exceptNodeId: Kind, das bereits geändert wurde.
+ */
+export function setParamInGroup(
+  project: Project,
+  groupId: string,
+  effectId: string,
+  key: string,
+  value: ParamValue,
+  exceptNodeId?: string,
+): Project {
+  const group = findNode(project.root, groupId);
+  if (group?.kind !== 'group') return project;
+  let next = project;
+  for (const child of group.children) {
+    if (child.id === exceptNodeId) continue;
+    const fx = child.effects.find((e) => e.effectId === effectId);
+    if (!fx || fx.decoupled?.includes(key)) continue;
+    next = setEffectParams(next, child.id, fx.instanceId, { [key]: value });
+  }
+  return next;
+}
+
+/** Wie setParamInGroup, für die Mischung (strength). */
+export function setStrengthInGroup(
+  project: Project,
+  groupId: string,
+  effectId: string,
+  strength: number,
+  exceptNodeId?: string,
+): Project {
+  const group = findNode(project.root, groupId);
+  if (group?.kind !== 'group') return project;
+  let next = project;
+  for (const child of group.children) {
+    if (child.id === exceptNodeId) continue;
+    const fx = child.effects.find((e) => e.effectId === effectId);
+    if (!fx || fx.decoupled?.includes('strength')) continue;
+    next = updateEffect(next, child.id, fx.instanceId, { strength });
+  }
+  return next;
+}
+
+// ---------- Baum umbauen (Ebenenliste) ----------
+
+function removeFromTree(group: Group, id: string): { group: Group; removed: SceneNode | undefined } {
+  let removed: SceneNode | undefined;
+  const children: SceneNode[] = [];
+  for (const c of group.children) {
+    if (c.id === id) {
+      removed = c;
+      continue;
+    }
+    if (c.kind === 'group' && !removed) {
+      const r = removeFromTree(c, id);
+      if (r.removed) {
+        removed = r.removed;
+        children.push(r.group);
+        continue;
+      }
+    }
+    children.push(c);
+  }
+  return { group: removed ? { ...group, children } : group, removed };
+}
+
+function isDescendant(node: SceneNode, id: string): boolean {
+  for (const n of walk(node)) if (n.id === id) return true;
+  return false;
+}
+
+/**
+ * Verschiebt einen Knoten in eine Gruppe an Position index (0 = ganz hinten), bezogen auf die Kinderliste
+ * der Zielgruppe nach dem Herausnehmen. Ungültige Züge (Wurzel, in sich selbst) ändern nichts.
+ */
+export function moveNode(project: Project, nodeId: string, targetGroupId: string, index: number): Project {
+  if (nodeId === project.root.id) return project;
+  const node = findNode(project.root, nodeId);
+  if (!node || isDescendant(node, targetGroupId)) return project;
+  const { group: root, removed } = removeFromTree(project.root, nodeId);
+  if (!removed) return project;
+  const target = findNode(root, targetGroupId);
+  if (target?.kind !== 'group') return project;
+  const i = Math.max(0, Math.min(target.children.length, index));
+  const children = [...target.children.slice(0, i), removed, ...target.children.slice(i)];
+  const nextRoot = mapNode(root, targetGroupId, (n) => ({ ...n, children }) as Group);
+  return { ...project, root: nextRoot as Group };
+}
+
+/** Packt einen Knoten an seiner Stelle in eine neue Gruppe. */
+export function wrapInGroup(
+  project: Project,
+  nodeId: string,
+  name = 'Gruppe',
+): { project: Project; groupId: string } {
+  const node = findNode(project.root, nodeId);
+  if (!node || nodeId === project.root.id) return { project, groupId: '' };
+  const group: Group = {
+    kind: 'group',
+    id: newId(),
+    name,
+    children: [node],
+    editMode: 'individual',
+    effects: [],
+    opacity: 1,
+    blendMode: 'normal',
+    visible: true,
+  };
+  return { project: replaceNode(project, nodeId, group), groupId: group.id };
+}
+
+/** Löst eine Gruppe auf: ihre Kinder treten an ihre Stelle (Gruppeneffekte entfallen). */
+export function ungroup(project: Project, groupId: string): Project {
+  if (groupId === project.root.id) return project;
+  const parent = parentOf(project.root, groupId);
+  const group = findNode(project.root, groupId);
+  if (!parent || group?.kind !== 'group') return project;
+  const children = parent.children.flatMap((c) => (c.id === groupId ? group.children : [c]));
+  return updateNode(project, parent.id, (n) => ({ ...n, children }) as Group);
 }

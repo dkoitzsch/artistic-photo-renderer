@@ -1,5 +1,4 @@
 import { flushAutosave } from '../../io/autosave';
-import { exportPng } from '../../io/export';
 import { openFileDialog } from '../../io/openDialog';
 import { saveProjectFile } from '../../io/saveProjectFile';
 import { canRedo, canUndo } from '../../state/history';
@@ -16,6 +15,7 @@ import {
   MinusIcon,
   MoonIcon,
   OpenIcon,
+  ParallaxIcon,
   PlusIcon,
   RedoIcon,
   SaveIcon,
@@ -28,6 +28,7 @@ const VIEW_MODES = [
   { value: 'result', label: 'Ergebnis', key: '1' },
   { value: 'mask', label: 'Maske', key: '2' },
   { value: 'focus', label: 'Fokus', key: '3' },
+  { value: 'depth', label: 'Tiefe', key: '4' },
 ] as const;
 
 const SAVE_LABEL = {
@@ -51,6 +52,8 @@ export function TopBar({ theme }: { theme: 'light' | 'dark' }) {
   const viewMode = useAppStore((s) => s.viewMode);
   const setViewMode = useAppStore((s) => s.setViewMode);
   const setSettingsOpen = useAppStore((s) => s.setSettingsOpen);
+  const parallaxOn = useAppStore((s) => s.parallax.enabled);
+  const setParallax = useAppStore((s) => s.setParallax);
   const hasImage = project !== null;
 
   return (
@@ -128,6 +131,19 @@ export function TopBar({ theme }: { theme: 'light' | 'dark' }) {
             </button>
           ))}
         </span>
+        <button
+          className={`icon-button${parallaxOn ? ' active' : ''}`}
+          onClick={() => {
+            setParallax({ enabled: !parallaxOn, pointer: [0, 0] });
+          }}
+          disabled={!hasImage}
+          title="Parallax-Vorschau (P) – Ebenen verschieben sich mit der Maus nach ihrer Tiefe"
+          aria-label="Parallax-Vorschau"
+          aria-pressed={parallaxOn}
+          data-testid="parallax-toggle"
+        >
+          <ParallaxIcon />
+        </button>
         <button
           className={`icon-button${compare ? ' active' : ''}`}
           onClick={toggleCompare}
@@ -232,9 +248,11 @@ export function TopBar({ theme }: { theme: 'light' | 'dark' }) {
         </button>
         <button
           className="button primary"
-          onClick={() => void exportPng()}
+          onClick={() => {
+            useAppStore.getState().setExportOpen(true);
+          }}
           disabled={!hasImage}
-          title="Als PNG exportieren (⌘E)"
+          title="Exportieren: PNG, JPEG, WebP oder PSD (⌘E)"
           data-testid="export-button"
         >
           <ExportIcon />

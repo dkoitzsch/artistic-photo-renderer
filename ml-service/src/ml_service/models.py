@@ -64,6 +64,49 @@ class HfSegmenter:
         return prob[0, 0].clamp(0, 1).cpu().numpy().astype(np.float32)
 
 
+class HfDepth:
+    """Depth Anything V2 (transformers): relative Tiefe 0 = nah … 1 = fern in Originalgröße."""
+
+    def __init__(self, model: ServiceModel, device: str, path: Path):
+        import torch
+        from transformers import AutoModelForDepthEstimation
+
+        self.model = model
+        self.device = device
+        net = AutoModelForDepthEstimation.from_pretrained(str(path))
+        net.eval()
+        self.dtype = torch.float16 if device == "mps" else torch.float32
+        self.net = net.to(device=device, dtype=self.dtype)
+        self.lock = threading.Lock()
+
+    def __call__(self, image: Image.Image, progress: Callable[[float], None]) -> np.ndarray:
+        import torch
+        import torch.nn.functional as F
+
+        w, h = image.size
+        s = self.model.size / min(w, h)
+        iw = max(14, round(w * s / 14) * 14)
+        ih = max(14, round(h * s / 14) * 14)
+        x = np.asarray(image.resize((iw, ih), Image.BICUBIC), dtype=np.float32) / 255.0
+        x = (x - np.array(self.model.mean, dtype=np.float32)) / np.array(self.model.std, dtype=np.float32)
+        t = torch.from_numpy(x.transpose(2, 0, 1)).unsqueeze(0).to(self.device, self.dtype)
+        progress(0.2)
+        with self.lock, torch.inference_mode():
+            disp = self.net(pixel_values=t).predicted_depth.float().unsqueeze(1)
+            disp = F.interpolate(disp, size=(h, w), mode="bicubic", align_corners=False)[0, 0]
+        progress(0.9)
+        d = disp.cpu().numpy()
+        lo, hi = np.percentile(d, 1), np.percentile(d, 99)
+        return (1.0 - np.clip((d - lo) / max(hi - lo, 1e-6), 0, 1)).astype(np.float32)
+
+
+def make_model(model: ServiceModel, device: str, path: Path):
+    """Passendes Modell zur Aufgabe aus dem Register."""
+    if model.task == "depth":
+        return HfDepth(model, device, path)
+    return HfSegmenter(model, device, path)
+
+
 def hf_token() -> str | None:
     try:
         from huggingface_hub import get_token

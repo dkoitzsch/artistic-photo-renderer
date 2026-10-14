@@ -12,7 +12,7 @@ struct View {
   checker_a: vec4f,   // linear
   checker_b: vec4f,   // linear
   split_x: f32,       // CSS-Pixel; < 0 = keine Teilung (links „vorher“)
-  overlay: f32,       // 0 aus, 1 Maske (rot = ausgeblendet), 2 Fokuskarte
+  overlay: f32,       // 0 aus, 1 Maske (rot = ausgeblendet), 2 Fokuskarte, 3 Tiefe (Farbskala)
   _p1: f32,
   _p2: f32,
 }
@@ -49,6 +49,15 @@ fn sample_image(t: texture_2d<f32>, px: vec2f) -> vec4f {
   return sum / f32(n * n);
 }
 
+// Farbskala nah (warm) → fern (kühl), angelehnt an „turbo“
+fn depth_colormap(t: f32) -> vec3f {
+  let x = clamp(1.0 - t, 0.0, 1.0);
+  let r = clamp(0.13 + x * (4.6 - x * 4.0), 0.0, 1.0);
+  let g = clamp(sin(x * 3.14159), 0.0, 1.0);
+  let b = clamp(0.95 - x * 1.3 + x * x * 0.4, 0.0, 1.0);
+  return vec3f(r, g, b);
+}
+
 @fragment
 fn fs(@builtin(position) pos: vec4f) -> @location(0) vec4f {
   let css = pos.xy / view.dpr;
@@ -69,8 +78,10 @@ fn fs(@builtin(position) pos: vec4f) -> @location(0) vec4f {
       let o = textureSampleLevel(overlay_tex, samp, px / view.image_size, 0.0).r;
       if (view.overlay < 1.5) {
         color = mix(color, vec3f(0.8, 0.05, 0.05), 0.6 * (1.0 - o));
-      } else {
+      } else if (view.overlay < 2.5) {
         color = mix(color * 0.45, vec3f(1.0, 0.75, 0.1), 0.75 * o);
+      } else {
+        color = mix(color, srgb_to_linear(depth_colormap(o)), 0.8);
       }
     }
   }

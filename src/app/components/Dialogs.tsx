@@ -2,7 +2,7 @@
 
 import * as Dialog from '@radix-ui/react-dialog';
 import { useState, type ReactNode } from 'react';
-import { exportPngConfirmed } from '../../io/export';
+import { DEFAULT_EXPORT, exportAs, exportConfirmed, type ExportFormat } from '../../io/export';
 import { checkService } from '../../ml/backend';
 import { familiesFor, modelFor } from '../../ml/registry';
 import { SERVICE_URL } from '../../ml/serviceBackend';
@@ -10,6 +10,8 @@ import { recomputeWithCommercialModels, splitForeground } from '../../ml/split';
 import { findNode, type LicenseMode } from '../../state/project';
 import { useAppStore, useProject, type MlMode } from '../../state/store';
 import { licenseNoticeShown, markLicenseNoticeShown, setLicenseMode, setMlMode } from '../settings';
+import { DepthSplitPanel } from './DepthSplit';
+import { Slider } from '../controls/Slider';
 import { LicenseBadge } from './LayerSections';
 
 function Modal({
@@ -58,6 +60,7 @@ export function SplitDialog() {
   const families = familiesFor('foreground');
   const [family, setFamily] = useState('birefnet');
   const [landmarks, setLandmarks] = useState(true);
+  const [mode, setMode] = useState<'fg' | 'depth'>('fg');
   const node = project && layerId ? findNode(project.root, layerId) : undefined;
   const selected = families.find((f) => f.family === family);
   const allowed = selected ? selected.commercialUse || licenseMode === 'all' : false;
@@ -83,73 +86,100 @@ export function SplitDialog() {
       <fieldset className="choice-list">
         <legend className="control-label">Modus</legend>
         <label className="choice">
-          <input type="radio" checked readOnly />
+          <input
+            type="radio"
+            name="split-mode"
+            checked={mode === 'fg'}
+            onChange={() => {
+              setMode('fg');
+            }}
+            data-testid="mode-fg"
+          />
           <span>Vordergrund / Hintergrund</span>
         </label>
-        <label className="choice disabled" title="Phase 3">
-          <input type="radio" disabled />
-          <span>Tiefenebenen (folgt)</span>
+        <label className="choice">
+          <input
+            type="radio"
+            name="split-mode"
+            checked={mode === 'depth'}
+            onChange={() => {
+              setMode('depth');
+            }}
+            data-testid="mode-depth"
+          />
+          <span>Tiefenebenen (2–8)</span>
         </label>
       </fieldset>
-      <fieldset className="choice-list">
-        <legend className="control-label">Modell</legend>
-        {families.map((f) => {
-          const ok = f.commercialUse || licenseMode === 'all';
-          return (
-            <label
-              key={f.family}
-              className={`choice${ok ? '' : ' disabled'}`}
-              title={ok ? f.license : 'Nur nicht-kommerziell – im Lizenzmodus „Kommerziell“ gesperrt'}
-            >
-              <input
-                type="radio"
-                name="family"
-                disabled={!ok}
-                checked={family === f.family}
-                onChange={() => {
-                  setFamily(f.family);
-                }}
-                data-testid={`family-${f.family}`}
-              />
-              <span>{f.name}</span>
-              <LicenseBadge commercial={f.commercialUse} title={f.license} />
-              <span className="choice-note">{runtimeText(f.family)}</span>
-            </label>
-          );
-        })}
-      </fieldset>
-      <label className="choice">
-        <input
-          type="checkbox"
-          checked={landmarks}
-          onChange={(e) => {
-            setLandmarks(e.target.checked);
+      {mode === 'depth' && layerId ? (
+        <DepthSplitPanel
+          layerId={layerId}
+          onDone={() => {
+            close(null);
           }}
         />
-        <span>Personen: Fokuspunkte erkennen (Augen, Gesicht, Brust, Hände)</span>
-      </label>
-      <div className="dialog-actions">
-        <button
-          className="button"
-          onClick={() => {
-            close(null);
-          }}
-        >
-          Abbrechen
-        </button>
-        <button
-          className="button primary"
-          disabled={!allowed || !node}
-          data-testid="split-start"
-          onClick={() => {
-            if (!layerId) return;
-            close(null);
-            void splitForeground(layerId, family, landmarks);
-          }}
-        >
-          Aufteilen
-        </button>
-      </div>
+      ) : (
+        <>
+          <fieldset className="choice-list">
+            <legend className="control-label">Modell</legend>
+            {families.map((f) => {
+              const ok = f.commercialUse || licenseMode === 'all';
+              return (
+                <label
+                  key={f.family}
+                  className={`choice${ok ? '' : ' disabled'}`}
+                  title={ok ? f.license : 'Nur nicht-kommerziell – im Lizenzmodus „Kommerziell“ gesperrt'}
+                >
+                  <input
+                    type="radio"
+                    name="family"
+                    disabled={!ok}
+                    checked={family === f.family}
+                    onChange={() => {
+                      setFamily(f.family);
+                    }}
+                    data-testid={`family-${f.family}`}
+                  />
+                  <span>{f.name}</span>
+                  <LicenseBadge commercial={f.commercialUse} title={f.license} />
+                  <span className="choice-note">{runtimeText(f.family)}</span>
+                </label>
+              );
+            })}
+          </fieldset>
+          <label className="choice">
+            <input
+              type="checkbox"
+              checked={landmarks}
+              onChange={(e) => {
+                setLandmarks(e.target.checked);
+              }}
+            />
+            <span>Personen: Fokuspunkte erkennen (Augen, Gesicht, Brust, Hände)</span>
+          </label>
+          <div className="dialog-actions">
+            <button
+              className="button"
+              onClick={() => {
+                close(null);
+              }}
+            >
+              Abbrechen
+            </button>
+            <button
+              className="button primary"
+              disabled={!allowed || !node}
+              data-testid="split-start"
+              onClick={() => {
+                if (!layerId) return;
+                close(null);
+                void splitForeground(layerId, family, landmarks);
+              }}
+            >
+              Aufteilen
+            </button>
+          </div>
+        </>
+      )}
     </Modal>
   );
 }
@@ -358,10 +388,11 @@ export function ExportWarningDialog() {
           data-testid="export-recompute"
           onClick={() => {
             setWorking(true);
+            const options = warning?.options;
             void recomputeWithCommercialModels().then((ok) => {
               setWorking(false);
               setWarning(null);
-              if (ok) void exportPngConfirmed();
+              if (ok) void exportConfirmed(options);
             });
           }}
         >
@@ -371,11 +402,102 @@ export function ExportWarningDialog() {
           className="button primary"
           data-testid="export-anyway"
           onClick={() => {
+            const options = warning?.options;
             setWarning(null);
-            void exportPngConfirmed();
+            void exportConfirmed(options);
           }}
         >
           Trotzdem exportieren
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+// ---------- Export ----------
+
+const FORMATS: { value: ExportFormat; label: string; note: string }[] = [
+  { value: 'png', label: 'PNG', note: 'verlustfrei, mit Transparenz' },
+  { value: 'jpeg', label: 'JPEG', note: 'klein, ohne Transparenz (auf Weiß)' },
+  { value: 'webp', label: 'WebP', note: 'klein, mit Transparenz' },
+  { value: 'psd', label: 'PSD', note: 'Ebenen, Gruppen, Masken, Mischmodi' },
+];
+
+export function ExportDialog() {
+  const open = useAppStore((s) => s.exportOpen);
+  const setOpen = useAppStore((s) => s.setExportOpen);
+  const [format, setFormat] = useState<ExportFormat>('png');
+  const [quality, setQuality] = useState(92);
+  const [originals, setOriginals] = useState(false);
+  return (
+    <Modal open={open} onOpenChange={setOpen} title="Exportieren" testId="export-dialog">
+      <fieldset className="choice-list">
+        <legend className="control-label">Format</legend>
+        {FORMATS.map((f) => (
+          <label key={f.value} className="choice">
+            <input
+              type="radio"
+              name="export-format"
+              checked={format === f.value}
+              onChange={() => {
+                setFormat(f.value);
+              }}
+              data-testid={`export-${f.value}`}
+            />
+            <span>{f.label}</span>
+            <span className="choice-note">{f.note}</span>
+          </label>
+        ))}
+      </fieldset>
+      {(format === 'jpeg' || format === 'webp') && (
+        <Slider
+          label="Qualität"
+          value={quality}
+          min={10}
+          max={100}
+          defaultValue={92}
+          step={1}
+          unit="%"
+          onChange={setQuality}
+        />
+      )}
+      {format === 'psd' && (
+        <label className="choice">
+          <input
+            type="checkbox"
+            checked={originals}
+            onChange={(e) => {
+              setOriginals(e.target.checked);
+            }}
+            data-testid="export-originals"
+          />
+          <span>Unbearbeitete Originale als ausgeblendete Ebenen</span>
+        </label>
+      )}
+      {format === 'psd' && (
+        <p className="section-note">
+          Ebenen enthalten ihre Effekte; Masken liegen zusätzlich als deaktivierte Ebenenmasken bei. Gruppen
+          mit eigenen Effekten werden als eine Ebene gerendert.
+        </p>
+      )}
+      <div className="dialog-actions">
+        <button
+          className="button"
+          onClick={() => {
+            setOpen(false);
+          }}
+        >
+          Abbrechen
+        </button>
+        <button
+          className="button primary"
+          data-testid="export-start"
+          onClick={() => {
+            setOpen(false);
+            void exportAs({ ...DEFAULT_EXPORT, format, quality: quality / 100, includeOriginals: originals });
+          }}
+        >
+          Exportieren
         </button>
       </div>
     </Modal>

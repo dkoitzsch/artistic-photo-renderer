@@ -1,5 +1,4 @@
 import { useEffect } from 'react';
-import { exportPng } from '../io/export';
 import { openFileDialog } from '../io/openDialog';
 import { saveProjectFile } from '../io/saveProjectFile';
 import { redoCommand, undoCommand } from '../state/commands';
@@ -12,7 +11,14 @@ type Shortcut = { key: string; meta: boolean; shift?: boolean; inText?: boolean;
 const SHORTCUTS: Shortcut[] = [
   { key: 'o', meta: true, inText: true, run: openFileDialog },
   { key: 's', meta: true, inText: true, run: () => void saveProjectFile() },
-  { key: 'e', meta: true, inText: true, run: () => void exportPng() },
+  {
+    key: 'e',
+    meta: true,
+    inText: true,
+    run: () => {
+      if (useAppStore.getState().history) useAppStore.getState().setExportOpen(true);
+    },
+  },
   { key: 'z', meta: true, run: undoCommand },
   { key: 'z', meta: true, shift: true, run: redoCommand },
   { key: '0', meta: true, run: fitToViewport },
@@ -40,6 +46,14 @@ const SHORTCUTS: Shortcut[] = [
   },
   { key: '\\', meta: false, run: toggleCompare },
   {
+    key: 'p',
+    meta: false,
+    run: () => {
+      const s = useAppStore.getState();
+      if (s.history) s.setParallax({ enabled: !s.parallax.enabled, pointer: [0, 0] });
+    },
+  },
+  {
     key: '1',
     meta: false,
     run: () => {
@@ -58,6 +72,13 @@ const SHORTCUTS: Shortcut[] = [
     meta: false,
     run: () => {
       useAppStore.getState().setViewMode('focus');
+    },
+  },
+  {
+    key: '4',
+    meta: false,
+    run: () => {
+      useAppStore.getState().setViewMode('depth');
     },
   },
   {

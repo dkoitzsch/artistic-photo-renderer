@@ -10,6 +10,55 @@ Abweichungen von der Spec und Festlegungen bei unklaren Anforderungen. Neueste o
 - **Betrifft:** (Spec-Abschnitt / Phase)
 -->
 
+## 2026-10-14 – Phase 3: Tiefenebenen
+
+- **Frage:** Wie werden Tiefenbänder lückenlos und ohne Halo zusammengesetzt?
+- **Entscheidung:** Neue Maskenart `depth` (`depthId`, `near`, `far`, `overlap`, `fillBelow`) statt gespeicherter Masken je Band.
+  Die Bandmaske entsteht auf der GPU aus der Tiefenkarte (weiche Kanten, Überlappung = Dilatation + Weichzeichnen in px).
+  Die fernste Ebene deckt das ganze Bild ab (`near = 0`); jede fernere Ebene füllt Inhalte näherer Ebenen per Lochfüllung
+  (Push-Pull, Bereich `[0, fillBelow]`) auf, damit ihre Unschärfe keine Farben des Vordergrunds hineinzieht.
+  Tiefenkarten liegen als 16-Bit-PNG im OPFS (`depth/`) und in der Projektdatei; Projektformat 3 (Migration 2 → 3 ohne Änderung).
+- **Tiefenmodelle:** Browser Depth Anything V2 Small (ONNX fp16, 518 px, Apache-2.0); Dienst dasselbe Modell mit 1022 px
+  (feinere Kanten) und Depth Anything V2 Large (CC BY-NC 4.0, nur im Modus „Alle“). Base/Large laufen nicht im Browser (Größe, NC).
+  Die rohe Disparität wird auf das 1.–99. Perzentil normiert und invertiert (0 = nah, 1 = fern), danach per Guided Filter
+  kantenbewusst auf volle Auflösung gebracht.
+- **Grenzen:** Quantile (gleich viele Pixel je Ebene) oder k-Means auf dem Histogramm; Griffe im Histogramm verschiebbar,
+  Mindestabstand 2 %.
+- **Preset:** eigenes Plugin `haze` („Dunst“: Entsättigen, Aufhellen, Tönen; optional zusätzlich nach Tiefenkarte) statt einer
+  Kern-Stufe – Effekte bleiben Plugins. Unschärfe ~ (Rang/(n−1))^1,3 · Maximum, Dunst ~ (Rang/(n−1))^1,1 · Maximum.
+  Jede Tiefenebene erhält beide Effekte (die nächste mit 0), damit der Gruppenmodus alle Ebenen erreicht.
+- **Zurückgestellt:** Der Modus „objekttreu“ (SAM-Objekte ganz einer Ebene zuordnen) braucht SAM (Spec e) und folgt mit Phase 5/6.
+- **Betrifft:** Spec d, Datenmodell, Phase 3
+
+## 2026-10-14 – Phase 3: Gruppenmodus und Entkoppeln
+
+- **Frage:** Was bedeutet „Parameter in der Gruppe ändern“ bei unterschiedlichen Werten der Kinder?
+- **Entscheidung:** Im Modus „Gruppe“ setzt eine Änderung den **absoluten** Wert bei allen Kindern der Gruppe (auch in
+  verschachtelten Gruppen), die einen Effekt mit derselben `effectId` haben (jeweils die erste Instanz) – egal ob am gemeinsamen
+  Regler im Gruppen-Inspektor oder an einer einzelnen Ebene. Ausgenommen sind Parameter, die eine Ebene per Schloss entkoppelt hat
+  (`EffectInstance.decoupled`). Eine Änderung = ein Undo-Schritt. Relative Änderungen (Faktoren) wären mit dem Preset-Verlauf
+  verträglicher, widersprechen aber dem Spec-Satz „wirkt auf alle“ mit sichtbarem Gruppenwert.
+- **Ebenenliste:** Baum mit Ziehen (oben/unten/in Gruppe), „Gruppieren“ (Ebene in neue Gruppe) und „Auflösen“.
+- **Betrifft:** Spec h, Phase 3
+
+## 2026-10-14 – Phase 3: Parallax und PSD-Export
+
+- **Parallax:** reine Vorschau, verändert das Projekt nicht. Jede Ebene wird beim Mischen um `Zeiger · Stärke · (0,5 − Tiefe)`
+  verschoben (max. 8 % der langen Kante, Rand geklemmt); Tiefe = Mitte des Bandes, bei Gruppen der Mittelwert der Kinder.
+  Lücken an Kanten verdecken die überlappenden, lochgefüllten Ebenen.
+- **PSD (ag-psd, MIT):** Jede Ebene wird **mit angewendeten Effekten** als Pixelebene in voller Auflösung exportiert, mit Deckkraft,
+  Mischmodus, Sichtbarkeit und Namen; Gruppen ohne eigene Effekte werden PSD-Gruppen (beliebig verschachtelt). Weil die Maske
+  bereits in den Pixeln steckt, liegt sie zusätzlich als **deaktivierte** Ebenenmaske bei (aktiviert würde sie doppelt wirken).
+  Gruppen mit eigenen Effekten gibt es in PSD nicht → sie werden als eine Ebene „… (gerendert)“ exportiert. Schatten werden
+  eigene Ebenen unter ihrer Ebene. Option: unbearbeitete Originale als ausgeblendete Gruppe „Originale“. 8 Bit sRGB.
+  Unterschied zur App: PSD-Programme mischen in 8-Bit-sRGB, die App linear in 16-Bit-Float → an weichen Bandkanten
+  vereinzelte Abweichungen (gemessen mit psd-tools: Mittel 0,16, 99 % ≤ 2 Stufen).
+- **Export-Dialog:** PNG, JPEG (Qualität, auf Weiß), WebP (Qualität), PSD. ⌘E und der Export-Knopf öffnen den Dialog;
+  die NC-Warnung gilt für alle Formate. ag-psd wird erst beim ersten PSD-Export geladen.
+- **Prüfung der PSD:** automatisch mit ag-psd (`readPsd`) im E2E-Test und einmalig unabhängig mit psd-tools (Python);
+  Photopea wurde nicht automatisiert geprüft (Netzwerk, Drittanbieter).
+- **Betrifft:** Spec Phase 3, Export
+
 ## 2026-10-14 – Modell-Downloads sichtbar und steuerbar
 
 - **Frage (Nutzer):** Sichtbar machen, welche Modelle laden, mit welchem Fortschritt, und welche fertig sind; Pausieren und Stoppen ermöglichen.

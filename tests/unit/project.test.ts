@@ -7,7 +7,12 @@ import {
   removeEffect,
   setEffectParams,
   updateEffect,
+  moveNode,
+  wrapInGroup,
+  ungroup,
+  setParamInGroup,
   type EffectInstance,
+  type SceneNode,
 } from '../../src/state/project';
 import { parseProject } from '../../src/io/projectSchema';
 import { packProject, unpackProject } from '../../src/io/projectFile';
@@ -99,5 +104,98 @@ describe('parseProject', () => {
     expect(() => parseProject({ ...p, formatVersion: 99 })).toThrow(/neuer/);
     expect(() => parseProject({ ...p, originals: {} })).toThrow(/fehlendes Original/);
     expect(() => parseProject({ ...p, root: { ...p.root, kind: 'layer' } })).toThrow();
+  });
+
+  it('migriert Format 2 → 3 und prüft Tiefenmasken', () => {
+    const p = createProjectFromImage(original);
+    const v2 = JSON.parse(JSON.stringify({ ...p, formatVersion: 2 })) as Record<string, unknown>;
+    const migrated = parseProject(v2);
+    expect(migrated.formatVersion).toBe(3);
+    expect(migrated.root).toEqual(p.root);
+
+    const layer = p.root.children[0];
+    if (layer?.kind !== 'layer') throw new Error('keine Ebene');
+    const depthMap = {
+      id: 'd1',
+      width: 400,
+      height: 300,
+      provenance: { modelId: 'depth-anything-v2-small', commercialUse: true, createdAt: '2026-10-14' },
+    };
+    const withDepth = {
+      ...p,
+      root: {
+        ...p.root,
+        children: [
+          {
+            ...layer,
+            depthMap,
+            mask: { kind: 'depth', depthId: 'd1', near: 0.2, far: 0.5, overlap: 16, fillBelow: 0.2 },
+          },
+        ],
+      },
+    };
+    expect(parseProject(JSON.parse(JSON.stringify(withDepth)))).toEqual(withDepth);
+    const broken = JSON.parse(JSON.stringify(withDepth)) as typeof withDepth;
+    (broken.root.children[0] as { mask: { near: unknown } }).mask.near = 'nah';
+    expect(() => parseProject(broken)).toThrow();
+  });
+});
+
+describe('Gruppen: Baum umbauen und Gruppenbearbeitung', () => {
+  const base = createProjectFromImage(original);
+  const layerA = base.root.children[0];
+  if (!layerA || layerA.kind !== 'layer') throw new Error();
+  const mk = (id: string, effectId?: string): typeof layerA => ({
+    ...layerA,
+    id,
+    name: id,
+    effects: effectId ? [fx(`${id}-fx`, effectId)] : [],
+  });
+  // Wurzel: [A, G[B, C], D]
+  const p0 = {
+    ...base,
+    root: {
+      ...base.root,
+      children: [
+        mk('A', 'gaussian-blur'),
+        {
+          kind: 'group' as const,
+          id: 'G',
+          name: 'G',
+          children: [mk('B', 'gaussian-blur'), mk('C', 'gaussian-blur')],
+          editMode: 'group' as const,
+          effects: [],
+          opacity: 1,
+          blendMode: 'normal' as const,
+          visible: true,
+        },
+        mk('D'),
+      ],
+    },
+  };
+  const ids = (n: SceneNode): unknown => (n.kind === 'group' ? [n.id, n.children.map(ids)] : n.id);
+
+  it('verschiebt Knoten zwischen Gruppen und verhindert Zyklen', () => {
+    let p = moveNode(p0, 'D', 'G', 0);
+    expect(ids(p.root)).toEqual([p0.root.id, ['A', ['G', ['D', 'B', 'C']]]]);
+    p = moveNode(p, 'B', p.root.id, 0);
+    expect(ids(p.root)).toEqual([p0.root.id, ['B', 'A', ['G', ['D', 'C']]]]);
+    expect(moveNode(p, 'G', 'G', 0)).toBe(p);
+    expect(moveNode(p, p.root.id, 'G', 0)).toBe(p);
+  });
+
+  it('gruppiert und löst Gruppen auf', () => {
+    const { project, groupId } = wrapInGroup(p0, 'A', 'Neu');
+    expect(ids(project.root)).toEqual([p0.root.id, [[groupId, ['A']], ['G', ['B', 'C']], 'D']]);
+    expect(ids(ungroup(project, 'G').root)).toEqual([p0.root.id, [[groupId, ['A']], 'B', 'C', 'D']]);
+  });
+
+  it('Gruppenbearbeitung schreibt in alle Kinder, entkoppelte behalten ihren Wert', () => {
+    let p = updateEffect(p0, 'C', 'C-fx', { decoupled: ['radius'] });
+    p = setParamInGroup(p, 'G', 'gaussian-blur', 'radius', 77);
+    const r = (id: string) => findNode(p.root, id)?.effects[0]?.params.radius;
+    expect(r('B')).toBe(77);
+    expect(r('C')).toBe(10);
+    expect(r('A')).toBe(10); // nicht in der Gruppe
   });
 });

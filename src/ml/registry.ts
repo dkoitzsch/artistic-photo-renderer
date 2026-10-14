@@ -20,7 +20,7 @@ export type ModelEntry = {
   revision: string;
   files?: ModelFile[];
   input?: { size: number; mean: number[]; std: number[] };
-  output?: 'logits' | 'probability-minmax';
+  output?: 'logits' | 'probability-minmax' | 'disparity';
   gated?: boolean;
   checkedAt: string;
 };

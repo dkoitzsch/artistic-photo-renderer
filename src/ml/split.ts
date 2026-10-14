@@ -40,7 +40,7 @@ function progressText(p: Progress): string {
 }
 
 /** Fortschritt einer ML-Aufgabe in der unteren Leiste. */
-function startTask(label: string) {
+export function startTask(label: string) {
   const id = nextTaskId++;
   const { upsertTask, removeTask } = useAppStore.getState();
   upsertTask({ id, label, detail: '', progress: null });
@@ -294,6 +294,8 @@ export function ncLayers(project: Project): { id: string; name: string; modelId:
       out.push({ id: l.id, name: l.name, modelId: l.mask.provenance.modelId });
     else if (l.focusMap?.provenance && !l.focusMap.provenance.commercialUse)
       out.push({ id: l.id, name: l.name, modelId: l.focusMap.provenance.modelId });
+    else if (l.depthMap && !l.depthMap.provenance.commercialUse)
+      out.push({ id: l.id, name: l.name, modelId: l.depthMap.provenance.modelId });
   }
   return out;
 }

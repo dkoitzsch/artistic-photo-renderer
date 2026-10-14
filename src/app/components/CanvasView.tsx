@@ -8,6 +8,7 @@ import { useAppStore, useProject } from '../../state/store';
 import { panBy, zoomBy } from '../../state/viewActions';
 import { usePluginStore } from '../../effects/pluginStore';
 import { FocusOverlay } from './FocusOverlay';
+import { ParallaxPanel, parallaxVector } from './ParallaxPanel';
 import { GpuStatus } from './GpuStatus';
 
 function cssColorLinear(style: CSSStyleDeclaration, name: string): [number, number, number] {
@@ -41,6 +42,7 @@ export function CanvasView({ theme }: { theme: 'light' | 'dark' }) {
   const setCompareSplit = useAppStore((s) => s.setCompareSplit);
   const plugins = usePluginStore((s) => s.plugins);
   const viewMode = useAppStore((s) => s.viewMode);
+  const parallax = useAppStore((s) => s.parallax);
   const selectedId = useAppStore((s) => s.selectedNodeId);
   const view = useAppStore((s) => s.view);
   const viewport = useAppStore((s) => s.viewport);
@@ -83,12 +85,21 @@ export function CanvasView({ theme }: { theme: 'light' | 'dark' }) {
     const id = requestAnimationFrame(() => {
       const splitX = compareSplit === null ? null : compareSplit * viewport.width;
       const overlay = viewMode !== 'result' && selectedId ? { layerId: selectedId, kind: viewMode } : null;
-      getEngine()?.present(project, view, window.devicePixelRatio || 1, readViewColors(), splitX, overlay);
+      const px = project ? parallaxVector(parallax, project.canvas) : null;
+      getEngine()?.present(
+        project,
+        view,
+        window.devicePixelRatio || 1,
+        readViewColors(),
+        splitX,
+        overlay,
+        px,
+      );
     });
     return () => {
       cancelAnimationFrame(id);
     };
-  }, [gpuReady, project, plugins, view, viewport, theme, compareSplit, viewMode, selectedId]);
+  }, [gpuReady, project, plugins, view, viewport, theme, compareSplit, viewMode, selectedId, parallax]);
 
   // Mausrad/Trackpad: Pinch bzw. ⌘/Strg + Rad zoomt um den Cursor, sonst verschieben.
   useEffect(() => {
@@ -146,6 +157,14 @@ export function CanvasView({ theme }: { theme: 'light' | 'dark' }) {
   };
   const onPointerMove = (e: PointerEvent<HTMLCanvasElement>) => {
     if (panning) panBy(e.movementX, e.movementY);
+    if (parallax.enabled) {
+      const r = e.currentTarget.getBoundingClientRect();
+      const nx = ((e.clientX - r.left) / r.width) * 2 - 1;
+      const ny = ((e.clientY - r.top) / r.height) * 2 - 1;
+      useAppStore
+        .getState()
+        .setParallax({ pointer: [Math.max(-1, Math.min(1, nx)), Math.max(-1, Math.min(1, ny))] });
+    }
   };
   const endPan = (e: PointerEvent<HTMLCanvasElement>) => {
     if (!panning) return;
@@ -184,6 +203,10 @@ export function CanvasView({ theme }: { theme: 'light' | 'dark' }) {
         onPointerMove={onPointerMove}
         onPointerUp={endPan}
         onPointerCancel={endPan}
+        onPointerLeave={() => {
+          if (useAppStore.getState().parallax.enabled)
+            useAppStore.getState().setParallax({ pointer: [0, 0] });
+        }}
         onAuxClick={(e) => {
           e.preventDefault();
         }}
@@ -206,6 +229,7 @@ export function CanvasView({ theme }: { theme: 'light' | 'dark' }) {
         />
       )}
       <FocusOverlay />
+      <ParallaxPanel />
       <GpuStatus />
     </div>
   );

@@ -2,7 +2,7 @@
 
 import { defaultParams } from '../effects/manifest';
 import { usePluginStore, type Plugin } from '../effects/pluginStore';
-import { firstLayer, type Project } from '../state/project';
+import { findNode, firstLayer, type Group, type Project, type SceneNode } from '../state/project';
 import type { View } from '../state/viewMath';
 import { Compositor, ResultCache, type Rect } from './compositor';
 import { GpuCore } from './core';
@@ -26,7 +26,7 @@ export type ViewColors = {
 export type FrameStats = { cpuMs: number; gpuMs: number; effectRuns: number };
 
 /** Prüfansicht über dem Ergebnis: Maske (rot = ausgeblendet) oder Fokuskarte */
-export type Overlay = { layerId: string; kind: 'mask' | 'focus' };
+export type Overlay = { layerId: string; kind: 'mask' | 'focus' | 'depth' };
 
 const VIEW_UNIFORM_FLOATS = 24;
 
@@ -135,6 +135,7 @@ export class Engine {
     colors: ViewColors,
     splitX: number | null,
     overlay: Overlay | null = null,
+    parallax: [number, number] | null = null,
   ): void {
     const t0 = performance.now();
     let effectRuns = 0;
@@ -153,6 +154,9 @@ export class Engine {
         ...base,
         ignoreEffects: false,
         variant: 'after',
+        ...(parallax
+          ? { parallax: [parallax[0] * base.scale, parallax[1] * base.scale] as [number, number] }
+          : {}),
       });
       const before =
         splitX !== null
@@ -173,7 +177,7 @@ export class Engine {
         });
         if (tex) {
           this.lastOverlay = tex;
-          this.overlayKind = overlay.kind === 'mask' ? 1 : 2;
+          this.overlayKind = { mask: 1, focus: 2, depth: 3 }[overlay.kind];
         }
       }
       this.drawInto(frame, project, view, dpr, colors, splitX);
@@ -450,6 +454,75 @@ export class Engine {
     }
     buffer.unmap();
     buffer.destroy();
+    return out;
+  }
+
+  /**
+   * Aufbereitete Maske einer Ebene in voller Auflösung als 8-Bit-Werte (für PSD-Ebenenmasken);
+   * null bei Ebenen ohne Maske.
+   */
+  async layerMask(project: Project, layerId: string): Promise<Uint8Array | null> {
+    const layer = findNode(project.root, layerId);
+    if (layer?.kind !== 'layer' || layer.mask.kind === 'full') return null;
+    const { width: W, height: H } = project.canvas;
+    const frame = new Frame(this.device, this.core.pool, 'psd-mask');
+    const tex = this.compositor.overlay(frame, project, layerId, 'mask', {
+      scale: 1,
+      canvasSize: [W, H],
+      region: { x: 0, y: 0, width: W, height: H },
+      ignoreEffects: false,
+      cache: null,
+      variant: 'psd',
+    });
+    frame.submit();
+    this.sources.endFrame();
+    if (!tex) return null;
+    const u16 = await this.readR16(tex);
+    const out = new Uint8Array(u16.length);
+    for (let i = 0; i < u16.length; i++) out[i] = Math.round((u16[i] ?? 0) / 257);
+    return out;
+  }
+
+  /** Miniaturen einzelner Knoten (Ebene bzw. zusammengesetzte Gruppe), unabhängig von der Sichtbarkeit. */
+  async nodeThumbnails(project: Project, ids: string[], edge = 44): Promise<Map<string, ImageData>> {
+    const out = new Map<string, ImageData>();
+    const s = Math.min(1, edge / Math.max(project.canvas.width, project.canvas.height));
+    const w = Math.max(1, Math.round(project.canvas.width * s));
+    const h = Math.max(1, Math.round(project.canvas.height * s));
+    for (const id of ids) {
+      const node = findNode(project.root, id);
+      if (!node) continue;
+      const visible = { ...node, visible: true } as SceneNode;
+      const root: Group =
+        visible.kind === 'group'
+          ? visible
+          : {
+              ...project.root,
+              id: `thumb-${id}`,
+              children: [visible],
+              effects: [],
+              opacity: 1,
+              visible: true,
+            };
+      const frame = new Frame(this.device, this.core.pool, 'thumbnail');
+      const res = this.compositor.render(
+        frame,
+        { ...project, root },
+        {
+          scale: s,
+          canvasSize: [w, h],
+          region: { x: 0, y: 0, width: w, height: h },
+          ignoreEffects: false,
+          cache: null,
+          variant: 'thumb',
+        },
+      );
+      frame.submit();
+      this.sources.endFrame();
+      const pixels = await this.encode(res.tex, [0, 0], w, h);
+      if (res.owned) this.core.pool.release(res.tex);
+      out.set(id, new ImageData(pixels, w, h));
+    }
     return out;
   }
 }

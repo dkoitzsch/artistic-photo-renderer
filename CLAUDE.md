@@ -9,7 +9,8 @@ Abweichungen nur mit Eintrag in [DECISIONS.md](DECISIONS.md) und Hinweis an den 
 
 ## Status
 
-Abgeschlossen: **Phase 0 – Gerüst**, **Phase 1 – Ganzes Bild**, **Phase 2 – Vordergrund, Fokus, Schatten**. Nächste: Phase 3 (wartet auf Freigabe). Erledigte Punkte werden in der Spec abgehakt.
+Abgeschlossen: **Phase 0 – Gerüst**, **Phase 1 – Ganzes Bild**, **Phase 2 – Vordergrund, Fokus, Schatten**,
+**Phase 3 – Tiefenebenen und Gruppen**. Nächste: Phase 4 (wartet auf Freigabe). Erledigte Punkte werden in der Spec abgehakt.
 
 ## Ordnerstruktur (✓ = existiert)
 
@@ -76,7 +77,7 @@ Node ≥ 22.12 (`.nvmrc`). Dev-Server auf **Port 5317** (5173 ist auf diesem Rec
 Phasen-Abschluss: `npm run lint && npm run typecheck && npm test && npm run test:service && npm run build && npm run test:e2e`
 (E2E mit Modellen braucht einmalig `npm run models:fetch`, sonst werden diese Tests übersprungen.)
 
-## Architektur (Stand Phase 2)
+## Architektur (Stand Phase 3)
 
 **Datenfluss:** UI → Befehl (`state/commands.ts`) → History (`state/history.ts`, unveränderliche Schnappschüsse) →
 Zustand-Store → `CanvasView` ruft pro Frame `Engine.present()` → Compositor rendert nur Geändertes → Anzeige.
@@ -116,6 +117,19 @@ Autosave (`io/autosave.ts`) beobachtet den Store und schreibt ins OPFS.
 - `ml/downloads.ts` – Download-Manager im ML-Worker (OPFS `.part`, Range-Fortsetzen, SHA-256); Zustand → Store
   `downloads` → Dialog „Modelle“ (`app/components/ModelsDialog.tsx`) und Anzeige in der oberen Leiste.
 
+**Phase 3:**
+
+- Tiefe: `ml/depth.ts` (Tiefenkarte berechnen/cachen, Gruppe „Tiefenebenen“ bauen), `ml/depthBands.ts` (Histogramm, Quantile,
+  k-Means, Preset-Werte), Dialog `app/components/DepthSplit.tsx` (Histogramm mit Griffen, farbige Bandvorschau).
+  Maskenart `depth` → `core.depthBand` (Shader `maskops.wgsl` Einstieg `band`); Lochfüllung bis `fillBelow`.
+  Tiefenkarten: `Layer.depthMap`, OPFS `depth/`, Projektdatei `depth/<id>.png`, Ansicht „Tiefe“ (Taste 4).
+  Dienst: `POST /depth`. Plugin `effects/haze` (Dunst).
+- Gruppen: `state/project.ts` (`setParamInGroup`, `moveNode`, `wrapInGroup`, `ungroup`), Befehle in `state/commands.ts`
+  (Gruppenmodus propagiert in `setParamCommand`), `app/components/GroupSections.tsx` (gemeinsame Regler),
+  Schloss je Parameter in `EffectCard`, Baum mit Ziehen in `app/components/LayerList.tsx`.
+- Parallax: Store `parallax`, `ParallaxPanel.tsx`, Versatz im Blend-Shader (`blend.wgsl` `offset`), Taste P.
+- Export: `io/export.ts` (Dialog-Formate PNG/JPEG/WebP/PSD, NC-Warnung), `io/psd.ts` (ag-psd, lazy geladen).
+
 **Neuen Effekt anlegen:** siehe [effects/README.md](effects/README.md) – nur einen Ordner unter `effects/` anlegen.
 
 ## Referenz-Hardware
@@ -146,4 +160,7 @@ Eine neue Phase beginnt nur nach ausdrücklicher Freigabe durch den Nutzer.
   Änderungen an bestehenden Plugin-Dateien laden ohne Neuladen nach. Ein Produktions-Build braucht für neue Plugins einen Neubau.
 - Die Anzeige zeigt die Vorschau (≤ 2048 px); bei starkem Hineinzoomen in größere Bilder sieht man Vorschau-Pixel.
 - Ist der Dienst aus, meldet die Browser-Konsole alle 20 s einen fehlgeschlagenen `/health`-Aufruf (ML-Modus „Browser“ vermeidet das).
+- Tiefenebenen „objekttreu“ (SAM) fehlt noch (Phase 5/6). Die Tiefe einer Ebene ist für Parallax die Bandmitte.
+- PSD: 8 Bit sRGB; Ebenen enthalten ihre Effekte (nicht nachträglich änderbar), Masken nur als deaktivierte Ebenenmasken;
+  Gruppen mit eigenen Effekten werden zu einer Ebene. An weichen Bandkanten mischen PSD-Programme minimal anders (8-Bit-sRGB).
 - Browser-Kürzel (⌘0, ⌘E, ⌘O, ⌘S) werden per `preventDefault` abgefangen; in Playwright getestet, im echten Chrome manuell zu prüfen.

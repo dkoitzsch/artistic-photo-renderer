@@ -129,7 +129,7 @@ export class GpuCore {
       'maskops',
       maskopsWgsl,
       ['uniform', 'tex', 'storage'],
-      ['load', 'minmax', 'threshold', 'curve'],
+      ['load', 'minmax', 'threshold', 'curve', 'band'],
     );
     this.guided = new ModulePipelines(
       device,
@@ -218,10 +218,12 @@ export class GpuCore {
     dst: GPUTexture,
     opacity: number,
     mode: BlendMode = 'normal',
+    offset: [number, number] = [0, 0],
   ): void {
-    const u = new ArrayBuffer(16);
+    const u = new ArrayBuffer(32);
     new Float32Array(u, 0, 1)[0] = opacity;
     new Uint32Array(u, 4, 2).set([BLEND_MODE_INDEX[mode], base ? 1 : 0]);
+    new Float32Array(u, 16, 2).set(offset);
     const bg = this.bind(this.blendPipeline, [
       { buffer: frame.uniform(u) },
       (base ?? layer).createView(),
@@ -374,6 +376,32 @@ export class GpuCore {
     this.maskRun(frame, 'curve', cur, dst, this.maskUniform(frame, { curve: curveIndex }));
     this.pool.release(a);
     this.pool.release(b);
+  }
+
+  /**
+   * Tiefenband als Maske: [near, far] aus der Tiefenkarte, um overlap px erweitert und weich auslaufend.
+   * Ergebnis (r) in Größe von dst.
+   */
+  depthBand(
+    frame: Frame,
+    depth: GPUTexture,
+    near: number,
+    far: number,
+    overlapPx: number,
+    dst: GPUTexture,
+  ): void {
+    const { width, height } = dst;
+    const a = this.pool.acquire(width, height, 'band-a');
+    this.maskRun(frame, 'band', depth, a, this.maskUniform(frame, { dir: [near, far], radius: 0.004 }));
+    if (overlapPx >= 0.5) {
+      const b = this.pool.acquire(width, height, 'band-b');
+      this.dilateMask(frame, a, b, overlapPx);
+      this.gaussian(frame, b, dst, overlapPx, 'clamp');
+      this.pool.release(b);
+    } else {
+      this.maskRun(frame, 'curve', a, dst, this.maskUniform(frame, {}));
+    }
+    this.pool.release(a);
   }
 
   /** Erweitert eine Maske (r) um radius px (Max-Filter). */

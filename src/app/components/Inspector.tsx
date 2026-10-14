@@ -1,12 +1,21 @@
 import { useState, type DragEvent } from 'react';
 import { moveEffectCommand, targetNodeId } from '../../state/commands';
-import { findHost, type EffectInstance } from '../../state/project';
+import { findHost, parentOf, type EffectInstance } from '../../state/project';
+import { GroupEditSection } from './GroupSections';
 import { useAppStore, useProject } from '../../state/store';
 import { EFFECT_DRAG_TYPE, EffectCard } from './EffectCard';
 import { PlusIcon } from './Icons';
 import { FocusSection, MaskSection, NodeSection, ShadowParams, ShadowSection } from './LayerSections';
 
-function EffectStack({ hostId, effects }: { hostId: string; effects: EffectInstance[] }) {
+function EffectStack({
+  hostId,
+  effects,
+  groupMode = false,
+}: {
+  hostId: string;
+  effects: EffectInstance[];
+  groupMode?: boolean;
+}) {
   const setBrowserOpen = useAppStore((s) => s.setEffectBrowserOpen);
   const [drop, setDrop] = useState<{ index: number; side: 'before' | 'after' } | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
@@ -28,6 +37,7 @@ function EffectStack({ hostId, effects }: { hostId: string; effects: EffectInsta
             key={fx.instanceId}
             nodeId={hostId}
             effect={fx}
+            groupMode={groupMode}
             dropIndicator={drop?.index === i && dragId !== fx.instanceId ? drop.side : null}
             onDragStart={(e) => {
               e.dataTransfer.setData(EFFECT_DRAG_TYPE, fx.instanceId);
@@ -92,6 +102,7 @@ export function Inspector() {
     );
   }
   if (!('kind' in host)) return null;
+  const inGroupMode = parentOf(project.root, host.id)?.editMode === 'group';
 
   return (
     <div className="inspector-body">
@@ -107,8 +118,13 @@ export function Inspector() {
           <ShadowSection key={`shadow-${host.id}`} layer={host} />
         </>
       )}
-      <h3 className="section-title">Effekte</h3>
-      <EffectStack hostId={hostId} effects={host.effects} />
+      {host.kind === 'group' && host.id !== project.root.id && (
+        <GroupEditSection key={`group-${host.id}`} group={host} />
+      )}
+      <h3 className="section-title">
+        {host.kind === 'group' ? 'Effekte auf das Gruppenergebnis' : 'Effekte'}
+      </h3>
+      <EffectStack hostId={hostId} effects={host.effects} groupMode={inGroupMode} />
     </div>
   );
 }

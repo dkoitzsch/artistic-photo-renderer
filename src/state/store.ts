@@ -40,10 +40,24 @@ export type ServiceStatus = { state: 'unknown' | 'online' | 'offline'; info?: Se
 /** Laufende ML-Aufgabe (Fortschritt in der unteren Leiste) */
 export type MlTask = { id: number; label: string; detail: string; progress: number | null };
 
-export type ViewMode = 'result' | 'mask' | 'focus';
+export type ViewMode = 'result' | 'mask' | 'focus' | 'depth';
+
+/** Parallax-Vorschau (verändert das Projekt nicht) */
+export type ParallaxState = {
+  enabled: boolean;
+  /** 0…100 % */
+  strength: number;
+  axis: 'both' | 'horizontal' | 'vertical';
+  /** Zeigerposition relativ zur Leinwandmitte, −1…1 */
+  pointer: [number, number];
+};
 export type Tool = 'move' | 'focus';
 
-export type ExportWarning = { layers: { id: string; name: string; modelId: string }[] };
+export type ExportWarning = {
+  layers: { id: string; name: string; modelId: string }[];
+  /** gewählter Export, der nach Bestätigung ausgeführt wird */
+  options?: import('../io/export').ExportOptions;
+};
 
 type AppState = {
   gpu: GpuStatus;
@@ -74,6 +88,8 @@ type AppState = {
   /** Browser-Modelldateien (Download-Manager im ML-Worker) */
   downloads: Record<string, DownloadState>;
   modelsOpen: boolean;
+  parallax: ParallaxState;
+  exportOpen: boolean;
 
   setGpu: (gpu: GpuStatus) => void;
   setScreen: (screen: AppState['screen']) => void;
@@ -101,6 +117,8 @@ type AppState = {
   setExportWarning: (w: ExportWarning | null) => void;
   setDownloads: (states: DownloadState[]) => void;
   setModelsOpen: (open: boolean) => void;
+  setParallax: (patch: Partial<ParallaxState>) => void;
+  setExportOpen: (open: boolean) => void;
 };
 
 let nextNoticeId = 1;
@@ -132,6 +150,8 @@ export const useAppStore = create<AppState>()((set) => ({
   exportWarning: null,
   downloads: {},
   modelsOpen: false,
+  parallax: { enabled: false, strength: 50, axis: 'both', pointer: [0, 0] },
+  exportOpen: false,
 
   setGpu: (gpu) => set({ gpu }),
   setScreen: (screen) => set({ screen }),
@@ -165,6 +185,8 @@ export const useAppStore = create<AppState>()((set) => ({
   setExportWarning: (exportWarning) => set({ exportWarning }),
   setDownloads: (states) => set({ downloads: Object.fromEntries(states.map((d) => [d.name, d])) }),
   setModelsOpen: (modelsOpen) => set({ modelsOpen }),
+  setParallax: (patch) => set((s) => ({ parallax: { ...s.parallax, ...patch } })),
+  setExportOpen: (exportOpen) => set({ exportOpen }),
 }));
 
 /** Aktuelles Projekt (Gegenwart der History) oder null. */

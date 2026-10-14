@@ -197,3 +197,22 @@ export const ShadowIcon = () => (
     <path d="M14 18c4 0 7-1.3 7-3s-2-2.5-4-2.8" opacity="0.6" />
   </Icon>
 );
+export const LockIcon = () => (
+  <Icon>
+    <rect x="5" y="11" width="14" height="10" rx="2" />
+    <path d="M8 11V7a4 4 0 018 0v4" />
+  </Icon>
+);
+export const UnlockIcon = () => (
+  <Icon>
+    <rect x="5" y="11" width="14" height="10" rx="2" />
+    <path d="M8 11V7a4 4 0 017.5-2" />
+  </Icon>
+);
+export const ParallaxIcon = () => (
+  <Icon>
+    <rect x="3" y="7" width="12" height="10" rx="1.5" />
+    <rect x="9" y="4" width="12" height="10" rx="1.5" opacity="0.55" />
+    <path d="M2 21h6M16 21h6" />
+  </Icon>
+);

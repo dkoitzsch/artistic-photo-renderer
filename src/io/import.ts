@@ -2,13 +2,29 @@
 
 import { getEngine } from '../render/runtime';
 import { openProject } from '../state/commands';
-import { createProjectFromImage, maskIds, newId, type OriginalRef, type Project } from '../state/project';
+import {
+  createProjectFromImage,
+  depthIds,
+  maskIds,
+  newId,
+  type OriginalRef,
+  type Project,
+} from '../state/project';
 import { decodeMaskPng } from './maskCodec';
 import { useAppStore } from '../state/store';
 import { fitToViewport } from '../state/viewActions';
 import { sha256Hex } from './hash';
 import { PROJECT_EXTENSION, unpackProject } from './projectFile';
-import { loadMask, loadOriginal, loadProject, saveMask, saveOriginal, saveProject } from './storage';
+import {
+  loadDepth,
+  loadMask,
+  loadOriginal,
+  loadProject,
+  saveDepth,
+  saveMask,
+  saveOriginal,
+  saveProject,
+} from './storage';
 
 export const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 export const ACCEPT_ATTRIBUTE = [...ACCEPTED_TYPES, PROJECT_EXTENSION].join(',');
@@ -34,6 +50,7 @@ export async function uploadAssets(
   project: Project,
   getOriginal: (o: OriginalRef) => Promise<Blob | null>,
   getMask: Bytes = loadMask,
+  getDepth: Bytes = loadDepth,
 ): Promise<void> {
   const engine = getEngine();
   if (!engine) throw new Error('WebGPU ist nicht verfügbar.');
@@ -53,7 +70,15 @@ export async function uploadAssets(
     const m = decodeMaskPng(bytes);
     engine.sources.addMask(id, m.width, m.height, m.data);
   }
-  engine.sources.retainOnly(new Set(Object.keys(project.originals)), masks);
+  const depth = depthIds(project);
+  for (const id of depth) {
+    if (engine.sources.hasMask(id)) continue;
+    const bytes = await getDepth(id);
+    if (!bytes) throw new Error(`Tiefenkarte ${id.slice(0, 8)} fehlt im lokalen Speicher.`);
+    const m = decodeMaskPng(bytes);
+    engine.sources.addMask(id, m.width, m.height, m.data);
+  }
+  engine.sources.retainOnly(new Set(Object.keys(project.originals)), new Set([...masks, ...depth]));
 }
 
 function show(project: Project): void {
@@ -145,13 +170,19 @@ export async function openProjectFile(file: File): Promise<boolean> {
   if (!guard()) return false;
   setBusy(`${file.name} wird geöffnet …`);
   try {
-    const { project: loaded, originals, masks } = unpackProject(new Uint8Array(await file.arrayBuffer()));
+    const {
+      project: loaded,
+      originals,
+      masks,
+      depth,
+    } = unpackProject(new Uint8Array(await file.arrayBuffer()));
     for (const [id, bytes] of originals) {
       if ((await sha256Hex(bytes)) !== id)
         throw new Error('Ein Original ist beschädigt (Prüfsumme stimmt nicht).');
       await saveOriginal(id, bytes);
     }
     for (const [id, bytes] of masks) await saveMask(id, bytes);
+    for (const [id, bytes] of depth) await saveDepth(id, bytes);
     const project: Project = { ...loaded, id: newId(), updatedAt: new Date().toISOString() };
     await uploadAssets(project, (o) => {
       const b = originals.get(o.id);

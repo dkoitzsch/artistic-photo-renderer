@@ -4,6 +4,7 @@
 import { getPlugin } from '../effects/pluginStore';
 import {
   findNode,
+  walk,
   type BlendMode,
   type EffectInstance,
   type Group,
@@ -27,6 +28,8 @@ export type RenderOptions = {
   region: Rect;
   /** "Vorher"-Ansicht: alle Effekte aus */
   ignoreEffects: boolean;
+  /** Parallax-Vorschau: Versatz in Render-px je Einheit (0,5 − Tiefe); nur Ebenen mit Tiefe */
+  parallax?: [number, number];
   cache: ResultCache | null;
   /** trennt Cache-Einträge (z. B. "after" / "before") */
   variant: string;
@@ -82,6 +85,15 @@ function findLayer(project: Project, id: string): Layer | undefined {
   return n?.kind === 'layer' ? n : undefined;
 }
 
+/** Ebene mit Tiefenkarte: die Ebene selbst oder (bei einer Gruppe) die erste Unterebene mit Tiefenkarte. */
+function findDepthLayer(project: Project, id: string): Layer | undefined {
+  const n = findNode(project.root, id);
+  if (!n) return undefined;
+  if (n.kind === 'layer') return n;
+  for (const c of walk(n)) if (c.kind === 'layer' && c.depthMap) return c;
+  return undefined;
+}
+
 const isWhole = (r: Rect, [w, h]: [number, number]) =>
   r.x === 0 && r.y === 0 && r.width === w && r.height === h;
 
@@ -113,9 +125,13 @@ export class Compositor {
     frame: Frame,
     project: Project,
     layerId: string,
-    kind: 'mask' | 'focus',
+    kind: 'mask' | 'focus' | 'depth',
     opts: RenderOptions,
   ): GPUTexture | null {
+    if (kind === 'depth') {
+      const d = findDepthLayer(project, layerId);
+      return d ? this.depthTexture(frame, d, opts) : null;
+    }
     const layer = findLayer(project, layerId);
     if (!layer) return null;
     if (kind === 'mask') {
@@ -167,31 +183,52 @@ export class Compositor {
     opts: RenderOptions,
   ): { tex: GPUTexture; key: string } | null {
     const m = layer.mask;
-    if (m.kind !== 'stored') return null;
+    if (m.kind === 'full') return null;
     const [cw, ch] = opts.canvasSize;
-    const key = `mask|${m.id}@${cw}x${ch}|${m.inverted ? 'inv' : ''}|${JSON.stringify(layer.maskEdge)}|${opts.scale}`;
+    const edgeKey = `${JSON.stringify(layer.maskEdge)}|${opts.scale}`;
+    if (m.kind === 'stored') {
+      const key = `mask|${m.id}@${cw}x${ch}|${m.inverted ? 'inv' : ''}|${edgeKey}`;
+      const tex = this.sources.derive(key, cw, ch, (out) => {
+        this.core.processMask(frame, this.sources.mask(m.id), m.inverted, layer.maskEdge, opts.scale, out);
+      });
+      return { tex, key };
+    }
+    // Tiefenband
+    const key = `mask|${m.depthId}@${cw}x${ch}|band${m.near},${m.far},${m.overlap}|${edgeKey}`;
     const tex = this.sources.derive(key, cw, ch, (out) => {
-      this.core.processMask(frame, this.sources.mask(m.id), m.inverted, layer.maskEdge, opts.scale, out);
+      const band = this.core.pool.acquire(cw, ch, 'band');
+      this.core.depthBand(frame, this.sources.mask(m.depthId), m.near, m.far, m.overlap * opts.scale, band);
+      this.core.processMask(frame, band, false, layer.maskEdge, opts.scale, out);
+      this.core.pool.release(band);
     });
     return { tex, key };
   }
 
-  /** Lochgefülltes Original (Loch = nicht invertierte Maske, leicht erweitert), gecacht. */
+  /**
+   * Lochgefülltes Original, gecacht. Loch: bei gespeicherter Maske der ausgeblendete Bereich,
+   * bei Tiefenbändern alles, was näher als fillBelow liegt (Inhalte vorderer Ebenen); leicht erweitert.
+   */
   private filledSource(
     frame: Frame,
     layer: Layer,
     opts: RenderOptions,
   ): { tex: GPUTexture; key: string } | null {
     const m = layer.mask;
-    if (m.kind !== 'stored') return null;
+    if (m.kind === 'full') return null;
+    if (m.kind === 'depth' && m.fillBelow <= 0) return null;
     const [cw, ch] = opts.canvasSize;
-    // Loch = Bereich der Maske, die die Ebene ausblendet
-    const key = `fill|${layer.originalId}+${m.id}@${cw}x${ch}|${m.inverted ? 'inv' : ''}`;
+    const holeId = m.kind === 'stored' ? m.id : m.depthId;
+    const holeKey = m.kind === 'stored' ? (m.inverted ? 'inv' : '') : `below${m.fillBelow}`;
+    const key = `fill|${layer.originalId}+${holeId}@${cw}x${ch}|${holeKey}`;
     const tex = this.sources.derive(key, cw, ch, (out) => {
       const hole = this.core.pool.acquire(cw, ch, 'hole');
       const grown = this.core.pool.acquire(cw, ch, 'hole-grown');
-      // invertierte Ebenenmaske (Hintergrund) → das Loch ist die ursprüngliche Maske
-      this.core.loadMask(frame, this.sources.mask(m.id), hole, !m.inverted);
+      if (m.kind === 'stored') {
+        // invertierte Ebenenmaske (Hintergrund) → das Loch ist die ursprüngliche Maske
+        this.core.loadMask(frame, this.sources.mask(m.id), hole, !m.inverted);
+      } else {
+        this.core.depthBand(frame, this.sources.mask(m.depthId), 0, m.fillBelow, 0, hole);
+      }
       this.core.dilateMask(frame, hole, grown, Math.max(2, 0.004 * Math.max(cw, ch)));
       this.core.holeFill(frame, this.sources.at(frame, layer.originalId, cw, ch), grown, out);
       this.core.pool.release(hole);
@@ -200,12 +237,30 @@ export class Compositor {
     return { tex, key };
   }
 
-  private auxFor(frame: Frame, layer: Layer, maskTex: GPUTexture | null, opts: RenderOptions): AuxProvider {
+  /** Tiefenkarte einer Ebene in Leinwandgröße (für Effekte und die Ansicht „Tiefe“), gecacht. */
+  private depthTexture(frame: Frame, layer: Layer, opts: RenderOptions): GPUTexture | null {
+    const id = layer.depthMap?.id ?? (layer.mask.kind === 'depth' ? layer.mask.depthId : null);
+    if (!id || !this.sources.hasMask(id)) return null;
+    const [cw, ch] = opts.canvasSize;
+    return this.sources.derive(`depth|${id}@${cw}x${ch}`, cw, ch, (out) => {
+      this.core.loadMask(frame, this.sources.mask(id), out);
+    });
+  }
+
+  private auxFor(
+    frame: Frame,
+    layer: Layer,
+    maskTex: GPUTexture | null,
+    depthTex: GPUTexture | null,
+    opts: RenderOptions,
+  ): AuxProvider {
     const points = (layer.focusMap?.points ?? []).filter((p) => p.enabled && p.radius > 0);
     const owned: GPUTexture[] = [];
     let aux: Aux | null = null;
     return {
-      key: points.length ? `focus${JSON.stringify(points.map((p) => [p.x, p.y, p.radius]))}` : 'nofocus',
+      key:
+        (points.length ? `focus${JSON.stringify(points.map((p) => [p.x, p.y, p.radius]))}` : 'nofocus') +
+        (depthTex ? `|depth${layer.depthMap?.id ?? ''}` : ''),
       get: () => {
         if (aux) return aux;
         let mask = this.core.white;
@@ -220,7 +275,13 @@ export class Compositor {
           owned.push(focus);
           this.core.focusMap(frame, points, focus, [opts.region.x, opts.region.y], opts.scale);
         }
-        aux = { mask, focus, depth: this.core.black, hasFocus: points.length > 0 };
+        let depth = this.core.black;
+        if (depthTex) {
+          const r = this.region(frame, depthTex, opts, 'depth-region');
+          if (r.owned) owned.push(r.tex);
+          depth = r.tex;
+        }
+        aux = { mask, focus, depth, hasFocus: points.length > 0 };
         return aux;
       },
       release: () => {
@@ -242,7 +303,8 @@ export class Compositor {
     const filled = layer.holeFill ? this.filledSource(frame, layer, opts) : null;
     const base = filled?.tex ?? this.sources.at(frame, layer.originalId, cw, ch);
     const baseKey = filled?.key ?? `${layer.originalId}@${cw}x${ch}`;
-    const mask = filled ? null : this.processedMask(frame, layer, opts);
+    // Gespeicherte Maske + Lochfüllung: Ebene wird deckend (Hintergrund). Tiefenband: gefüllt UND maskiert.
+    const mask = filled && layer.mask.kind === 'stored' ? null : this.processedMask(frame, layer, opts);
 
     const baseRegion = this.region(frame, base, opts, 'region');
     let src: RenderResult = { tex: baseRegion.tex, key: baseKey + regionKey, owned: baseRegion.owned };
@@ -266,7 +328,7 @@ export class Compositor {
       }
     }
 
-    const aux = this.auxFor(frame, layer, mask?.tex ?? null, opts);
+    const aux = this.auxFor(frame, layer, mask?.tex ?? null, this.depthTexture(frame, layer, opts), opts);
     let shadow: RenderResult | null = null;
     const sh = layer.shadow;
     if (sh?.visible && !opts.ignoreEffects) {
@@ -291,25 +353,39 @@ export class Compositor {
   }
 
   private group(frame: Frame, group: Group, opts: RenderOptions): RenderResult | null {
-    const parts: { res: RenderResult; opacity: number; blend: BlendMode }[] = [];
+    const parts: { res: RenderResult; opacity: number; blend: BlendMode; offset: [number, number] }[] = [];
+    const px = opts.parallax;
+    const offsetOf = (n: SceneNode): [number, number] => {
+      if (!px || n.kind !== 'layer' || n.depth === undefined) return [0, 0];
+      const k = 0.5 - n.depth;
+      return [px[0] * k, px[1] * k];
+    };
     for (const child of group.children) {
       if (!child.visible) continue;
       if (child.kind === 'layer') {
         const { result, shadow } = this.layer(frame, child, opts);
+        const offset = offsetOf(child);
         if (shadow && child.shadow)
-          parts.push({ res: shadow, opacity: child.shadow.opacity, blend: child.shadow.blendMode });
-        parts.push({ res: result, opacity: child.opacity, blend: child.blendMode });
+          parts.push({ res: shadow, opacity: child.shadow.opacity, blend: child.shadow.blendMode, offset });
+        parts.push({ res: result, opacity: child.opacity, blend: child.blendMode, offset });
       } else {
         const res = this.group(frame, child, opts);
-        if (res) parts.push({ res, opacity: child.opacity, blend: child.blendMode });
+        if (res) parts.push({ res, opacity: child.opacity, blend: child.blendMode, offset: [0, 0] });
       }
     }
     let comp: RenderResult;
     const first = parts[0];
-    if (parts.length === 1 && first && first.opacity >= 1 && first.blend === 'normal') {
+    if (
+      parts.length === 1 &&
+      first &&
+      first.opacity >= 1 &&
+      first.blend === 'normal' &&
+      first.offset[0] === 0 &&
+      first.offset[1] === 0
+    ) {
       comp = first.res;
     } else {
-      const key = `group(${parts.map((p) => `${p.res.key}*${p.opacity}${p.blend}`).join(',')})`;
+      const key = `group(${parts.map((p) => `${p.res.key}*${p.opacity}${p.blend}${p.offset.join(':')}`).join(',')})`;
       const slot = `${opts.variant}:${group.id}:comp`;
       const cached = opts.cache?.get(slot, key);
       if (cached) {
@@ -320,7 +396,7 @@ export class Compositor {
         let base: GPUTexture | null = null;
         for (const p of parts) {
           const out = this.core.pool.acquire(width, height, 'composite');
-          this.core.blend(frame, base, p.res.tex, out, p.opacity, p.blend);
+          this.core.blend(frame, base, p.res.tex, out, p.opacity, p.blend, p.offset);
           if (base) this.core.pool.release(base);
           this.release(p.res);
           base = out;

@@ -21,5 +21,6 @@ npm run test:service   # pytest
 | ---------------------------- | ------------------------------------------- | -------------------------------------------------- |
 | `GET /health?license_mode=…` | –                                           | Gerät, Version, je Modell Lizenz/geladen/verfügbar |
 | `POST /segment/foreground`   | multipart: `image`, `model`, `license_mode` | Job `{ id, status, progress }`                     |
+| `POST /depth`                | multipart: `image`, `model`, `license_mode` | Job; Ergebnis: Tiefe als 16-Bit-PNG (0 = nah)      |
 | `GET /jobs/{id}`             | –                                           | Status und Fortschritt                             |
 | `GET /jobs/{id}/result`      | –                                           | Maske als 16-Bit-PNG in Originalgröße              |

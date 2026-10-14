@@ -9,7 +9,7 @@ import { initRuntime } from '../render/runtime';
 import { useAppStore } from '../state/store';
 import { BottomPanel } from './components/BottomPanel';
 import { CanvasView } from './components/CanvasView';
-import { ExportWarningDialog, SettingsDialog, SplitDialog } from './components/Dialogs';
+import { ExportDialog, ExportWarningDialog, SettingsDialog, SplitDialog } from './components/Dialogs';
 import { EffectBrowser } from './components/EffectBrowser';
 import { ModelsDialog } from './components/ModelsDialog';
 import { ProjectOverview } from './components/ProjectOverview';
@@ -76,6 +76,7 @@ export function App() {
       <SplitDialog />
       <SettingsDialog />
       <ExportWarningDialog />
+      <ExportDialog />
       <ModelsDialog />
     </div>
   );

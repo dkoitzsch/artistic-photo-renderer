@@ -1,4 +1,5 @@
-// Masken-Operationen (Kanal r): Min/Max (Schrumpfen/Erweitern), Schwelle, Kurve, Invertieren, Kanal-Kopie.
+// Masken-Operationen (Kanal r): Min/Max (Schrumpfen/Erweitern), Schwelle, Kurve, Invertieren, Kanal-Kopie,
+// Tiefenband aus einer Tiefenkarte.
 
 struct M {
   dir: vec2f,
@@ -67,6 +68,26 @@ fn threshold(@builtin(global_invocation_id) id: vec3u) {
   let gy = (value(p + vec2i(0, 1)) - value(p - vec2i(0, 1))) * 0.5;
   let w = max(length(vec2f(gx, gy)) * 0.75, 1e-3);
   put(id.xy, smoothstep(0.5 - w, 0.5 + w, v));
+}
+
+// Tiefenband [near, far] (dir.x, dir.y) mit weichem Übergang (radius = halbe Breite in Tiefeneinheiten).
+// near ≤ 0 bzw. far ≥ 1: keine untere bzw. obere Kante. Tiefenkarte wird bilinear auf dst skaliert.
+@compute @workgroup_size(8, 8)
+fn band(@builtin(global_invocation_id) id: vec3u) {
+  let size = textureDimensions(dst);
+  if (id.x >= size.x || id.y >= size.y) { return; }
+  let s = vec2f(textureDimensions(src));
+  let q = (vec2f(id.xy) + 0.5) * s / vec2f(size) - 0.5;
+  let i = vec2i(floor(q));
+  let f = q - floor(q);
+  let d = mix(mix(value(i), value(i + vec2i(1, 0)), f.x), mix(value(i + vec2i(0, 1)), value(i + vec2i(1, 1)), f.x), f.y);
+  let near = m.dir.x;
+  let far = m.dir.y;
+  let w = max(m.radius, 1e-4);
+  var v = 1.0;
+  if (near > 0.0) { v *= smoothstep(near - w, near + w, d); }
+  if (far < 1.0) { v *= 1.0 - smoothstep(far - w, far + w, d); }
+  put(id.xy, v);
 }
 
 @compute @workgroup_size(8, 8)

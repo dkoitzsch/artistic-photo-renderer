@@ -5,6 +5,8 @@ import { exportSettings, renderPng } from './io/export';
 import { encodeMaskPng } from './io/maskCodec';
 import { saveMask } from './io/storage';
 import { detectLandmarks } from './ml/backend';
+import { browserDepth } from './ml/browserBackend';
+import { modelById } from './ml/registry';
 import * as split from './ml/split';
 import { getEngine } from './render/runtime';
 import * as commands from './state/commands';
@@ -44,6 +46,6 @@ export function installDebugApi(): void {
     getEngine,
     exportSettings,
     renderPng,
-    ml: { detectLandmarks, split, splitWithMask },
+    ml: { detectLandmarks, split, splitWithMask, browserDepth, modelById },
   };
 }

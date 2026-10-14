@@ -31,6 +31,14 @@ export type WorkerRequest =
     }
   | { type: 'landmarks'; id: number; image: ImageBitmap; licenseMode: LicenseMode; mirror?: string | null }
   | {
+      type: 'depth';
+      id: number;
+      modelId: string;
+      licenseMode: LicenseMode;
+      image: ImageBitmap;
+      mirror?: string | null;
+    }
+  | {
       type: 'downloads';
       id: number;
       cmd: DownloadCommand;

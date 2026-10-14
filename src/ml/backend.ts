@@ -4,15 +4,22 @@
 import type { MaskData } from '../io/maskCodec';
 import type { LicenseMode } from '../state/project';
 import { useAppStore } from '../state/store';
-import { browserLandmarks, browserSegment } from './browserBackend';
+import { browserDepth, browserLandmarks, browserSegment } from './browserBackend';
 import type { LandmarkResult, Progress } from './protocol';
-import { assertAllowed, modelFor, type ModelEntry, type Runtime } from './registry';
+import { assertAllowed, modelFor, type ModelEntry, type ModelTask, type Runtime } from './registry';
 import { serviceHealth, serviceSegment } from './serviceBackend';
 
 export interface MlBackend {
   readonly runtime: Runtime;
   /** Vordergrundmaske. browser: Eingabe ≤ 1024 px; service: Originaldatei, Ergebnis in voller Auflösung */
   segmentForeground(
+    family: string,
+    input: { preview: () => Promise<ImageBitmap>; original: Blob },
+    licenseMode: LicenseMode,
+    onProgress: (p: Progress) => void,
+  ): Promise<{ mask: MaskData | { data: Float32Array; width: number; height: number }; model: ModelEntry }>;
+  /** Tiefenkarte 0 = nah … 1 = fern (Formate wie bei segmentForeground) */
+  estimateDepth(
     family: string,
     input: { preview: () => Promise<ImageBitmap>; original: Blob },
     licenseMode: LicenseMode,
@@ -29,6 +36,13 @@ export const BrowserBackend: MlBackend = {
     const r = await browserSegment(model, await input.preview(), licenseMode, onProgress);
     return { mask: { data: r.mask, width: r.width, height: r.height }, model };
   },
+  async estimateDepth(family, input, licenseMode, onProgress) {
+    const model = modelFor(family, 'browser', 'depth');
+    if (!model) throw new Error(`Kein Browser-Modell für ${family} – nur im ML-Dienst verfügbar.`);
+    assertAllowed(model, licenseMode);
+    const r = await browserDepth(model, await input.preview(), licenseMode, onProgress);
+    return { mask: { data: r.mask, width: r.width, height: r.height }, model };
+  },
 };
 
 export const ServiceBackend: MlBackend = {
@@ -38,6 +52,13 @@ export const ServiceBackend: MlBackend = {
     if (!model) throw new Error(`Kein Dienst-Modell für ${family}.`);
     assertAllowed(model, licenseMode);
     const mask = await serviceSegment(model, input.original, licenseMode, onProgress);
+    return { mask, model };
+  },
+  async estimateDepth(family, input, licenseMode, onProgress) {
+    const model = modelFor(family, 'service', 'depth');
+    if (!model) throw new Error(`Kein Dienst-Modell für ${family}.`);
+    assertAllowed(model, licenseMode);
+    const mask = await serviceSegment(model, input.original, licenseMode, onProgress, '/depth');
     return { mask, model };
   },
 };
@@ -99,9 +120,9 @@ export function startServiceMonitor(): () => void {
 }
 
 /** Bietet der Dienst ein (erlaubtes, verfügbares) Modell dieser Familie an? */
-function serviceOffers(family: string, licenseMode: LicenseMode): boolean {
+function serviceOffers(family: string, licenseMode: LicenseMode, task: ModelTask): boolean {
   const { service } = useAppStore.getState();
-  const model = modelFor(family, 'service', 'foreground');
+  const model = modelFor(family, 'service', task);
   if (service.state !== 'online' || !model) return false;
   if (!model.commercialUse && licenseMode !== 'all') return false;
   return service.info?.models.some((m) => m.id === model.id && m.available) ?? false;
@@ -110,9 +131,15 @@ function serviceOffers(family: string, licenseMode: LicenseMode): boolean {
 /**
  * Backends in Reihenfolge der Wahl. Auto: Dienst (falls online und Modell verfügbar), dann Browser.
  */
-export function backendsFor(family: string, licenseMode: LicenseMode): MlBackend[] {
+export function backendsFor(
+  family: string,
+  licenseMode: LicenseMode,
+  task: ModelTask = 'foreground',
+): MlBackend[] {
   const mode = useAppStore.getState().mlMode;
+  const hasBrowser = modelFor(family, 'browser', task) !== undefined;
   if (mode === 'browser') return [BrowserBackend];
   if (mode === 'service') return [ServiceBackend];
-  return serviceOffers(family, licenseMode) ? [ServiceBackend, BrowserBackend] : [BrowserBackend];
+  if (!hasBrowser) return [ServiceBackend];
+  return serviceOffers(family, licenseMode, task) ? [ServiceBackend, BrowserBackend] : [BrowserBackend];
 }

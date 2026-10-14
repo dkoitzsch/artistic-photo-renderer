@@ -9,6 +9,7 @@ import {
   setEffectEnabledCommand,
   setParamCommand,
   setStrengthCommand,
+  toggleDecoupledCommand,
 } from '../../state/commands';
 import type { EffectInstance } from '../../state/project';
 import { ParamControl } from '../controls/ParamControl';
@@ -19,8 +20,10 @@ import {
   EyeIcon,
   EyeOffIcon,
   GripIcon,
+  LockIcon,
   ResetIcon,
   TrashIcon,
+  UnlockIcon,
 } from './Icons';
 
 export const EFFECT_DRAG_TYPE = 'application/x-bls-effect';
@@ -32,7 +35,9 @@ export function EffectCard({
   onDragOver,
   onDrop,
   dropIndicator,
+  groupMode = false,
 }: {
+  groupMode?: boolean;
   nodeId: string;
   effect: EffectInstance;
   onDragStart: (e: DragEvent) => void;
@@ -156,17 +161,39 @@ export function EffectCard({
           )}
           {manifest.params
             .filter((p) => visible(p.key))
-            .map((spec) => (
-              <ParamControl
-                key={spec.key}
-                spec={spec}
-                value={effect.params[spec.key]}
-                onChange={(v, gesture) => {
-                  setParamCommand(nodeId, effect.instanceId, spec.key, v, gesture);
-                }}
-                onGestureEnd={endGesture}
-              />
-            ))}
+            .map((spec) => {
+              const locked = effect.decoupled?.includes(spec.key) ?? false;
+              return (
+                <div key={spec.key} className={`param-row${groupMode ? ' with-lock' : ''}`}>
+                  <ParamControl
+                    spec={spec}
+                    value={effect.params[spec.key]}
+                    onChange={(v, gesture) => {
+                      setParamCommand(nodeId, effect.instanceId, spec.key, v, gesture);
+                    }}
+                    onGestureEnd={endGesture}
+                  />
+                  {groupMode && (
+                    <button
+                      className={`icon-button small lock${locked ? ' active' : ''}`}
+                      title={
+                        locked
+                          ? 'Entkoppelt: Gruppenbearbeitung ändert diesen Wert nicht (klicken zum Koppeln)'
+                          : 'Gekoppelt an die Gruppe (klicken zum Entkoppeln)'
+                      }
+                      aria-label={`${spec.label} ${locked ? 'koppeln' : 'entkoppeln'}`}
+                      aria-pressed={locked}
+                      data-testid={`lock-${spec.key}`}
+                      onClick={() => {
+                        toggleDecoupledCommand(nodeId, effect.instanceId, spec.key);
+                      }}
+                    >
+                      {locked ? <LockIcon /> : <UnlockIcon />}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           <div className="effect-card-sep" />
           <Slider
             label="Mischung"

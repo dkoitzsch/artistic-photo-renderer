@@ -109,6 +109,11 @@ Weitere Hilfen: `ctx.gaussian(src, dst, radius, edge)` (Kern-Gauß), `ctx.hasFoc
 wichtig für kachelsichere Entscheidungen), `ctx.run(…, { srcB })` für Pässe mit zwei Eingängen.
 Beispiele: `effects/gaussian-blur/` (Pyramide, Fokus-Stapel), `effects/lens-blur/`, `effects/shadow/`.
 
+### Tiefenkarte nutzen
+
+Mit `depth` in `inputs` liefert `load_depth(p)` die Tiefe der Ebene (0 = nah, 1 = fern; ohne Tiefenkarte 0).
+Beispiel: `effects/haze/` („Dunst“) mischt mit `byDepth` zusätzlich pro Pixel nach Entfernung.
+
 ### Fokuskarte nutzen
 
 Effekte, die an Fokuspunkten schwächer wirken sollen, nehmen `focus` in `inputs` auf und Parameter wie

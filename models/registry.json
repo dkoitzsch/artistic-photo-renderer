@@ -96,6 +96,32 @@
       "checkedAt": "2026-10-14"
     },
     {
+      "id": "depth-anything-v2-small",
+      "family": "depth-anything-small",
+      "name": "Depth Anything V2 Small",
+      "task": "depth",
+      "runtime": "browser",
+      "license": "Apache-2.0",
+      "commercialUse": true,
+      "source": "https://huggingface.co/onnx-community/depth-anything-v2-small",
+      "revision": "4472b7362082ad9968fee890ca0f1e5aca36b93d",
+      "files": [
+        {
+          "name": "depth-anything-v2-small-fp16.onnx",
+          "url": "https://huggingface.co/onnx-community/depth-anything-v2-small/resolve/4472b7362082ad9968fee890ca0f1e5aca36b93d/onnx/model_fp16.onnx",
+          "sha256": "2df6223f206b5164e21f664ace61dabeb9bb6a49b8b5a3e00510b4807d0f5b04",
+          "size": 49642442
+        }
+      ],
+      "input": {
+        "size": 518,
+        "mean": [0.485, 0.456, 0.406],
+        "std": [0.229, 0.224, 0.225]
+      },
+      "output": "disparity",
+      "checkedAt": "2026-10-14"
+    },
+    {
       "id": "birefnet",
       "family": "birefnet",
       "name": "BiRefNet (voll)",
@@ -130,6 +156,44 @@
         "mean": [0.485, 0.456, 0.406],
         "std": [0.229, 0.224, 0.225]
       },
+      "checkedAt": "2026-10-14"
+    },
+    {
+      "id": "depth-anything-v2-small-hr",
+      "family": "depth-anything-small",
+      "name": "Depth Anything V2 Small (hohe Auflösung)",
+      "task": "depth",
+      "runtime": "service",
+      "license": "Apache-2.0",
+      "commercialUse": true,
+      "source": "https://huggingface.co/depth-anything/Depth-Anything-V2-Small-hf",
+      "revision": "5426e4f0f36572d16453bbda7a8389317b1bef99",
+      "hfRepo": "depth-anything/Depth-Anything-V2-Small-hf",
+      "input": {
+        "size": 1022,
+        "mean": [0.485, 0.456, 0.406],
+        "std": [0.229, 0.224, 0.225]
+      },
+      "output": "disparity",
+      "checkedAt": "2026-10-14"
+    },
+    {
+      "id": "depth-anything-v2-large",
+      "family": "depth-anything-large",
+      "name": "Depth Anything V2 Large",
+      "task": "depth",
+      "runtime": "service",
+      "license": "CC-BY-NC-4.0",
+      "commercialUse": false,
+      "source": "https://huggingface.co/depth-anything/Depth-Anything-V2-Large-hf",
+      "revision": "7581137eff8d4e94f6e796d3baea0e9fa79b22d2",
+      "hfRepo": "depth-anything/Depth-Anything-V2-Large-hf",
+      "input": {
+        "size": 1022,
+        "mean": [0.485, 0.456, 0.406],
+        "std": [0.229, 0.224, 0.225]
+      },
+      "output": "disparity",
       "checkedAt": "2026-10-14"
     }
   ],
@@ -168,6 +232,15 @@
       "license": "Apache-2.0",
       "commercialUse": true,
       "source": "https://pypi.org/project/transformers/",
+      "checkedAt": "2026-10-14"
+    },
+    {
+      "id": "ag-psd",
+      "version": "31.0.3",
+      "runtime": "browser",
+      "license": "MIT",
+      "commercialUse": true,
+      "source": "https://github.com/Agamnentzar/ag-psd",
       "checkedAt": "2026-10-14"
     }
   ]

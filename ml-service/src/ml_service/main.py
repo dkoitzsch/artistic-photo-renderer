@@ -40,7 +40,7 @@ class State:
         self.lock = threading.Lock()
         self.jobs = JobRunner()
         self._models = models
-        self.factory = factory or (lambda m, d, p: models.HfSegmenter(m, d, p))
+        self.factory = factory or models.make_model
         self.device = "test" if factory else models.pick_device()
         self.downloads = downloader or Downloader(models.CACHE_DIR / "models", token=models.hf_token)
         if prefetch:
@@ -180,6 +180,31 @@ def create_app(state: State | None = None) -> FastAPI:
         st.downloads.delete(m)
         st._models.remove_legacy(m)
         return st.download_info(m)
+
+    @app.post("/depth")
+    async def depth(
+        image: UploadFile = File(...),
+        model: str = Form("depth-anything-v2-small-hr"),
+        license_mode: str = Form("commercial"),
+    ) -> dict:
+        m = st.models.get(model)
+        if m is None or m.task != "depth":
+            raise HTTPException(404, f"Unbekanntes Tiefenmodell {model}")
+        if not is_allowed(m, license_mode):
+            raise HTTPException(403, f"{m.name} ist nur nicht-kommerziell nutzbar (Lizenzmodus „Kommerziell“).")
+        ok, note = st.available(m)
+        if not ok:
+            raise HTTPException(503, note or "Modell nicht verfügbar")
+        data = await image.read()
+
+        def run(progress: Callable[[float], None]) -> bytes:
+            img = decode_image(data)
+            progress(0.05)
+            depth_map = st.segmenter(m)(img, progress)
+            return encode_mask_png16(np.asarray(depth_map, dtype=np.float32))
+
+        job = st.jobs.submit(run)
+        return {"id": job.id, "status": job.status, "progress": job.progress}
 
     @app.get("/jobs/{job_id}")
     def job_status(job_id: str) -> dict:

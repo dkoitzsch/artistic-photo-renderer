@@ -33,7 +33,22 @@ function checkLayer(n: Record<string, unknown>, where: string, originals: Record
   if (mask.kind === 'stored') {
     if (!isStr(mask.id) || !isNum(mask.width) || !isNum(mask.height)) fail(`${where}.mask unvollständig`);
     checkProvenance(mask.provenance, `${where}.mask`);
+  } else if (mask.kind === 'depth') {
+    if (
+      !isStr(mask.depthId) ||
+      !isNum(mask.near) ||
+      !isNum(mask.far) ||
+      !isNum(mask.overlap) ||
+      !isNum(mask.fillBelow)
+    )
+      fail(`${where}.mask (Tiefenband) unvollständig`);
   } else if (mask.kind !== 'full') fail(`${where}.mask.kind unbekannt`);
+  if (n.depthMap !== undefined) {
+    const d = n.depthMap;
+    if (!isObj(d) || !isStr(d.id) || !isNum(d.width) || !isNum(d.height))
+      fail(`${where}.depthMap unvollständig`);
+    checkProvenance(d.provenance, `${where}.depthMap`);
+  }
   const edge = n.maskEdge;
   if (!isObj(edge) || !isNum(edge.hardness) || !isNum(edge.offset) || !isStr(edge.curve))
     fail(`${where}.maskEdge unvollständig`);
@@ -67,9 +82,13 @@ function checkNode(n: unknown, where: string, originals: Record<string, unknown>
   } else fail(`${where}.kind unbekannt`);
 }
 
-/** Format 1 → 2: Lizenzmodus, Kantenübergang und Lochfüllung ergänzen. */
-function migrate(json: Record<string, unknown>): Record<string, unknown> {
-  if (json.formatVersion !== 1) return json;
+/** Format 1 → 2: Lizenzmodus, Kantenübergang und Lochfüllung ergänzen; 2 → 3: nur neue, optionale Felder. */
+function migrate(raw: Record<string, unknown>): Record<string, unknown> {
+  const json = raw.formatVersion === 1 ? migrate1to2(raw) : raw;
+  return json.formatVersion === 2 ? { ...json, formatVersion: 3 } : json;
+}
+
+function migrate1to2(json: Record<string, unknown>): Record<string, unknown> {
   const fixNode = (n: unknown): unknown => {
     if (!isObj(n)) return n;
     if (n.kind === 'layer') return { maskEdge: { ...DEFAULT_MASK_EDGE }, holeFill: false, ...n };

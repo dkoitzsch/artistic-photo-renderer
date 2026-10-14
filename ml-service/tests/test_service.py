@@ -114,3 +114,27 @@ def test_cors_only_for_web_app_origin():
     assert ok.headers.get("access-control-allow-origin") == "http://localhost:5317"
     bad = client.get("/health", headers={"Origin": "https://example.com"})
     assert "access-control-allow-origin" not in bad.headers
+
+
+def test_depth_endpoint_and_license():
+    client, _ = make_client()
+    r = client.post(
+        "/depth",
+        files={"image": ("a.jpg", jpeg(32, 24), "image/jpeg")},
+        data={"model": "depth-anything-v2-small-hr", "license_mode": "commercial"},
+    )
+    assert r.status_code == 200
+    s = wait(client, r.json()["id"])
+    assert s["status"] == "done"
+    img = Image.open(io.BytesIO(client.get(f"/jobs/{s['id']}/result").content))
+    assert img.size == (32, 24)
+    # Large ist NC → im Modus „Kommerziell“ gesperrt
+    r = client.post(
+        "/depth",
+        files={"image": ("a.jpg", jpeg(), "image/jpeg")},
+        data={"model": "depth-anything-v2-large", "license_mode": "commercial"},
+    )
+    assert r.status_code == 403
+    # Segmentierungsmodell ist kein Tiefenmodell
+    r = client.post("/depth", files={"image": ("a.jpg", jpeg(), "image/jpeg")}, data={"model": "birefnet"})
+    assert r.status_code == 404

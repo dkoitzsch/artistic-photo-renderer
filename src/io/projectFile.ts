@@ -1,7 +1,7 @@
-// Projektdatei .blurstudio (= ZIP): project.json + originals/<hash>.<ext> + masks/<id>.png (16 Bit).
+// Projektdatei .blurstudio (= ZIP): project.json + originals/<hash>.<ext> + masks/<id>.png + depth/<id>.png (16 Bit).
 
 import { strFromU8, strToU8, unzipSync, zipSync, type Zippable } from 'fflate';
-import { maskIds, type Project } from '../state/project';
+import { depthIds, maskIds, type Project } from '../state/project';
 import { parseProject } from './projectSchema';
 
 export const PROJECT_EXTENSION = '.blurstudio';
@@ -12,6 +12,7 @@ export function packProject(
   project: Project,
   originals: Map<string, Uint8Array>,
   masks: Map<string, Uint8Array> = new Map(),
+  depth: Map<string, Uint8Array> = new Map(),
 ): Uint8Array {
   const files: Zippable = {
     'project.json': strToU8(JSON.stringify(project, null, 2)),
@@ -27,6 +28,11 @@ export function packProject(
     if (!bytes) throw new Error(`Maske ${id.slice(0, 8)} fehlt.`);
     files[`masks/${id}.png`] = [bytes, { level: 0 }];
   }
+  for (const id of depthIds(project)) {
+    const bytes = depth.get(id);
+    if (!bytes) throw new Error(`Tiefenkarte ${id.slice(0, 8)} fehlt.`);
+    files[`depth/${id}.png`] = [bytes, { level: 0 }];
+  }
   return zipSync(files, { level: 6 });
 }
 
@@ -34,6 +40,7 @@ export function unpackProject(zip: Uint8Array): {
   project: Project;
   originals: Map<string, Uint8Array<ArrayBuffer>>;
   masks: Map<string, Uint8Array<ArrayBuffer>>;
+  depth: Map<string, Uint8Array<ArrayBuffer>>;
 } {
   let entries: Record<string, Uint8Array>;
   try {
@@ -52,7 +59,10 @@ export function unpackProject(zip: Uint8Array): {
   const project = parseProject(data);
   const originals = new Map<string, Uint8Array<ArrayBuffer>>();
   const masks = new Map<string, Uint8Array<ArrayBuffer>>();
+  const depth = new Map<string, Uint8Array<ArrayBuffer>>();
   for (const [path, bytes] of Object.entries(entries)) {
+    const d = /^depth\/([\w-]+)\.png$/.exec(path);
+    if (d?.[1]) depth.set(d[1], bytes as Uint8Array<ArrayBuffer>);
     const o = /^originals\/([0-9a-f]{64})\.\w+$/.exec(path);
     if (o?.[1]) originals.set(o[1], bytes as Uint8Array<ArrayBuffer>);
     const m = /^masks\/([\w-]+)\.png$/.exec(path);
@@ -62,5 +72,7 @@ export function unpackProject(zip: Uint8Array): {
     if (!originals.has(id)) throw new Error(`Original ${id.slice(0, 8)} fehlt in der Projektdatei.`);
   for (const id of maskIds(project))
     if (!masks.has(id)) throw new Error(`Maske ${id.slice(0, 8)} fehlt in der Projektdatei.`);
-  return { project, originals, masks };
+  for (const id of depthIds(project))
+    if (!depth.has(id)) throw new Error(`Tiefenkarte ${id.slice(0, 8)} fehlt in der Projektdatei.`);
+  return { project, originals, masks, depth };
 }

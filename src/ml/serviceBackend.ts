@@ -41,16 +41,13 @@ export async function serviceSegment(
   original: Blob,
   licenseMode: LicenseMode,
   onProgress: (p: Progress) => void,
+  endpoint = '/segment/foreground',
 ): Promise<MaskData> {
   const form = new FormData();
   form.append('image', original, 'image');
   form.append('model', model.id);
   form.append('license_mode', licenseMode);
-  const job = await fetchJson<Job>(
-    `${SERVICE_URL}/segment/foreground`,
-    { method: 'POST', body: form },
-    30_000,
-  );
+  const job = await fetchJson<Job>(`${SERVICE_URL}${endpoint}`, { method: 'POST', body: form }, 30_000);
   for (;;) {
     const s = await fetchJson<Job>(`${SERVICE_URL}/jobs/${job.id}`);
     if (s.status === 'error') throw new Error(s.message ?? 'Dienst-Job fehlgeschlagen.');

@@ -1,0 +1,38 @@
+{
+  "id": "haze",
+  "name": "Dunst",
+  "version": "1.0.0",
+  "category": "Farbe",
+  "description": "Luftperspektive: entsättigt, hellt auf und färbt in Richtung Dunstfarbe – optional nach Tiefenkarte.",
+  "inputs": ["source", "depth"],
+  "passes": 1,
+  "params": [
+    { "key": "amount", "label": "Stärke", "type": "float", "min": 0, "max": 100, "default": 40, "unit": "%" },
+    { "key": "color", "label": "Dunstfarbe", "type": "color", "default": [0.8, 0.86, 0.93] },
+    {
+      "key": "desaturate",
+      "label": "Entsättigung",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 60,
+      "unit": "%"
+    },
+    {
+      "key": "lift",
+      "label": "Aufhellung",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 30,
+      "unit": "%"
+    },
+    {
+      "key": "byDepth",
+      "label": "Nach Tiefenkarte",
+      "hint": "Stärke pro Pixel mit der Entfernung skalieren",
+      "type": "bool",
+      "default": false
+    }
+  ]
+}
