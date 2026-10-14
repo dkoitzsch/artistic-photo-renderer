@@ -111,7 +111,10 @@ Autosave (`io/autosave.ts`) beobachtet den Store und schreibt ins OPFS.
   Gerät) für Segmentierung, MediaPipe (CPU) für Landmarken. `ml/backend.ts` – `MlBackend` (Browser/Dienst), Auswahl Auto/Browser/
   Dienst, Rückfall, `/health`-Überwachung. `ml/split.ts` – Aufteilen (Gruppe „Motiv“), Fokuspunkte, NC-Prüfung, Neuberechnung.
   `ml/focus.ts` – Landmarken → Fokuspunkte.
-- `ml-service/` – FastAPI: `/health`, `/segment/foreground` (Job), `/jobs/{id}[/result]`; liest dasselbe Register.
+- `ml-service/` – FastAPI: `/health`, `/segment/foreground` (Job), `/jobs/{id}[/result]`, Modell-Downloads
+  `/models/{id}/download|pause|stop` und `DELETE /models/{id}` (`downloads.py`); liest dasselbe Register.
+- `ml/downloads.ts` – Download-Manager im ML-Worker (OPFS `.part`, Range-Fortsetzen, SHA-256); Zustand → Store
+  `downloads` → Dialog „Modelle“ (`app/components/ModelsDialog.tsx`) und Anzeige in der oberen Leiste.
 
 **Neuen Effekt anlegen:** siehe [effects/README.md](effects/README.md) – nur einen Ordner unter `effects/` anlegen.
 

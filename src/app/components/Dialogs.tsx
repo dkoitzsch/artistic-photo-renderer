@@ -264,6 +264,18 @@ export function SettingsDialog() {
             </tbody>
           </table>
         )}
+        <div className="button-row">
+          <button
+            className="button"
+            data-testid="open-models"
+            onClick={() => {
+              setOpen(false);
+              useAppStore.getState().setModelsOpen(true);
+            }}
+          >
+            Modelle verwalten …
+          </button>
+        </div>
         <p className="section-note">Modelle und Lizenzen: models/registry.json und MODELS.md.</p>
       </Modal>
       <Modal

@@ -12,7 +12,8 @@ npm run test:service   # pytest
 - Bindet nur an `127.0.0.1:8765`; CORS nur für die Web-App (`localhost:5317`, Preview `4317`).
 - Python 3.12 und Pakete verwaltet `uv` (`uv sync` im Ordner `ml-service`).
 - Modelle aus `../models/registry.json`; kommerziell nutzbare werden beim ersten Start geladen (Fortschritt in `/health`),
-  Cache unter `~/.cache/blur-layer-studio/` (änderbar mit `BLS_CACHE`).
+  Cache unter `~/.cache/blur-layer-studio/models/<id>/` (änderbar mit `BLS_CACHE`); Downloads lassen sich in der App
+  unter „Modelle“ pausieren, fortsetzen, stoppen und löschen.
 - NC-Modelle (z. B. RMBG-2.0) nur, wenn die App den Lizenzmodus „Alle“ meldet; RMBG-2.0 braucht zusätzlich einen
   Hugging-Face-Zugang (`HF_TOKEN`).
 

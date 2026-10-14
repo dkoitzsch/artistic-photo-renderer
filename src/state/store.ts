@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { DownloadState } from '../ml/protocol';
 import type { GpuInfo } from '../render/gpu';
 import { createHistory, present, type History } from './history';
 import type { LicenseMode, Project } from './project';
@@ -25,6 +26,13 @@ export type ServiceModel = {
   loaded: boolean;
   available: boolean;
   note?: string;
+  /** Download-Zustand im Dienst */
+  download?: {
+    status: 'missing' | 'downloading' | 'paused' | 'done' | 'error';
+    loaded: number;
+    total: number;
+    error?: string | null;
+  };
 };
 export type ServiceInfo = { device: string; version: string; models: ServiceModel[] };
 export type ServiceStatus = { state: 'unknown' | 'online' | 'offline'; info?: ServiceInfo };
@@ -63,6 +71,9 @@ type AppState = {
   splitDialogLayerId: string | null;
   settingsOpen: boolean;
   exportWarning: ExportWarning | null;
+  /** Browser-Modelldateien (Download-Manager im ML-Worker) */
+  downloads: Record<string, DownloadState>;
+  modelsOpen: boolean;
 
   setGpu: (gpu: GpuStatus) => void;
   setScreen: (screen: AppState['screen']) => void;
@@ -88,6 +99,8 @@ type AppState = {
   openSplitDialog: (layerId: string | null) => void;
   setSettingsOpen: (open: boolean) => void;
   setExportWarning: (w: ExportWarning | null) => void;
+  setDownloads: (states: DownloadState[]) => void;
+  setModelsOpen: (open: boolean) => void;
 };
 
 let nextNoticeId = 1;
@@ -117,6 +130,8 @@ export const useAppStore = create<AppState>()((set) => ({
   splitDialogLayerId: null,
   settingsOpen: false,
   exportWarning: null,
+  downloads: {},
+  modelsOpen: false,
 
   setGpu: (gpu) => set({ gpu }),
   setScreen: (screen) => set({ screen }),
@@ -148,6 +163,8 @@ export const useAppStore = create<AppState>()((set) => ({
   openSplitDialog: (splitDialogLayerId) => set({ splitDialogLayerId }),
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
   setExportWarning: (exportWarning) => set({ exportWarning }),
+  setDownloads: (states) => set({ downloads: Object.fromEntries(states.map((d) => [d.name, d])) }),
+  setModelsOpen: (modelsOpen) => set({ modelsOpen }),
 }));
 
 /** Aktuelles Projekt (Gegenwart der History) oder null. */

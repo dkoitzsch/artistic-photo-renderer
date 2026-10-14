@@ -12,7 +12,7 @@ from ml_service.registry import load_registry
 class FakeSegmenter:
     """Ersatz für das echte Modell: linke Bildhälfte = Vordergrund."""
 
-    def __init__(self, model, device):
+    def __init__(self, model, device, path):
         self.model = model
 
     def __call__(self, image, progress):
@@ -23,10 +23,15 @@ class FakeSegmenter:
         return m
 
 
-def make_client():
-    st = State(factory=FakeSegmenter, prefetch=False)
-    # Zugangsbeschränkte Modelle im Test als verfügbar behandeln
-    st._models.hf_cached = lambda m: True  # type: ignore[attr-defined]
+def make_client(tmp_path=None):
+    from pathlib import Path
+
+    from ml_service.downloads import Downloader
+
+    root = Path(tmp_path) if tmp_path else Path("/nonexistent-bls-test")
+    st = State(factory=FakeSegmenter, prefetch=False, downloader=Downloader(root, list_files=lambda m, t: [], open_file=None))
+    # Modelle im Test als heruntergeladen behandeln
+    st.path = lambda m: Path("/tmp")  # type: ignore[method-assign]
     return TestClient(create_app(st)), st
 
 

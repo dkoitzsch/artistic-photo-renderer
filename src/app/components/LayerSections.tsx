@@ -216,7 +216,12 @@ export function FocusSection({ layer }: { layer: Layer }) {
   const busy = useAppStore((s) => s.tasks.length > 0);
   const points = layer.focusMap?.points ?? [];
   return (
-    <Section title="Fokuspunkte" testId="focus-section" defaultOpen={points.length > 0}>
+    <Section
+      key={points.length > 0 ? 'mit' : 'ohne'}
+      title="Fokuspunkte"
+      testId="focus-section"
+      defaultOpen={points.length > 0}
+    >
       {points.length === 0 && (
         <p className="section-note">
           Noch keine Fokuspunkte. Erkennen oder mit dem Fokuspunkt-Werkzeug setzen.

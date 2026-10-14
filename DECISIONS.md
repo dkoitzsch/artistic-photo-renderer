@@ -10,6 +10,18 @@ Abweichungen von der Spec und Festlegungen bei unklaren Anforderungen. Neueste o
 - **Betrifft:** (Spec-Abschnitt / Phase)
 -->
 
+## 2026-10-14 – Modell-Downloads sichtbar und steuerbar
+
+- **Frage (Nutzer):** Sichtbar machen, welche Modelle laden, mit welchem Fortschritt, und welche fertig sind; Pausieren und Stoppen ermöglichen.
+- **Entscheidung:** Dialog „Modelle“ (Einstellungen → „Modelle verwalten …“ oder Anzeige in der oberen Leiste, solange etwas lädt) mit allen Modellen aus dem Register, getrennt nach Browser und Dienst: Status, Fortschritt (MB/%), Größe, Lizenz, Knöpfe Herunterladen/Pausieren/Fortsetzen/Stoppen/Löschen. Browser: Download-Manager im ML-Worker, Teil-Downloads als `.part` im OPFS, Fortsetzen per HTTP-Range (auch nach Neuladen), SHA-256 vor dem Umbenennen. Dienst: eigener Downloader statt `snapshot_download` (Dateien des Repos in `~/.cache/blur-layer-studio/models/<id>/`, Range-Fortsetzen, `.complete` mit Revision), Endpunkte `POST /models/{id}/download|pause|stop`, `DELETE /models/{id}`, Zustand in `/health`. NC-Modelle lassen sich im Modus „Kommerziell“ auch nicht herunterladen. Braucht eine Aufgabe ein pausiertes Modell, erscheint ein Hinweis statt stillem Fortsetzen.
+- **Betrifft:** Lokaler Python-Dienst, ML-Worker, UI
+
+## 2026-10-14 – Fokuspunkte entfernen; Vorher/Nachher hat Vorrang
+
+- **Frage (Nutzer):** Fokuspunkte wieder entfernen; der Vorher/Nachher-Teiler war über einem Fokuspunkt nicht greifbar.
+- **Entscheidung:** Entfernen per × am Punkt, per Entf/Rücktaste (zuletzt angefasster Punkt) und im Inspektor; der Abschnitt „Fokuspunkte“ klappt auf, sobald Punkte existieren. Bei aktivem Teiler sind Fokuspunkte nur sichtbar, nicht greifbar; der Teiler liegt darüber.
+- **Betrifft:** UI, Fokus-Werkzeug
+
 ## 2026-10-14 – Browser-Vordergrundmodell: BiRefNet lite in 512 × 512
 
 - **Frage:** Spec: „BiRefNet (lite) oder vergleichbares Salient-Object-Modell“ im Browser.

@@ -79,7 +79,9 @@ export function startServiceMonitor(): () => void {
       setService({ state: 'unknown' });
       return;
     }
-    const interval = service.state === 'online' ? 5000 : 20000;
+    const { modelsOpen } = useAppStore.getState();
+    const busy = service.info?.models.some((m) => m.download?.status === 'downloading') ?? false;
+    const interval = service.state === 'online' ? (modelsOpen || busy ? 1000 : 5000) : 20000;
     if (!force && Date.now() - lastCheck < interval) return;
     lastCheck = Date.now();
     void checkService();
@@ -87,7 +89,8 @@ export function startServiceMonitor(): () => void {
   tick(true);
   monitor = setInterval(tick, 1000);
   const unsub = useAppStore.subscribe((s, prev) => {
-    if (s.mlMode !== prev.mlMode || s.licenseMode !== prev.licenseMode) tick(true);
+    if (s.mlMode !== prev.mlMode || s.licenseMode !== prev.licenseMode || (s.modelsOpen && !prev.modelsOpen))
+      tick(true);
   });
   return () => {
     if (monitor) clearInterval(monitor);

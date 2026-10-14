@@ -6,7 +6,8 @@ import { FaceLandmarker, PoseLandmarker } from '@mediapipe/tasks-vision';
 import * as ort from 'onnxruntime-web/webgpu';
 import type { LicenseMode } from '../state/project';
 import type { LandmarkResult, Progress, WorkerRequest, WorkerResponse } from './protocol';
-import { assertAllowed, modelById, type ModelEntry, type ModelFile } from './registry';
+import * as downloads from './downloads';
+import { assertAllowed, MODELS, modelById, type ModelEntry, type ModelFile } from './registry';
 
 declare const self: DedicatedWorkerGlobalScope;
 
@@ -24,61 +25,35 @@ const post = (msg: WorkerResponse, transfer: Transferable[] = []) => {
   self.postMessage(msg, transfer);
 };
 
-// ---------- Modell-Dateien ----------
+// ---------- Modell-Dateien (Download-Manager: downloads.ts) ----------
 
-async function modelDir(): Promise<FileSystemDirectoryHandle> {
-  const root = await navigator.storage.getDirectory();
-  return root.getDirectoryHandle('models', { create: true });
-}
-
-async function sha256(bytes: Uint8Array<ArrayBuffer>): Promise<string> {
-  const d = await crypto.subtle.digest('SHA-256', bytes);
-  return Array.from(new Uint8Array(d), (b) => b.toString(16).padStart(2, '0')).join('');
-}
-
-/** Lädt eine Modelldatei aus dem OPFS-Cache oder einmalig aus dem Netz (mit Fortschritt). */
+/** nur Entwicklung/Tests: lokaler Modell-Spiegel */
 let mirror: string | null = null;
 
+downloads.onDownloadStates((states) => {
+  post({ type: 'download-state', states });
+});
+
+/** Alle Browser-Modelldateien aus dem Register beim Manager anmelden (einmal). */
+let scanned: Promise<void> | null = null;
+function ensureScanned(): Promise<void> {
+  scanned ??= downloads.scan(
+    MODELS.filter((m) => m.runtime === 'browser').flatMap((m) =>
+      (m.files ?? []).map((file) => ({ modelId: m.id, file })),
+    ),
+  );
+  return scanned;
+}
+
+/** Datei für die Inferenz (lädt bei Bedarf herunter, mit Fortschritt). */
 async function fetchModelFile(
   file: ModelFile,
   onProgress: (p: Progress) => void,
 ): Promise<Uint8Array<ArrayBuffer>> {
-  const dir = await modelDir();
-  try {
-    const cached = await (await dir.getFileHandle(file.name)).getFile();
-    if (cached.size === file.size) return new Uint8Array(await cached.arrayBuffer());
-  } catch {
-    // nicht im Cache
-  }
-  const res = await fetch(mirror ? `${mirror}${file.name}` : file.url);
-  if (!res.ok || !res.body) throw new Error(`Download von ${file.name} fehlgeschlagen (HTTP ${res.status}).`);
-  const total = file.size;
-  const out = new Uint8Array(total);
-  let loaded = 0;
-  const reader = res.body.getReader();
-  let last = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    if (loaded + value.length > total) throw new Error(`${file.name}: unerwartete Dateigröße.`);
-    out.set(value, loaded);
-    loaded += value.length;
-    const now = performance.now();
-    if (now - last > 100) {
-      last = now;
-      onProgress({ stage: 'download', label: file.name, loaded, total });
-    }
-  }
-  if (loaded !== total)
-    throw new Error(`${file.name}: Download unvollständig (${loaded} von ${total} Byte).`);
-  onProgress({ stage: 'download', label: file.name, loaded, total });
-  if ((await sha256(out)) !== file.sha256)
-    throw new Error(`${file.name}: Prüfsumme stimmt nicht – Datei verworfen.`);
-  const handle = await dir.getFileHandle(file.name, { create: true });
-  const w = await handle.createWritable();
-  await w.write(out);
-  await w.close();
-  return out;
+  await ensureScanned();
+  return downloads.bytesFor(file.name, mirror, (loaded, total) => {
+    onProgress({ stage: 'download', label: file.name, loaded, total });
+  });
 }
 
 function modelFile(model: ModelEntry): ModelFile {
@@ -323,9 +298,46 @@ async function detectLandmarks(
 
 // ---------- Nachrichten ----------
 
+async function handleDownloads(req: Extract<WorkerRequest, { type: 'downloads' }>): Promise<void> {
+  await ensureScanned();
+  if (req.cmd === 'scan') return;
+  const model = req.modelId ? modelById(req.modelId) : undefined;
+  if (!model || model.runtime !== 'browser')
+    throw new Error(`Unbekanntes Browser-Modell ${req.modelId ?? ''}.`);
+  for (const f of model.files ?? []) {
+    switch (req.cmd) {
+      case 'start':
+        // NC-Modelle im Modus „Kommerziell“ auch nicht herunterladen
+        assertAllowed(model, req.licenseMode);
+        // nicht abwarten: Fortschritt kommt über download-state
+        downloads.start(f.name, mirror).catch(() => undefined);
+        break;
+      case 'pause':
+        downloads.pause(f.name);
+        break;
+      case 'stop':
+        await downloads.stop(f.name);
+        break;
+      case 'delete':
+        sessions.delete(model.id);
+        await downloads.remove(f.name);
+        break;
+    }
+  }
+}
+
 self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
   const req = e.data;
   mirror = req.mirror ?? null;
+  if (req.type === 'downloads') {
+    try {
+      await handleDownloads(req);
+      post({ type: 'done', id: req.id });
+    } catch (err) {
+      post({ type: 'error', id: req.id, message: err instanceof Error ? err.message : String(err) });
+    }
+    return;
+  }
   const onProgress = (progress: Progress) => {
     post({ type: 'progress', id: req.id, progress });
   };

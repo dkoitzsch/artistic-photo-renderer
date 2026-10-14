@@ -1,7 +1,8 @@
 // Browser-Backend: führt Modelle im ML-Worker aus (UI blockiert nicht).
 
 import type { LicenseMode } from '../state/project';
-import type { LandmarkResult, Progress, WorkerRequest, WorkerResponse } from './protocol';
+import { useAppStore } from '../state/store';
+import type { DownloadCommand, LandmarkResult, Progress, WorkerRequest, WorkerResponse } from './protocol';
 import type { ModelEntry } from './registry';
 
 type Pending = {
@@ -29,7 +30,10 @@ function getWorker(): Worker {
   const w = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module', name: 'ml' });
   w.onmessage = (e: MessageEvent<WorkerResponse>) => {
     const msg = e.data;
-    if (!('id' in msg)) return;
+    if (msg.type === 'download-state') {
+      useAppStore.getState().setDownloads(msg.states);
+      return;
+    }
     const p = pending.get(msg.id);
     if (!p) return;
     if (msg.type === 'progress') {
@@ -58,7 +62,7 @@ function request(
   const id = nextId++;
   return new Promise((resolve, reject) => {
     pending.set(id, { resolve, reject, onProgress });
-    getWorker().postMessage({ ...req, id, mirror: modelMirror() }, [req.image]);
+    getWorker().postMessage({ ...req, id, mirror: modelMirror() }, 'image' in req ? [req.image] : []);
   });
 }
 
@@ -81,4 +85,14 @@ export async function browserLandmarks(
   const res = await request({ type: 'landmarks', image, licenseMode }, onProgress);
   if (res.type !== 'landmarks-result') throw new Error('Unerwartete Antwort des ML-Workers.');
   return res.result;
+}
+
+/** Steuerung der Browser-Modell-Downloads (Zustand kommt als download-state in den Store). */
+export async function browserDownload(cmd: DownloadCommand, modelId?: string): Promise<void> {
+  const licenseMode = useAppStore.getState().licenseMode;
+  const res = await request(
+    modelId ? { type: 'downloads', cmd, modelId, licenseMode } : { type: 'downloads', cmd, licenseMode },
+    () => undefined,
+  );
+  if (res.type !== 'done') throw new Error('Unerwartete Antwort des ML-Workers.');
 }

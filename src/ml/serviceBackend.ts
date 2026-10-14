@@ -67,3 +67,20 @@ export async function serviceSegment(
   if (!res.ok) throw new Error(`Ergebnis des Dienstes nicht abrufbar (HTTP ${res.status}).`);
   return decodeMaskPng(new Uint8Array(await res.arrayBuffer()));
 }
+
+/** Steuert einen Modell-Download im Dienst. */
+export async function serviceModelCommand(
+  modelId: string,
+  cmd: 'download' | 'pause' | 'stop' | 'delete',
+  licenseMode: LicenseMode,
+): Promise<void> {
+  const url =
+    cmd === 'delete'
+      ? `${SERVICE_URL}/models/${modelId}`
+      : `${SERVICE_URL}/models/${modelId}/${cmd}?license_mode=${licenseMode}`;
+  const res = await fetch(url, { method: cmd === 'delete' ? 'DELETE' : 'POST' });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { detail?: string };
+    throw new Error(body.detail ?? `Dienst antwortet mit HTTP ${res.status}`);
+  }
+}

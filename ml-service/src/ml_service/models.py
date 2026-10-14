@@ -30,18 +30,14 @@ class Segmenter(Protocol):
 class HfSegmenter:
     """BiRefNet / RMBG-2.0 über transformers (Remote-Code des Modell-Repos, Revision festgelegt)."""
 
-    def __init__(self, model: ServiceModel, device: str):
+    def __init__(self, model: ServiceModel, device: str, path: Path):
         import torch
         from transformers import AutoModelForImageSegmentation
 
         self.model = model
         self.device = device
-        net = AutoModelForImageSegmentation.from_pretrained(
-            model.hf_repo,
-            revision=model.revision,
-            trust_remote_code=True,
-            cache_dir=str(CACHE_DIR / "hf"),
-        )
+        # Lokaler Ordner aus dem Download-Manager (Code + Gewichte, Revision festgelegt)
+        net = AutoModelForImageSegmentation.from_pretrained(str(path), trust_remote_code=True)
         net.eval()
         # MPS: halbe Genauigkeit spart Speicher und ist deutlich schneller
         self.dtype = torch.float16 if device == "mps" else torch.float32
@@ -68,49 +64,29 @@ class HfSegmenter:
         return prob[0, 0].clamp(0, 1).cpu().numpy().astype(np.float32)
 
 
-def hf_cached(model: ServiceModel) -> bool:
-    """Liegen die Gewichte schon im Cache (dann geht auch ein zugangsbeschränktes Modell)?"""
-    try:
-        from huggingface_hub import snapshot_download
-
-        snapshot_download(model.hf_repo, revision=model.revision, cache_dir=str(CACHE_DIR / "hf"), local_files_only=True)
-        return True
-    except Exception:
-        return False
-
-
-def hf_token_present() -> bool:
+def hf_token() -> str | None:
     try:
         from huggingface_hub import get_token
 
-        return bool(get_token())
+        return get_token()
     except Exception:
-        return bool(os.environ.get("HF_TOKEN"))
+        return os.environ.get("HF_TOKEN")
 
 
-def download(model: ServiceModel, on_progress: Callable[[float], None] | None = None) -> None:
-    """Lädt die Gewichte (einmalig) in den Cache; meldet den Fortschritt anhand der Dateigrößen."""
-    from huggingface_hub import HfApi, snapshot_download
+def remove_legacy(model: ServiceModel) -> None:
+    """Entfernt eine ältere Kopie aus dem Hugging-Face-Cache."""
+    import shutil
 
-    stop = threading.Event()
-    if on_progress is not None:
-        try:
-            info = HfApi().model_info(model.hf_repo, revision=model.revision, files_metadata=True)
-            total = sum((s.size or 0) for s in info.siblings or [])
-        except Exception:
-            total = 0
-        blobs = CACHE_DIR / "hf" / f"models--{model.hf_repo.replace('/', '--')}" / "blobs"
+    shutil.rmtree(CACHE_DIR / "hf" / f"models--{model.hf_repo.replace('/', '--')}", ignore_errors=True)
 
-        def watch() -> None:
-            while not stop.wait(0.5):
-                if total > 0 and blobs.exists():
-                    done = sum(f.stat().st_size for f in blobs.iterdir() if f.is_file())
-                    on_progress(min(0.99, done / total))
 
-        threading.Thread(target=watch, daemon=True).start()
+def legacy_snapshot(model: ServiceModel) -> str | None:
+    """Ordner eines früher per Hugging-Face-Cache geladenen Modells (falls vorhanden)."""
     try:
-        snapshot_download(model.hf_repo, revision=model.revision, cache_dir=str(CACHE_DIR / "hf"))
-    finally:
-        stop.set()
-        if on_progress is not None:
-            on_progress(1.0)
+        from huggingface_hub import snapshot_download
+
+        return snapshot_download(
+            model.hf_repo, revision=model.revision, cache_dir=str(CACHE_DIR / "hf"), local_files_only=True
+        )
+    except Exception:
+        return None

@@ -7,6 +7,7 @@ import { closeProject, redoCommand, renameProject, undoCommand } from '../../sta
 import { useAppStore, useProject } from '../../state/store';
 import { fitToViewport, toggleCompare, zoomBy } from '../../state/viewActions';
 import { toggleTheme } from '../theme/theme';
+import { DownloadChip } from './ModelsDialog';
 import {
   CompareIcon,
   ExportIcon,
@@ -168,6 +169,7 @@ export function TopBar({ theme }: { theme: 'light' | 'dark' }) {
       </div>
 
       <div className="topbar-group">
+        <DownloadChip />
         <button
           className={`license-pill ${licenseMode}`}
           onClick={() => {

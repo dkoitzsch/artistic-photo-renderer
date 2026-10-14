@@ -102,9 +102,9 @@ export function Inspector() {
       <NodeSection node={host} isRoot={host.id === project.root.id} />
       {host.kind === 'layer' && (
         <>
-          <MaskSection layer={host} />
-          <FocusSection layer={host} />
-          <ShadowSection layer={host} />
+          <MaskSection key={`mask-${host.id}`} layer={host} />
+          <FocusSection key={`focus-${host.id}`} layer={host} />
+          <ShadowSection key={`shadow-${host.id}`} layer={host} />
         </>
       )}
       <h3 className="section-title">Effekte</h3>

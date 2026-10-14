@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { startAutosave } from '../io/autosave';
 import { startServiceMonitor } from '../ml/backend';
+import { browserDownload } from '../ml/browserBackend';
 import { openStoredProject } from '../io/import';
 import { rememberedProjectId, startSessionMemory } from '../io/session';
 import { listProjects } from '../io/storage';
@@ -10,6 +11,7 @@ import { BottomPanel } from './components/BottomPanel';
 import { CanvasView } from './components/CanvasView';
 import { ExportWarningDialog, SettingsDialog, SplitDialog } from './components/Dialogs';
 import { EffectBrowser } from './components/EffectBrowser';
+import { ModelsDialog } from './components/ModelsDialog';
 import { ProjectOverview } from './components/ProjectOverview';
 import { SidePanel } from './components/SidePanel';
 import { ToolBar } from './components/ToolBar';
@@ -29,6 +31,8 @@ function startup(): Promise<void> {
     });
     if (result.kind === 'webgpu') {
       setGpu({ state: 'ready', info: result.info, maxTextureSize: result.limits.maxTextureDimension2D });
+      // Zustand der Browser-Modelle aus dem lokalen Speicher lesen (für die Modell-Übersicht)
+      void browserDownload('scan').catch(() => undefined);
       // Nach einem Neuladen des Tabs das zuletzt offene Projekt wieder öffnen.
       if (remembered && (await openStoredProject(remembered))) return;
     } else {
@@ -72,6 +76,7 @@ export function App() {
       <SplitDialog />
       <SettingsDialog />
       <ExportWarningDialog />
+      <ModelsDialog />
     </div>
   );
 }

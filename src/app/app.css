@@ -872,6 +872,7 @@ button:disabled {
 
 .compare-handle {
   position: absolute;
+  z-index: 2;
   top: 0;
   bottom: 0;
   width: 2px;
@@ -1487,11 +1488,42 @@ button:disabled {
   width: 100%;
   height: 100%;
   pointer-events: none;
+  z-index: 1;
+}
+
+/* nur greifbar mit dem Fokuspunkt-Werkzeug (und ohne Vorher/Nachher-Teiler) */
+.focus-overlay:not(.active) * {
+  pointer-events: none;
 }
 
 .focus-overlay.active {
   pointer-events: auto;
   cursor: crosshair;
+}
+
+.focus-point.selected .focus-center {
+  stroke: var(--accent);
+  stroke-width: 3;
+}
+
+.focus-remove {
+  cursor: pointer;
+}
+
+.focus-remove circle {
+  fill: rgb(0 0 0 / 0.65);
+  stroke: #fff;
+  stroke-width: 1;
+}
+
+.focus-remove path {
+  stroke: #fff;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+.focus-remove:hover circle {
+  fill: var(--danger);
 }
 
 .focus-hit {
@@ -1531,4 +1563,105 @@ button:disabled {
   stroke: rgb(0 0 0 / 0.6);
   stroke-width: 3px;
   pointer-events: none;
+}
+
+/* ---------- Modell-Übersicht ---------- */
+
+.model-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.model-row {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+}
+
+.model-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.model-name {
+  font-weight: var(--font-weight-medium);
+}
+
+.model-meta {
+  margin-left: auto;
+  font-size: var(--font-size-xs);
+  color: var(--text-faint);
+}
+
+.model-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+  min-height: 22px;
+}
+
+.model-status-text {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.model-row.done .model-status-text {
+  color: #2fa36b;
+}
+
+.model-row.error .model-status-text {
+  color: var(--danger);
+}
+
+.model-actions {
+  display: inline-flex;
+  gap: var(--space-1);
+  flex: none;
+}
+
+.model-bar {
+  display: block;
+  margin-top: var(--space-1);
+}
+
+.task-fill.paused {
+  background: var(--text-faint);
+}
+
+.download-chip {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  height: 26px;
+  justify-content: center;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.download-chip-bar {
+  display: block;
+  width: 100%;
+  height: 2px;
+  background: var(--border);
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.download-chip-bar span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
 }
