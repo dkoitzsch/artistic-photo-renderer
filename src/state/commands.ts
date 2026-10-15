@@ -22,7 +22,15 @@ import {
   wrapInGroup,
   ungroup,
   findNode,
+  insertAbove,
+  moveToEdge,
+  removeNode,
+  stepNode,
+  walkLayers,
   type BlendMode,
+  type Layer,
+  type OriginalRef,
+  type Transform,
   type EffectInstance,
   type FocusMapSpec,
   type FocusPoint,
@@ -407,4 +415,70 @@ export function ungroupCommand(groupId: string): void {
   commit('Gruppe aufgelöst', (proj) => ungroup(proj, groupId));
   if (first?.kind === 'group' && first.children.at(-1))
     useAppStore.getState().select(first.children.at(-1)?.id ?? null);
+}
+
+// ---------- Phase 4: weitere Bilder, Transform, Reihenfolge ----------
+
+/** Fügt eine Ebene (mit neuem Original) über der Auswahl ein und wählt sie aus. */
+export function addLayerCommand(original: OriginalRef, layer: Layer): void {
+  const selected = useAppStore.getState().selectedNodeId;
+  commit(`Ebene „${layer.name}“ hinzugefügt`, (p) =>
+    insertAbove({ ...p, originals: { ...p.originals, [original.id]: original } }, layer, selected),
+  );
+  useAppStore.getState().select(layer.id);
+}
+
+export function deleteNodeCommand(nodeId: string): void {
+  const p = getProject();
+  const node = p ? findNode(p.root, nodeId) : undefined;
+  if (!p || !node || nodeId === p.root.id) return;
+  const parent = parentOf(p.root, nodeId);
+  commit(`„${node.name}“ gelöscht`, (proj) => removeNode(proj, nodeId));
+  // Auswahl: Nachbar in derselben Gruppe, sonst die Gruppe
+  const siblings = parent?.children.filter((c) => c.id !== nodeId) ?? [];
+  const i = parent?.children.findIndex((c) => c.id === nodeId) ?? 0;
+  const next = siblings[Math.min(Math.max(0, i - 1), siblings.length - 1)];
+  useAppStore.getState().select(next?.id ?? parent?.id ?? null);
+}
+
+export function setTransformCommand(layerId: string, patch: Partial<Transform>, gesture: boolean): void {
+  commit(
+    'Transformiert',
+    (p) => updateLayer(p, layerId, (l) => (l.locked ? l : { ...l, transform: { ...l.transform, ...patch } })),
+    gesture ? `transform:${layerId}` : undefined,
+  );
+  if (!gesture) endGesture();
+}
+
+/** Verschiebt eine Ebene oder alle Ebenen einer Gruppe um (dx, dy) Leinwand-px. */
+export function translateNodeCommand(nodeId: string, dx: number, dy: number, gesture: boolean): void {
+  commit(
+    'Verschoben',
+    (p) => {
+      const node = findNode(p.root, nodeId);
+      if (!node) return p;
+      let next = p;
+      for (const l of node.kind === 'layer' ? [node] : walkLayers(node))
+        if (!l.locked)
+          next = updateLayer(next, l.id, (x) => ({
+            ...x,
+            transform: { ...x.transform, x: x.transform.x + dx, y: x.transform.y + dy },
+          }));
+      return next;
+    },
+    gesture ? `translate:${nodeId}` : undefined,
+  );
+  if (!gesture) endGesture();
+}
+
+/** Ausgewählten Knoten eine Ebene nach vorn (1) oder hinten (−1). */
+export function stepNodeCommand(dir: 1 | -1): void {
+  const id = useAppStore.getState().selectedNodeId;
+  if (id) commit(dir === 1 ? 'Eine Ebene nach vorn' : 'Eine Ebene nach hinten', (p) => stepNode(p, id, dir));
+}
+
+/** Ausgewählten Knoten ganz nach vorn (1) oder hinten (−1). */
+export function edgeNodeCommand(dir: 1 | -1): void {
+  const id = useAppStore.getState().selectedNodeId;
+  if (id) commit(dir === 1 ? 'Ganz nach vorn' : 'Ganz nach hinten', (p) => moveToEdge(p, id, dir));
 }

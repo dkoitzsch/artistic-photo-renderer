@@ -400,8 +400,8 @@ Sieben Phasen (0–6); jede endet mit einer lauffähigen App. Das Plugin-System 
 
 ### Phase 4 – Weitere Bilder (f)
 
-- [ ] Import zusätzlicher Bilder als Layer, Transform, Ebenen-Reihenfolge per Tastenkürzel und Ziehen
-- [ ] Abnahme: freigestellte Person vor neuem Landschaftshintergrund, Hintergrund schrittweise hinter/zwischen Tiefenebenen verschiebbar
+- [x] Import zusätzlicher Bilder als Layer, Transform, Ebenen-Reihenfolge per Tastenkürzel und Ziehen
+- [x] Abnahme: freigestellte Person vor neuem Landschaftshintergrund, Hintergrund schrittweise hinter/zwischen Tiefenebenen verschiebbar
 
 ### Phase 5 – Pinsel (g)
 

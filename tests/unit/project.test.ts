@@ -106,11 +106,11 @@ describe('parseProject', () => {
     expect(() => parseProject({ ...p, root: { ...p.root, kind: 'layer' } })).toThrow();
   });
 
-  it('migriert Format 2 → 3 und prüft Tiefenmasken', () => {
+  it('migriert Format 2 → 4 und prüft Tiefenmasken und Transformation', () => {
     const p = createProjectFromImage(original);
     const v2 = JSON.parse(JSON.stringify({ ...p, formatVersion: 2 })) as Record<string, unknown>;
     const migrated = parseProject(v2);
-    expect(migrated.formatVersion).toBe(3);
+    expect(migrated.formatVersion).toBe(4);
     expect(migrated.root).toEqual(p.root);
 
     const layer = p.root.children[0];
@@ -138,6 +138,17 @@ describe('parseProject', () => {
     const broken = JSON.parse(JSON.stringify(withDepth)) as typeof withDepth;
     (broken.root.children[0] as { mask: { near: unknown } }).mask.near = 'nah';
     expect(() => parseProject(broken)).toThrow();
+
+    const flipped = {
+      ...p,
+      root: { ...p.root, children: [{ ...layer, transform: { ...layer.transform, flipX: true } }] },
+    };
+    expect(parseProject(JSON.parse(JSON.stringify(flipped)))).toEqual(flipped);
+    const badScale = {
+      ...p,
+      root: { ...p.root, children: [{ ...layer, transform: { ...layer.transform, scale: 0 } }] },
+    };
+    expect(() => parseProject(JSON.parse(JSON.stringify(badScale)))).toThrow(/transform/);
   });
 });
 

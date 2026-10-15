@@ -136,7 +136,7 @@ export async function computeForegroundMask(
   throw lastError instanceof Error ? lastError : new Error('Keine Segmentierung möglich.');
 }
 
-/** Fokuspunkte für ein Original (Leinwand-px). */
+/** Fokuspunkte für ein Original (Ebenen-px = Pixel des Originals). */
 export async function computeFocusPoints(
   project: Project,
   originalId: string,
@@ -149,7 +149,8 @@ export async function computeFocusPoints(
   const lm = await detectLandmarks(await previewBitmap(blob, o.width, o.height), licenseMode, onProgress);
   const face = modelById('mediapipe-face-landmarker');
   return {
-    points: focusPointsFromLandmarks(lm, project.canvas.width, project.canvas.height, newId),
+    // Fokuspunkte liegen in Ebenen-px (Pixel des Originals)
+    points: focusPointsFromLandmarks(lm, o.width, o.height, newId),
     ...(face ? { provenance: provenance(face) } : {}),
   };
 }

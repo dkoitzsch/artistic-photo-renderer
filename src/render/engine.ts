@@ -176,7 +176,8 @@ export class Engine {
           variant: 'overlay',
         });
         if (tex) {
-          this.lastOverlay = tex;
+          // mit Vorschau-Cache nie „owned“: der Cache hält die Textur bis zum nächsten Frame
+          this.lastOverlay = tex.tex;
           this.overlayKind = { mask: 1, focus: 2, depth: 3 }[overlay.kind];
         }
       }
@@ -477,7 +478,8 @@ export class Engine {
     frame.submit();
     this.sources.endFrame();
     if (!tex) return null;
-    const u16 = await this.readR16(tex);
+    const u16 = await this.readR16(tex.tex);
+    if (tex.owned) this.core.pool.release(tex.tex);
     const out = new Uint8Array(u16.length);
     for (let i = 0; i < u16.length; i++) out[i] = Math.round((u16[i] ?? 0) / 257);
     return out;

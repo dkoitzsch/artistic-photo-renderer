@@ -36,7 +36,7 @@ export const BLEND_OPTIONS: { value: BlendMode; label: string }[] = [
   { value: 'difference', label: 'Differenz' },
 ];
 
-function Section({
+export function Section({
   title,
   children,
   defaultOpen = true,

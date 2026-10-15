@@ -3,10 +3,14 @@
 
 import { useEffect, useRef, useState, type DragEvent } from 'react';
 import { getEngine } from '../../render/runtime';
+import { addImageDialog } from '../../io/openDialog';
 import {
+  deleteNodeCommand,
+  edgeNodeCommand,
   groupNodeCommand,
   moveNodeCommand,
   setNodeVisibleCommand,
+  stepNodeCommand,
   ungroupCommand,
 } from '../../state/commands';
 import { findNode, parentOf, walk, type Project, type SceneNode } from '../../state/project';
@@ -18,7 +22,9 @@ import {
   EyeOffIcon,
   ImageIcon,
   LayersIcon,
+  PlusIcon,
   ShadowIcon,
+  TrashIcon,
 } from './Icons';
 
 const DRAG_TYPE = 'application/x-bls-node';
@@ -260,6 +266,65 @@ export function LayerList() {
       <div className="layer-actions">
         <button
           className="button small"
+          onClick={addImageDialog}
+          title="Weiteres Bild als Ebene über der Auswahl einfügen (⇧⌘O oder Bild auf die Leinwand ziehen)"
+          data-testid="add-image-button"
+        >
+          <PlusIcon />
+          Bild
+        </button>
+        <span className="layer-actions-group" role="group" aria-label="Reihenfolge">
+          <button
+            className="icon-button small"
+            disabled={!sel || sel.id === project.root.id}
+            onClick={() => {
+              stepNodeCommand(1);
+            }}
+            title="Eine Ebene nach vorn (⌘]) – auch zwischen die Ebenen einer Gruppe; ganz nach vorn: ⇧⌘]"
+            aria-label="Eine Ebene nach vorn"
+            data-testid="layer-forward"
+          >
+            ↑
+          </button>
+          <button
+            className="icon-button small"
+            disabled={!sel || sel.id === project.root.id}
+            onClick={() => {
+              stepNodeCommand(-1);
+            }}
+            title="Eine Ebene nach hinten (⌘[); ganz nach hinten: ⇧⌘["
+            aria-label="Eine Ebene nach hinten"
+            data-testid="layer-backward"
+          >
+            ↓
+          </button>
+          <button
+            className="icon-button small"
+            disabled={!sel || sel.id === project.root.id}
+            onClick={() => {
+              edgeNodeCommand(1);
+            }}
+            title="Ganz nach vorn (⇧⌘])"
+            aria-label="Ganz nach vorn"
+            data-testid="layer-front"
+          >
+            ⤒
+          </button>
+          <button
+            className="icon-button small"
+            disabled={!sel || sel.id === project.root.id}
+            onClick={() => {
+              edgeNodeCommand(-1);
+            }}
+            title="Ganz nach hinten (⇧⌘[)"
+            aria-label="Ganz nach hinten"
+            data-testid="layer-back"
+          >
+            ⤓
+          </button>
+        </span>
+        <button
+          className="button small"
           disabled={!sel || sel.id === project.root.id}
           onClick={() => {
             if (sel) groupNodeCommand(sel.id);
@@ -279,6 +344,18 @@ export function LayerList() {
           data-testid="ungroup-button"
         >
           Auflösen
+        </button>
+        <button
+          className="icon-button small"
+          disabled={!sel || sel.id === project.root.id}
+          onClick={() => {
+            if (sel) deleteNodeCommand(sel.id);
+          }}
+          title="Ebene oder Gruppe löschen (⌘⌫); Rückgängig stellt sie wieder her"
+          aria-label="Löschen"
+          data-testid="delete-node"
+        >
+          <TrashIcon />
         </button>
       </div>
     </>

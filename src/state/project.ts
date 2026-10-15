@@ -3,7 +3,7 @@
 
 import type { ParamValue } from '../effects/manifest';
 
-export const PROJECT_FORMAT_VERSION = 3;
+export const PROJECT_FORMAT_VERSION = 4;
 
 export type BlendMode =
   'normal' | 'multiply' | 'screen' | 'overlay' | 'soft-light' | 'lighten' | 'darken' | 'difference';
@@ -58,7 +58,7 @@ export type FocusPoint = {
   id: string;
   kind: FocusPointKind;
   label: string;
-  /** Leinwand-px (volle Auflösung) */
+  /** Ebenen-px (Pixel des Originals; bei der Standard-Transformation = Leinwand-px) */
   x: number;
   y: number;
   radius: number;
@@ -94,7 +94,18 @@ export type EffectInstance = {
   decoupled?: string[];
 };
 
-export type Transform = { x: number; y: number; scale: number; rotation: number };
+/**
+ * Platzierung auf der Leinwand (siehe state/transform.ts): x/y = Versatz der Bildmitte zur Leinwandmitte in Leinwand-px,
+ * scale = Leinwand-px pro Original-px, rotation in Grad (im Uhrzeigersinn), flipX/flipY = gespiegelt.
+ */
+export type Transform = {
+  x: number;
+  y: number;
+  scale: number;
+  rotation: number;
+  flipX?: boolean;
+  flipY?: boolean;
+};
 
 export type Layer = {
   kind: 'layer';
@@ -472,4 +483,93 @@ export function ungroup(project: Project, groupId: string): Project {
   if (!parent || group?.kind !== 'group') return project;
   const children = parent.children.flatMap((c) => (c.id === groupId ? group.children : [c]));
   return updateNode(project, parent.id, (n) => ({ ...n, children }) as Group);
+}
+
+/** Neue Ebene aus einem Original (ohne Maske und Effekte). */
+export function newImageLayer(original: OriginalRef, transform: Transform): Layer {
+  return {
+    kind: 'layer',
+    id: newId(),
+    name: original.fileName.replace(/\.[^.]+$/, ''),
+    originalId: original.id,
+    mask: { kind: 'full' },
+    maskSource: 'full',
+    maskEdge: { ...DEFAULT_MASK_EDGE },
+    holeFill: false,
+    transform,
+    opacity: 1,
+    blendMode: 'normal',
+    visible: true,
+    locked: false,
+    effects: [],
+  };
+}
+
+/** Fügt einen Knoten über dem Bezugsknoten ein (gleiche Gruppe); ohne Bezug ganz vorn in der Wurzel. */
+export function insertAbove(project: Project, node: SceneNode, referenceId: string | null): Project {
+  const parent =
+    referenceId && referenceId !== project.root.id ? parentOf(project.root, referenceId) : undefined;
+  const target = parent ?? project.root;
+  const i = parent
+    ? parent.children.findIndex((c) => c.id === referenceId) + 1
+    : project.root.children.length;
+  const children = [...target.children.slice(0, i), node, ...target.children.slice(i)];
+  const root = mapNode(project.root, target.id, (n) => ({ ...n, children }) as Group);
+  return { ...project, root: root as Group };
+}
+
+/** Entfernt einen Knoten (samt Inhalt) aus dem Baum. Originale bleiben im Projekt. */
+export function removeNode(project: Project, nodeId: string): Project {
+  if (nodeId === project.root.id) return project;
+  const { group, removed } = removeFromTree(project.root, nodeId);
+  return removed ? { ...project, root: group } : project;
+}
+
+/**
+ * Eine Ebene nach vorn (dir = 1) oder hinten (−1): Der Knoten springt über genau eine sichtbare Ebene –
+ * auch in Gruppen hinein oder aus ihnen heraus (z. B. Hintergrund schrittweise zwischen Tiefenebenen).
+ * Ausgeblendete Knoten werden übersprungen.
+ */
+export function stepNode(project: Project, nodeId: string, dir: 1 | -1): Project {
+  const root = project.root;
+  if (nodeId === root.id || !findNode(root, nodeId)) return project;
+  // sichtbare Ebenen hinten → vorn (ohne den Knoten selbst) und Anzahl der Ebenen dahinter
+  const order: Layer[] = [];
+  let behind = -1;
+  const visit = (g: Group) => {
+    for (const c of g.children) {
+      if (c.id === nodeId) {
+        behind = order.length;
+        continue;
+      }
+      if (!c.visible) continue;
+      if (c.kind === 'layer') order.push(c);
+      else visit(c);
+    }
+  };
+  visit(root);
+  if (behind < 0) return project; // in ausgeblendeter Gruppe: nichts zu tun
+  const target = dir === 1 ? order[behind] : order[behind - 1];
+  if (!target) return moveToEdge(project, nodeId, dir, true);
+  const parent = parentOf(root, target.id);
+  if (!parent) return project;
+  const index = parent.children.filter((c) => c.id !== nodeId).findIndex((c) => c.id === target.id);
+  return moveNode(project, nodeId, parent.id, dir === 1 ? index + 1 : index);
+}
+
+/**
+ * Ganz nach vorn/hinten innerhalb der eigenen Gruppe; liegt der Knoten dort schon am Rand, in der Wurzel.
+ * rootOnly: direkt an den Rand der Wurzel.
+ */
+export function moveToEdge(project: Project, nodeId: string, dir: 1 | -1, rootOnly = false): Project {
+  const root = project.root;
+  const parent = parentOf(root, nodeId);
+  if (!parent) return project;
+  const i = parent.children.findIndex((c) => c.id === nodeId);
+  const atEdge = dir === 1 ? i === parent.children.length - 1 : i === 0;
+  const target = rootOnly || atEdge ? root : parent;
+  if (target === parent && atEdge) return project;
+  const len = target.children.filter((c) => c.id !== nodeId).length;
+  const next = moveNode(project, nodeId, target.id, dir === 1 ? len : 0);
+  return next;
 }

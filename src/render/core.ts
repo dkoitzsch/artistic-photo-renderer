@@ -14,6 +14,8 @@ import maskopsWgsl from './shaders/maskops.wgsl?raw';
 import mixWgsl from './shaders/mix.wgsl?raw';
 import pushpullWgsl from './shaders/pushpull.wgsl?raw';
 import resampleWgsl from './shaders/resample.wgsl?raw';
+import warpWgsl from './shaders/warp.wgsl?raw';
+import type { Affine } from '../state/transform';
 import { dispatch2d, Frame, TexturePool, WORK_FORMAT } from './texturePool';
 
 export const BLEND_MODE_INDEX: Record<BlendMode, number> = {
@@ -100,6 +102,7 @@ export class GpuCore {
   private readonly maskOps: ModulePipelines;
   private readonly guided: ModulePipelines;
   private readonly pushPull: ModulePipelines;
+  private readonly warpPipelines: ModulePipelines;
 
   constructor(readonly device: GPUDevice) {
     this.pool = new TexturePool(device);
@@ -144,6 +147,13 @@ export class GpuCore {
       pushpullWgsl,
       ['uniform', 'tex', 'tex', 'sampler', 'storage'],
       ['init', 'down', 'pull', 'finish'],
+    );
+    this.warpPipelines = new ModulePipelines(
+      device,
+      'warp',
+      warpWgsl,
+      ['uniform', 'tex', 'sampler', 'storage'],
+      ['main'],
     );
     this.linearSampler = device.createSampler({
       magFilter: 'linear',
@@ -231,6 +241,34 @@ export class GpuCore {
       dst.createView(),
     ]);
     dispatch2d(frame, this.blendPipeline, bg, dst.width, dst.height, 'blend');
+  }
+
+  /**
+   * Platziert src per affiner Abbildung in dst. toLocal: Render-px (Leinwand) → Texel von src;
+   * origin: Lage von dst auf der Leinwand in Render-px. Außerhalb von src transparent.
+   */
+  warp(frame: Frame, src: GPUTexture, dst: GPUTexture, toLocal: Affine, origin: [number, number]): void {
+    const u = new Float32Array([
+      toLocal.a,
+      toLocal.b,
+      toLocal.c,
+      toLocal.d,
+      toLocal.e,
+      toLocal.f,
+      origin[0],
+      origin[1],
+      src.width,
+      src.height,
+      0,
+      0,
+    ]);
+    this.warpPipelines.run(
+      frame,
+      'main',
+      [{ buffer: frame.uniform(u) }, src.createView(), this.linearSampler, dst.createView()],
+      dst.width,
+      dst.height,
+    );
   }
 
   /** dst = src · mask.r */

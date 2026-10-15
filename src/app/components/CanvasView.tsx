@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
-import { openFile } from '../../io/import';
+import { importImageAsLayer, openFile } from '../../io/import';
+import { PROJECT_EXTENSION } from '../../io/projectFile';
 import { openFileDialog } from '../../io/openDialog';
 import { parseHexColor, srgbToLinear } from '../../render/color';
 import type { ViewColors } from '../../render/engine';
@@ -8,6 +9,7 @@ import { useAppStore, useProject } from '../../state/store';
 import { panBy, zoomBy } from '../../state/viewActions';
 import { usePluginStore } from '../../effects/pluginStore';
 import { FocusOverlay } from './FocusOverlay';
+import { TransformOverlay } from './TransformOverlay';
 import { ParallaxPanel, parallaxVector } from './ParallaxPanel';
 import { GpuStatus } from './GpuStatus';
 
@@ -23,6 +25,17 @@ function readViewColors(): ViewColors {
     checkerA: cssColorLinear(style, '--checker-a'),
     checkerB: cssColorLinear(style, '--checker-b'),
   };
+}
+
+/** Abgelegte Dateien: Projektdatei oder Bild ohne offenes Projekt → öffnen; sonst Bilder als neue Ebenen. */
+async function dropFiles(files: File[]): Promise<void> {
+  const first = files[0];
+  if (!first) return;
+  if (first.name.toLowerCase().endsWith(PROJECT_EXTENSION) || !useAppStore.getState().history) {
+    await openFile(first);
+    return;
+  }
+  for (const f of files) await importImageAsLayer(f);
 }
 
 function isEditableTarget(target: EventTarget | null): boolean {
@@ -177,7 +190,7 @@ export function CanvasView({ theme }: { theme: 'light' | 'dark' }) {
   return (
     <div
       ref={containerRef}
-      className={`canvas-area${dragOver ? ' drag-over' : ''}`}
+      className={`canvas-area${dragOver ? ' drag-over' : ''}${spaceDown || panning ? ' space-pan' : ''}`}
       onDragOver={(e) => {
         if (!gpuReady) return;
         e.preventDefault();
@@ -190,8 +203,7 @@ export function CanvasView({ theme }: { theme: 'light' | 'dark' }) {
       onDrop={(e) => {
         e.preventDefault();
         setDragOver(false);
-        const file = e.dataTransfer.files[0];
-        if (file) void openFile(file);
+        void dropFiles([...e.dataTransfer.files]);
       }}
     >
       <canvas
@@ -228,6 +240,7 @@ export function CanvasView({ theme }: { theme: 'light' | 'dark' }) {
           }}
         />
       )}
+      <TransformOverlay />
       <FocusOverlay />
       <ParallaxPanel />
       <GpuStatus />

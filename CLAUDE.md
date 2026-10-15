@@ -10,7 +10,7 @@ Abweichungen nur mit Eintrag in [DECISIONS.md](DECISIONS.md) und Hinweis an den 
 ## Status
 
 Abgeschlossen: **Phase 0 – Gerüst**, **Phase 1 – Ganzes Bild**, **Phase 2 – Vordergrund, Fokus, Schatten**,
-**Phase 3 – Tiefenebenen und Gruppen**. Nächste: Phase 4 (wartet auf Freigabe). Erledigte Punkte werden in der Spec abgehakt.
+**Phase 3 – Tiefenebenen und Gruppen**, **Phase 4 – Weitere Bilder**. Nächste: Phase 5 (wartet auf Freigabe). Erledigte Punkte werden in der Spec abgehakt.
 
 ## Ordnerstruktur (✓ = existiert)
 
@@ -77,7 +77,7 @@ Node ≥ 22.12 (`.nvmrc`). Dev-Server auf **Port 5317** (5173 ist auf diesem Rec
 Phasen-Abschluss: `npm run lint && npm run typecheck && npm test && npm run test:service && npm run build && npm run test:e2e`
 (E2E mit Modellen braucht einmalig `npm run models:fetch`, sonst werden diese Tests übersprungen.)
 
-## Architektur (Stand Phase 3)
+## Architektur (Stand Phase 4)
 
 **Datenfluss:** UI → Befehl (`state/commands.ts`) → History (`state/history.ts`, unveränderliche Schnappschüsse) →
 Zustand-Store → `CanvasView` ruft pro Frame `Engine.present()` → Compositor rendert nur Geändertes → Anzeige.
@@ -130,6 +130,16 @@ Autosave (`io/autosave.ts`) beobachtet den Store und schreibt ins OPFS.
 - Parallax: Store `parallax`, `ParallaxPanel.tsx`, Versatz im Blend-Shader (`blend.wgsl` `offset`), Taste P.
 - Export: `io/export.ts` (Dialog-Formate PNG/JPEG/WebP/PSD, NC-Warnung), `io/psd.ts` (ag-psd, lazy geladen).
 
+**Phase 4:**
+
+- Transform: `state/transform.ts` (Platzierung Ebenen-px → Leinwand-px, Füllen/Einpassen, rein und getestet).
+  Compositor: `geometry()` je Ebene (Auflösung im Ebenenraum, Abbildung, Cache-Schlüssel), `place()` legt Ebenen-Texturen
+  auf den Leinwand-Ausschnitt (`core.warp`, Shader `warp.wgsl`; ausgerichtete Ebenen: Ausschnitt kopieren).
+  Maske/Lochfüllung/Tiefe im Ebenenraum, Effekte im Leinwandraum. Fokuspunkte in Ebenen-px (`FocusOverlay` rechnet um).
+- UI: `TransformSection.tsx` (Inspektor), `TransformOverlay.tsx` (Rahmen auf der Leinwand), Ebenenliste mit „+ Bild“,
+  Reihenfolge, Löschen; Import als Ebene `io/import.ts` `importImageAsLayer`, Dialog `io/openDialog.ts` `addImageDialog`.
+- Baum: `insertAbove`, `removeNode`, `stepNode` (über genau eine sichtbare Ebene, auch in Gruppen hinein), `moveToEdge`.
+
 **Neuen Effekt anlegen:** siehe [effects/README.md](effects/README.md) – nur einen Ordner unter `effects/` anlegen.
 
 ## Referenz-Hardware
@@ -163,4 +173,7 @@ Eine neue Phase beginnt nur nach ausdrücklicher Freigabe durch den Nutzer.
 - Tiefenebenen „objekttreu“ (SAM) fehlt noch (Phase 5/6). Die Tiefe einer Ebene ist für Parallax die Bandmitte.
 - PSD: 8 Bit sRGB; Ebenen enthalten ihre Effekte (nicht nachträglich änderbar), Masken nur als deaktivierte Ebenenmasken;
   Gruppen mit eigenen Effekten werden zu einer Ebene. An weichen Bandkanten mischen PSD-Programme minimal anders (8-Bit-sRGB).
+- Transform: Gruppen lassen sich nur verschieben (nicht skalieren/drehen). Maskenkanten gelten in Ebenen-px, Effekte in
+  Leinwand-px. Die Leinwandgröße ist die des ersten Bildes und lässt sich nicht ändern.
+- Kürzel ⌘] / ⌘[ werden nach dem Zeichen erkannt: auf deutscher Mac-Tastatur ⌘⌥6 / ⌘⌥5 (oder die Pfeil-Knöpfe der Ebenenliste).
 - Browser-Kürzel (⌘0, ⌘E, ⌘O, ⌘S) werden per `preventDefault` abgefangen; in Playwright getestet, im echten Chrome manuell zu prüfen.

@@ -1,15 +1,18 @@
 // Öffnen von Bildern (neues Projekt), Projektdateien und gespeicherten Projekten.
 
 import { getEngine } from '../render/runtime';
-import { openProject } from '../state/commands';
+import { addLayerCommand, openProject } from '../state/commands';
 import {
   createProjectFromImage,
   depthIds,
   maskIds,
   newId,
+  newImageLayer,
   type OriginalRef,
   type Project,
 } from '../state/project';
+import { getProject } from '../state/store';
+import { fillTransform, fitTransform, IDENTITY_TRANSFORM } from '../state/transform';
 import { decodeMaskPng } from './maskCodec';
 import { useAppStore } from '../state/store';
 import { fitToViewport } from '../state/viewActions';
@@ -102,59 +105,111 @@ export async function openFile(file: File): Promise<boolean> {
   return importImageFile(file);
 }
 
-/** Lädt eine Bilddatei als Original und legt ein neues Projekt an. */
-export async function importImageFile(file: File): Promise<boolean> {
-  const { notify, gpu, setBusy } = useAppStore.getState();
-  if (!guard() || gpu.state !== 'ready') return false;
+/** Prüft Format, dekodiert, speichert das Original (OPFS) und lädt es auf die GPU. null = Fehler (gemeldet). */
+async function loadImageFile(file: File): Promise<{ original: OriginalRef; hasAlpha: boolean } | null> {
+  const { notify, gpu } = useAppStore.getState();
+  if (gpu.state !== 'ready') return null;
   if (isHeic(file)) {
     notify(
       'error',
       `${file.name}: HEIC wird von Chrome nicht dekodiert. Bitte als JPEG oder PNG exportieren.`,
     );
-    return false;
+    return null;
   }
   if (!isAccepted(file.type)) {
     notify('error', `${file.name}: Format nicht unterstützt (JPEG, PNG, WebP oder ${PROJECT_EXTENSION}).`);
-    return false;
+    return null;
   }
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const blob = new Blob([bytes], { type: file.type });
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await decode(blob);
+  } catch {
+    notify('error', `${file.name}: Die Datei konnte nicht dekodiert werden.`);
+    return null;
+  }
+  const { width, height } = bitmap;
+  if (width > gpu.maxTextureSize || height > gpu.maxTextureSize) {
+    bitmap.close();
+    notify(
+      'error',
+      `${file.name}: ${width} × ${height} px überschreitet das GPU-Limit von ${gpu.maxTextureSize} px.`,
+    );
+    return null;
+  }
+  const id = await sha256Hex(bytes);
+  await saveOriginal(id, bytes);
+  getEngine()?.sources.add(id, bitmap);
+  bitmap.close();
+  if (width * height > MAX_TARGET_PIXELS)
+    notify(
+      'info',
+      `${file.name} hat ${((width * height) / 1e6).toFixed(1)} MP; ausgelegt ist die App auf 24 MP.`,
+    );
+  return {
+    original: { id, fileName: file.name, mimeType: file.type, width, height },
+    hasAlpha: file.type !== 'image/jpeg' && (await hasTransparency(blob)),
+  };
+}
+
+/** Grobe Prüfung auf Transparenz an einer verkleinerten Fassung. */
+async function hasTransparency(blob: Blob): Promise<boolean> {
+  const small = await createImageBitmap(blob, {
+    resizeWidth: 96,
+    resizeHeight: 96,
+    premultiplyAlpha: 'none',
+  });
+  const ctx = new OffscreenCanvas(96, 96).getContext('2d');
+  if (!ctx) return false;
+  ctx.drawImage(small, 0, 0);
+  small.close();
+  const data = ctx.getImageData(0, 0, 96, 96).data;
+  for (let i = 3; i < data.length; i += 4) if ((data[i] ?? 255) < 250) return true;
+  return false;
+}
+
+/**
+ * Fügt eine Bilddatei als neue Ebene in das offene Projekt ein (über der Auswahl).
+ * Deckende Bilder füllen die Leinwand (typisch: neuer Hintergrund), Bilder mit Transparenz werden eingepasst.
+ */
+export async function importImageAsLayer(file: File): Promise<boolean> {
+  const { notify, setBusy } = useAppStore.getState();
+  if (!guard()) return false;
+  if (!getProject()) return importImageFile(file);
+  setBusy(`${file.name} wird hinzugefügt …`);
+  try {
+    const loaded = await loadImageFile(file);
+    const project = getProject();
+    if (!loaded || !project) return false;
+    const { original, hasAlpha } = loaded;
+    const transform = (hasAlpha ? fitTransform : fillTransform)(IDENTITY_TRANSFORM, original, project.canvas);
+    addLayerCommand(original, newImageLayer(original, transform));
+    notify('info', `${file.name} als Ebene hinzugefügt (${original.width} × ${original.height} px).`);
+    return true;
+  } catch (e) {
+    notify('error', `${file.name}: ${errorText(e)}`);
+    return false;
+  } finally {
+    setBusy(null);
+  }
+}
+
+/** Lädt eine Bilddatei als Original und legt ein neues Projekt an. */
+export async function importImageFile(file: File): Promise<boolean> {
+  const { notify, setBusy } = useAppStore.getState();
+  if (!guard()) return false;
   setBusy(`${file.name} wird geöffnet …`);
   try {
-    const bytes = new Uint8Array(await file.arrayBuffer());
-    let bitmap: ImageBitmap;
-    try {
-      bitmap = await decode(new Blob([bytes], { type: file.type }));
-    } catch {
-      notify('error', `${file.name}: Die Datei konnte nicht dekodiert werden.`);
-      return false;
-    }
-    const { width, height } = bitmap;
-    if (width > gpu.maxTextureSize || height > gpu.maxTextureSize) {
-      bitmap.close();
-      notify(
-        'error',
-        `${file.name}: ${width} × ${height} px überschreitet das GPU-Limit von ${gpu.maxTextureSize} px.`,
-      );
-      return false;
-    }
-    const id = await sha256Hex(bytes);
-    await saveOriginal(id, bytes);
-    getEngine()?.sources.add(id, bitmap);
-    bitmap.close();
-
-    const project = createProjectFromImage(
-      { id, fileName: file.name, mimeType: file.type, width, height },
-      undefined,
-      useAppStore.getState().licenseMode,
-    );
+    const loaded = await loadImageFile(file);
+    if (!loaded) return false;
+    const { original } = loaded;
+    const { width, height } = original;
+    const project = createProjectFromImage(original, undefined, useAppStore.getState().licenseMode);
     await uploadAssets(project, () => Promise.resolve(null));
     await saveProject(project);
     show(project);
-    if (width * height > MAX_TARGET_PIXELS)
-      notify(
-        'info',
-        `${file.name} hat ${((width * height) / 1e6).toFixed(1)} MP; ausgelegt ist die App auf 24 MP.`,
-      );
-    else notify('info', `${file.name} geladen (${width} × ${height} px).`);
+    notify('info', `${file.name} geladen (${width} × ${height} px).`);
     return true;
   } catch (e) {
     notify('error', `${file.name}: ${errorText(e)}`);

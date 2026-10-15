@@ -6,6 +6,7 @@ import { useAppStore, useProject } from '../../state/store';
 import { EFFECT_DRAG_TYPE, EffectCard } from './EffectCard';
 import { PlusIcon } from './Icons';
 import { FocusSection, MaskSection, NodeSection, ShadowParams, ShadowSection } from './LayerSections';
+import { TransformSection } from './TransformSection';
 
 function EffectStack({
   hostId,
@@ -113,6 +114,7 @@ export function Inspector() {
       <NodeSection node={host} isRoot={host.id === project.root.id} />
       {host.kind === 'layer' && (
         <>
+          <TransformSection key={`transform-${host.id}`} layer={host} project={project} />
           <MaskSection key={`mask-${host.id}`} layer={host} />
           <FocusSection key={`focus-${host.id}`} layer={host} />
           <ShadowSection key={`shadow-${host.id}`} layer={host} />

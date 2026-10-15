@@ -1486,6 +1486,60 @@ button:disabled {
 }
 
 /* Fokuspunkt-Werkzeug */
+.transform-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+  overflow: visible;
+}
+
+.transform-body {
+  fill: transparent;
+  stroke: var(--accent);
+  stroke-width: 1;
+  pointer-events: all;
+  cursor: move;
+}
+
+.transform-overlay.locked .transform-body {
+  cursor: not-allowed;
+  stroke-dasharray: 4 3;
+}
+
+.transform-handle {
+  fill: #fff;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  pointer-events: all;
+  cursor: nwse-resize;
+}
+
+.transform-stem {
+  stroke: var(--accent);
+  stroke-width: 1;
+}
+
+.transform-rotate {
+  fill: #fff;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  pointer-events: all;
+  cursor: grab;
+}
+
+.transform-overlay.dragging,
+.transform-overlay.dragging * {
+  pointer-events: all;
+}
+
+/* Leertaste (Hand) hat Vorrang vor dem Rahmen */
+.canvas-area.space-pan .transform-overlay * {
+  pointer-events: none;
+}
+
 .focus-overlay {
   position: absolute;
   inset: 0;
@@ -1866,8 +1920,15 @@ button:disabled {
 
 .layer-actions {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: var(--space-1);
   margin-top: var(--space-2);
+}
+
+.layer-actions-group {
+  display: inline-flex;
+  gap: 2px;
 }
 
 .group-mode-badge {

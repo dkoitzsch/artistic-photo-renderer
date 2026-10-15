@@ -30,6 +30,12 @@ function checkLayer(n: Record<string, unknown>, where: string, originals: Record
     fail(`${where} verweist auf ein fehlendes Original`);
   const mask = n.mask;
   if (!isObj(mask) || !isObj(n.transform)) fail(`${where}.mask/transform fehlt`);
+  const t = n.transform;
+  if (!isNum(t.x) || !isNum(t.y) || !isNum(t.scale) || !isNum(t.rotation) || !(t.scale > 0))
+    fail(`${where}.transform unvollständig`);
+  for (const k of ['flipX', 'flipY'] as const)
+    if (t[k] !== undefined && typeof t[k] !== 'boolean')
+      fail(`${where}.transform.${k} ist kein Wahrheitswert`);
   if (mask.kind === 'stored') {
     if (!isStr(mask.id) || !isNum(mask.width) || !isNum(mask.height)) fail(`${where}.mask unvollständig`);
     checkProvenance(mask.provenance, `${where}.mask`);
@@ -85,7 +91,9 @@ function checkNode(n: unknown, where: string, originals: Record<string, unknown>
 /** Format 1 → 2: Lizenzmodus, Kantenübergang und Lochfüllung ergänzen; 2 → 3: nur neue, optionale Felder. */
 function migrate(raw: Record<string, unknown>): Record<string, unknown> {
   const json = raw.formatVersion === 1 ? migrate1to2(raw) : raw;
-  return json.formatVersion === 2 ? { ...json, formatVersion: 3 } : json;
+  // 2 → 3: Tiefenkarten (optional), 3 → 4: Transformation wird angewendet (bisher stets neutral) – keine Änderung nötig
+  const v3 = json.formatVersion === 2 ? { ...json, formatVersion: 3 } : json;
+  return v3.formatVersion === 3 ? { ...v3, formatVersion: 4 } : v3;
 }
 
 function migrate1to2(json: Record<string, unknown>): Record<string, unknown> {

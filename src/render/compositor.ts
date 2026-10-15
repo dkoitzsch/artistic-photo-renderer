@@ -9,9 +9,11 @@ import {
   type EffectInstance,
   type Group,
   type Layer,
+  type OriginalRef,
   type Project,
   type SceneNode,
 } from '../state/project';
+import { apply, invert, isAligned, placement, type Affine } from '../state/transform';
 import type { GpuCore } from './core';
 import type { EffectRunner } from './effectRunner';
 import type { SourceStore } from './sources';
@@ -97,6 +99,28 @@ function findDepthLayer(project: Project, id: string): Layer | undefined {
 const isWhole = (r: Rect, [w, h]: [number, number]) =>
   r.x === 0 && r.y === 0 && r.width === w && r.height === h;
 
+/**
+ * Lage einer Ebene: Sie wird in ihrem eigenen Raum (Pixel des Originals, Auflösung „local“) aufbereitet
+ * (Maske, Lochfüllung, Tiefe) und dann auf die Leinwand gelegt. aligned: deckungsgleich mit der Leinwand
+ * (Standardfall, ohne Neuabtastung).
+ */
+type Geometry = {
+  aligned: boolean;
+  /** Größe der Ebenen-Texturen */
+  local: [number, number];
+  /** Ebenen-Texel pro Original-px (für Masken-Kantenbreiten in px) */
+  pxScale: number;
+  /** Render-px → Ebenen-Texel */
+  toLocal: Affine;
+  /** Original-px → Leinwand-px */
+  toCanvas: Affine;
+  /** Betrag der Skalierung (Fokusradien) */
+  scale: number;
+  key: string;
+};
+
+const IDENTITY_AFFINE: Affine = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
+
 type Aux = { mask: GPUTexture; focus: GPUTexture; depth: GPUTexture; hasFocus: boolean };
 
 /** Lazy Zusatz-Eingänge einer Ebene: werden erst erzeugt, wenn ein Effekt wirklich rechnen muss. */
@@ -106,13 +130,95 @@ export class Compositor {
   /** Anzahl der in diesem Frame tatsächlich ausgeführten Effekte (für Tests/Statistik) */
   effectRuns = 0;
 
+  /** Leinwand und Originale des gerade gerenderten Projekts (für die Lage der Ebenen) */
+  private canvas: { width: number; height: number } = { width: 1, height: 1 };
+  private originals: Record<string, OriginalRef> = {};
+
   constructor(
     private readonly core: GpuCore,
     private readonly sources: SourceStore,
     private readonly runner: EffectRunner,
   ) {}
 
+  private use(project: Project): void {
+    this.canvas = project.canvas;
+    this.originals = project.originals;
+  }
+
+  /** Lage einer Ebene für diese Render-Auflösung. */
+  private geometry(layer: Layer, opts: RenderOptions): Geometry {
+    const o = this.originals[layer.originalId];
+    const t = layer.transform;
+    if (!o || isAligned(t, o, this.canvas)) {
+      return {
+        aligned: true,
+        local: opts.canvasSize,
+        pxScale: opts.scale,
+        toLocal: IDENTITY_AFFINE,
+        toCanvas: IDENTITY_AFFINE,
+        scale: 1,
+        key: '',
+      };
+    }
+    const scale = Math.abs(t.scale);
+    // Auflösung der Ebene: so fein wie nötig, in Viertel-Oktaven gestuft (stabile Caches beim Skalieren)
+    const f = Math.min(1, 2 ** (Math.ceil(4 * Math.log2(Math.max(1e-4, opts.scale * scale))) / 4));
+    const lw = Math.max(1, Math.round(o.width * f));
+    const lh = Math.max(1, Math.round(o.height * f));
+    const toCanvas = placement(t, o, this.canvas);
+    const inv = invert(toCanvas);
+    const fx = lw / o.width;
+    const fy = lh / o.height;
+    const k = 1 / opts.scale;
+    const toLocal: Affine = {
+      a: fx * inv.a * k,
+      b: fy * inv.b * k,
+      c: fx * inv.c * k,
+      d: fy * inv.d * k,
+      e: fx * inv.e,
+      f: fy * inv.f,
+    };
+    const m = [toCanvas.a, toCanvas.b, toCanvas.c, toCanvas.d, toCanvas.e, toCanvas.f].map((v) =>
+      v.toFixed(5),
+    );
+    return {
+      aligned: false,
+      local: [lw, lh],
+      pxScale: fx,
+      toLocal,
+      toCanvas,
+      scale,
+      key: `|T${m.join(',')}`,
+    };
+  }
+
+  /** Legt eine Ebenen-Textur auf den Leinwand-Ausschnitt (ausgerichtet: Ausschnitt kopieren, sonst neu abtasten). */
+  private place(
+    frame: Frame,
+    geo: Geometry,
+    tex: GPUTexture,
+    opts: RenderOptions,
+    label: string,
+  ): { tex: GPUTexture; owned: boolean } {
+    if (geo.aligned) return this.region(frame, tex, opts, label);
+    const r = opts.region;
+    const out = this.core.pool.acquire(r.width, r.height, label);
+    this.core.warp(frame, tex, out, geo.toLocal, [r.x, r.y]);
+    return { tex: out, owned: true };
+  }
+
+  /** Fokuspunkte einer Ebene in Leinwand-px. */
+  private focusPoints(layer: Layer, geo: Geometry) {
+    const points = (layer.focusMap?.points ?? []).filter((p) => p.enabled && p.radius > 0);
+    if (geo.aligned) return points;
+    return points.map((p) => {
+      const [x, y] = apply(geo.toCanvas, p.x, p.y);
+      return { ...p, x, y, radius: p.radius * geo.scale };
+    });
+  }
+
   render(frame: Frame, project: Project, opts: RenderOptions): RenderResult {
+    this.use(project);
     const res = this.node(frame, project.root, opts);
     if (res) return res;
     const tex = this.core.pool.acquire(opts.region.width, opts.region.height, 'empty');
@@ -127,26 +233,38 @@ export class Compositor {
     layerId: string,
     kind: 'mask' | 'focus' | 'depth',
     opts: RenderOptions,
-  ): GPUTexture | null {
-    if (kind === 'depth') {
-      const d = findDepthLayer(project, layerId);
-      return d ? this.depthTexture(frame, d, opts) : null;
-    }
-    const layer = findLayer(project, layerId);
+  ): { tex: GPUTexture; owned: boolean } | null {
+    this.use(project);
+    const layer = kind === 'depth' ? findDepthLayer(project, layerId) : findLayer(project, layerId);
     if (!layer) return null;
-    if (kind === 'mask') {
-      const m = this.processedMask(frame, layer, opts);
-      return m?.tex ?? this.core.white;
+    const geo = this.geometry(layer, opts);
+    const slot = `${opts.variant}:${layer.id}:${kind}`;
+    const keep = (key: string, compute: () => { tex: GPUTexture; owned: boolean }) => {
+      const cached = opts.cache?.get(slot, key);
+      if (cached) return { tex: cached, owned: false };
+      const r = compute();
+      if (!r.owned || !opts.cache) return r;
+      opts.cache.set(slot, key, r.tex);
+      return { tex: r.tex, owned: false };
+    };
+    const regionKey = `[${opts.region.x},${opts.region.y},${opts.region.width},${opts.region.height}]`;
+    if (kind === 'depth') {
+      const d = this.depthTexture(frame, layer, geo);
+      return d
+        ? keep(`${d.key}${geo.key}${regionKey}`, () => this.place(frame, geo, d.tex, opts, 'depth-view'))
+        : null;
     }
-    const points = (layer.focusMap?.points ?? []).filter((p) => p.enabled && p.radius > 0);
-    const key = JSON.stringify(points.map((p) => [p.x, p.y, p.radius]));
-    const slot = `${opts.variant}:${layer.id}:focus`;
-    const cached = opts.cache?.get(slot, key);
-    if (cached) return cached;
-    const tex = this.core.pool.acquire(opts.region.width, opts.region.height, 'focus-view');
-    this.core.focusMap(frame, points, tex, [opts.region.x, opts.region.y], opts.scale);
-    if (opts.cache) opts.cache.set(slot, key, tex);
-    return tex;
+    if (kind === 'mask') {
+      const m = this.processedMask(frame, layer, geo);
+      if (!m) return { tex: this.core.white, owned: false };
+      return keep(`${m.key}${geo.key}${regionKey}`, () => this.place(frame, geo, m.tex, opts, 'mask-view'));
+    }
+    const points = this.focusPoints(layer, geo);
+    return keep(JSON.stringify(points.map((p) => [p.x, p.y, p.radius])) + regionKey, () => {
+      const tex = this.core.pool.acquire(opts.region.width, opts.region.height, 'focus-view');
+      this.core.focusMap(frame, points, tex, [opts.region.x, opts.region.y], opts.scale);
+      return { tex, owned: true };
+    });
   }
 
   private release(r: RenderResult): void {
@@ -176,20 +294,17 @@ export class Compositor {
     return { tex: out, owned: true };
   }
 
-  /** Aufbereitete Maske einer Ebene in Leinwandgröße (Kantenübergang angewendet), gecacht. */
-  private processedMask(
-    frame: Frame,
-    layer: Layer,
-    opts: RenderOptions,
-  ): { tex: GPUTexture; key: string } | null {
+  /** Aufbereitete Maske einer Ebene in Ebenengröße (Kantenübergang angewendet), gecacht. */
+  private processedMask(frame: Frame, layer: Layer, geo: Geometry): { tex: GPUTexture; key: string } | null {
     const m = layer.mask;
     if (m.kind === 'full') return null;
-    const [cw, ch] = opts.canvasSize;
-    const edgeKey = `${JSON.stringify(layer.maskEdge)}|${opts.scale}`;
+    const [cw, ch] = geo.local;
+    const px = geo.pxScale;
+    const edgeKey = `${JSON.stringify(layer.maskEdge)}|${px}`;
     if (m.kind === 'stored') {
       const key = `mask|${m.id}@${cw}x${ch}|${m.inverted ? 'inv' : ''}|${edgeKey}`;
       const tex = this.sources.derive(key, cw, ch, (out) => {
-        this.core.processMask(frame, this.sources.mask(m.id), m.inverted, layer.maskEdge, opts.scale, out);
+        this.core.processMask(frame, this.sources.mask(m.id), m.inverted, layer.maskEdge, px, out);
       });
       return { tex, key };
     }
@@ -197,8 +312,8 @@ export class Compositor {
     const key = `mask|${m.depthId}@${cw}x${ch}|band${m.near},${m.far},${m.overlap}|${edgeKey}`;
     const tex = this.sources.derive(key, cw, ch, (out) => {
       const band = this.core.pool.acquire(cw, ch, 'band');
-      this.core.depthBand(frame, this.sources.mask(m.depthId), m.near, m.far, m.overlap * opts.scale, band);
-      this.core.processMask(frame, band, false, layer.maskEdge, opts.scale, out);
+      this.core.depthBand(frame, this.sources.mask(m.depthId), m.near, m.far, m.overlap * px, band);
+      this.core.processMask(frame, band, false, layer.maskEdge, px, out);
       this.core.pool.release(band);
     });
     return { tex, key };
@@ -208,15 +323,11 @@ export class Compositor {
    * Lochgefülltes Original, gecacht. Loch: bei gespeicherter Maske der ausgeblendete Bereich,
    * bei Tiefenbändern alles, was näher als fillBelow liegt (Inhalte vorderer Ebenen); leicht erweitert.
    */
-  private filledSource(
-    frame: Frame,
-    layer: Layer,
-    opts: RenderOptions,
-  ): { tex: GPUTexture; key: string } | null {
+  private filledSource(frame: Frame, layer: Layer, geo: Geometry): { tex: GPUTexture; key: string } | null {
     const m = layer.mask;
     if (m.kind === 'full') return null;
     if (m.kind === 'depth' && m.fillBelow <= 0) return null;
-    const [cw, ch] = opts.canvasSize;
+    const [cw, ch] = geo.local;
     const holeId = m.kind === 'stored' ? m.id : m.depthId;
     const holeKey = m.kind === 'stored' ? (m.inverted ? 'inv' : '') : `below${m.fillBelow}`;
     const key = `fill|${layer.originalId}+${holeId}@${cw}x${ch}|${holeKey}`;
@@ -237,35 +348,39 @@ export class Compositor {
     return { tex, key };
   }
 
-  /** Tiefenkarte einer Ebene in Leinwandgröße (für Effekte und die Ansicht „Tiefe“), gecacht. */
-  private depthTexture(frame: Frame, layer: Layer, opts: RenderOptions): GPUTexture | null {
+  /** Tiefenkarte einer Ebene in Ebenengröße (für Effekte und die Ansicht „Tiefe“), gecacht. */
+  private depthTexture(frame: Frame, layer: Layer, geo: Geometry): { tex: GPUTexture; key: string } | null {
     const id = layer.depthMap?.id ?? (layer.mask.kind === 'depth' ? layer.mask.depthId : null);
     if (!id || !this.sources.hasMask(id)) return null;
-    const [cw, ch] = opts.canvasSize;
-    return this.sources.derive(`depth|${id}@${cw}x${ch}`, cw, ch, (out) => {
+    const [cw, ch] = geo.local;
+    const key = `depth|${id}@${cw}x${ch}`;
+    const tex = this.sources.derive(key, cw, ch, (out) => {
       this.core.loadMask(frame, this.sources.mask(id), out);
     });
+    return { tex, key };
   }
 
   private auxFor(
     frame: Frame,
     layer: Layer,
+    geo: Geometry,
     maskTex: GPUTexture | null,
     depthTex: GPUTexture | null,
     opts: RenderOptions,
   ): AuxProvider {
-    const points = (layer.focusMap?.points ?? []).filter((p) => p.enabled && p.radius > 0);
+    const points = this.focusPoints(layer, geo);
     const owned: GPUTexture[] = [];
     let aux: Aux | null = null;
     return {
       key:
         (points.length ? `focus${JSON.stringify(points.map((p) => [p.x, p.y, p.radius]))}` : 'nofocus') +
-        (depthTex ? `|depth${layer.depthMap?.id ?? ''}` : ''),
+        (depthTex ? `|depth${layer.depthMap?.id ?? ''}` : '') +
+        geo.key,
       get: () => {
         if (aux) return aux;
         let mask = this.core.white;
         if (maskTex) {
-          const r = this.region(frame, maskTex, opts, 'mask-region');
+          const r = this.place(frame, geo, maskTex, opts, 'mask-region');
           if (r.owned) owned.push(r.tex);
           mask = r.tex;
         }
@@ -277,7 +392,7 @@ export class Compositor {
         }
         let depth = this.core.black;
         if (depthTex) {
-          const r = this.region(frame, depthTex, opts, 'depth-region');
+          const r = this.place(frame, geo, depthTex, opts, 'depth-region');
           if (r.owned) owned.push(r.tex);
           depth = r.tex;
         }
@@ -296,18 +411,29 @@ export class Compositor {
     layer: Layer,
     opts: RenderOptions,
   ): { result: RenderResult; shadow: RenderResult | null } {
-    const [cw, ch] = opts.canvasSize;
     const r = opts.region;
     const regionKey = `[${r.x},${r.y},${r.width},${r.height}]`;
-    // Phase 1–3: das Original füllt die Leinwand (Transform folgt in Phase 4).
-    const filled = layer.holeFill ? this.filledSource(frame, layer, opts) : null;
-    const base = filled?.tex ?? this.sources.at(frame, layer.originalId, cw, ch);
-    const baseKey = filled?.key ?? `${layer.originalId}@${cw}x${ch}`;
+    // Aufbereitung im Raum der Ebene, danach Platzierung auf der Leinwand (Transform)
+    const geo = this.geometry(layer, opts);
+    const [lw, lh] = geo.local;
+    const filled = layer.holeFill ? this.filledSource(frame, layer, geo) : null;
+    const base = filled?.tex ?? this.sources.at(frame, layer.originalId, lw, lh);
+    const baseKey = (filled?.key ?? `${layer.originalId}@${lw}x${lh}`) + geo.key;
     // Gespeicherte Maske + Lochfüllung: Ebene wird deckend (Hintergrund). Tiefenband: gefüllt UND maskiert.
-    const mask = filled && layer.mask.kind === 'stored' ? null : this.processedMask(frame, layer, opts);
+    const mask = filled && layer.mask.kind === 'stored' ? null : this.processedMask(frame, layer, geo);
 
-    const baseRegion = this.region(frame, base, opts, 'region');
-    let src: RenderResult = { tex: baseRegion.tex, key: baseKey + regionKey, owned: baseRegion.owned };
+    let src: RenderResult;
+    const placedKey = baseKey + regionKey;
+    const placedSlot = `${opts.variant}:${layer.id}:placed`;
+    const placedCached = geo.aligned ? undefined : opts.cache?.get(placedSlot, placedKey);
+    if (placedCached) src = { tex: placedCached, key: placedKey, owned: false };
+    else {
+      const placed = this.place(frame, geo, base, opts, 'region');
+      if (!geo.aligned && opts.cache) {
+        opts.cache.set(placedSlot, placedKey, placed.tex);
+        src = { tex: placed.tex, key: placedKey, owned: false };
+      } else src = { tex: placed.tex, key: placedKey, owned: placed.owned };
+    }
     if (mask) {
       const key = `${src.key}*${mask.key}`;
       const slot = `${opts.variant}:${layer.id}:masked`;
@@ -316,7 +442,7 @@ export class Compositor {
         this.release(src);
         src = { tex: cached, key, owned: false };
       } else {
-        const maskRegion = this.region(frame, mask.tex, opts, 'mask-region');
+        const maskRegion = this.place(frame, geo, mask.tex, opts, 'mask-region');
         const out = this.core.pool.acquire(r.width, r.height, 'masked');
         this.core.maskApply(frame, src.tex, maskRegion.tex, out);
         if (maskRegion.owned) this.core.pool.release(maskRegion.tex);
@@ -328,7 +454,14 @@ export class Compositor {
       }
     }
 
-    const aux = this.auxFor(frame, layer, mask?.tex ?? null, this.depthTexture(frame, layer, opts), opts);
+    const aux = this.auxFor(
+      frame,
+      layer,
+      geo,
+      mask?.tex ?? null,
+      this.depthTexture(frame, layer, geo)?.tex ?? null,
+      opts,
+    );
     let shadow: RenderResult | null = null;
     const sh = layer.shadow;
     if (sh?.visible && !opts.ignoreEffects) {

@@ -12,6 +12,7 @@ import {
 } from '../../state/commands';
 import { findNode, newId, type Layer } from '../../state/project';
 import { useAppStore, useProject } from '../../state/store';
+import { apply, invert, placement } from '../../state/transform';
 
 type Drag = { pointId: string; mode: 'move' | 'radius'; dx: number; dy: number };
 
@@ -57,20 +58,28 @@ export function FocusOverlay() {
   }, [interactive, activePoint, layerId]);
 
   if (!project || !layer || !visible) return null;
+  const original = project.originals[layer.originalId];
+  if (!original) return null;
+  // Punkte liegen in Ebenen-px; Anzeige und Eingabe in Leinwand-px
+  const toCanvasM = placement(layer.transform, original, project.canvas);
+  const toLayerM = invert(toCanvasM);
+  const layerScale = Math.abs(layer.transform.scale);
 
   const svgOf = (e: PointerEvent<SVGElement>): SVGSVGElement | null =>
     e.currentTarget instanceof SVGSVGElement ? e.currentTarget : e.currentTarget.ownerSVGElement;
+  /** Zeigerposition in Ebenen-px */
   const toCanvas = (e: PointerEvent<SVGElement>) => {
     const r = svgOf(e)?.getBoundingClientRect();
     const sx = e.clientX - (r?.left ?? 0);
     const sy = e.clientY - (r?.top ?? 0);
-    return { x: (sx - view.offsetX) / view.zoom, y: (sy - view.offsetY) / view.zoom };
+    const [x, y] = apply(toLayerM, (sx - view.offsetX) / view.zoom, (sy - view.offsetY) / view.zoom);
+    return { x, y };
   };
 
   const onBackgroundDown = (e: PointerEvent<SVGRectElement>) => {
     if (!interactive || e.button !== 0) return;
     const { x, y } = toCanvas(e);
-    if (x < 0 || y < 0 || x > project.canvas.width || y > project.canvas.height) {
+    if (x < 0 || y < 0 || x > original.width || y > original.height) {
       setActivePoint(null);
       return;
     }
@@ -81,7 +90,7 @@ export function FocusOverlay() {
       label: `Punkt ${points.filter((p) => p.kind === 'custom').length + 1}`,
       x: Math.round(x),
       y: Math.round(y),
-      radius: Math.round(Math.max(project.canvas.width, project.canvas.height) * 0.08),
+      radius: Math.round((Math.max(project.canvas.width, project.canvas.height) * 0.08) / layerScale),
       enabled: true,
     });
     setActivePoint(id);
@@ -128,9 +137,10 @@ export function FocusOverlay() {
         <rect className="focus-hit" x="0" y="0" width="100%" height="100%" onPointerDown={onBackgroundDown} />
       )}
       {points.map((p) => {
-        const cx = p.x * view.zoom + view.offsetX;
-        const cy = p.y * view.zoom + view.offsetY;
-        const r = p.radius * view.zoom;
+        const [px, py] = apply(toCanvasM, p.x, p.y);
+        const cx = px * view.zoom + view.offsetX;
+        const cy = py * view.zoom + view.offsetY;
+        const r = p.radius * layerScale * view.zoom;
         const start = (mode: Drag['mode']) => (e: PointerEvent<SVGElement>) => {
           if (!interactive || e.button !== 0) return;
           e.stopPropagation();

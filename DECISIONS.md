@@ -10,6 +10,34 @@ Abweichungen von der Spec und Festlegungen bei unklaren Anforderungen. Neueste o
 - **Betrifft:** (Spec-Abschnitt / Phase)
 -->
 
+## 2026-10-15 – Phase 4: Transform und weitere Bilder
+
+- **Frage:** In welchem Raum wirken Maske, Lochfüllung und Effekte einer transformierten Ebene?
+- **Entscheidung:** Maske, Lochfüllung, Tiefenkarte und Fokuspunkte gehören zum **Original** (Ebenen-px) und bewegen sich mit
+  der Ebene. Sie werden in einer passenden Auflösung des Originals aufbereitet (Viertel-Oktaven-Stufen, damit Caches beim
+  Skalieren stabil bleiben) und dann per Warp-Shader (bilinear, geglättete Kanten, 4 Proben beim Verkleinern) auf die Leinwand
+  gelegt. **Effekte** (Unschärfe, Schatten, …) wirken danach in Leinwand-px – ein Radius von 20 px bleibt 20 px, egal wie
+  groß die Ebene skaliert ist; die Kachel-Überlappung des Exports bleibt dadurch unverändert. Kantenbreiten der Maske
+  (Kantenhärte/-versatz, Ebenen-Überlappung) gelten in Ebenen-px. Ebenen in Leinwandgröße mit neutraler Transformation
+  nehmen den bisherigen Pfad ohne Neuabtastung (Golden-Tests unverändert).
+- **Transform-Semantik:** `x/y` = Versatz der Bildmitte zur Leinwandmitte (Leinwand-px), `scale` = Leinwand-px pro Original-px,
+  `rotation` in Grad im Uhrzeigersinn, neu `flipX`/`flipY` (optional). Projektformat 4 (Migration 3 → 4 ohne Änderung, da die
+  Transformation bisher immer neutral war). Fokuspunkte liegen in Ebenen-px (bei Hauptbildern identisch mit Leinwand-px).
+- **Import als Ebene:** „+ Bild“ in der Ebenenliste, ⇧⌘O oder Bild auf die Leinwand ziehen (bei offenem Projekt; mehrere Dateien
+  möglich). „Öffnen“ (⌘O) legt weiterhin ein neues Projekt an. Die Ebene kommt über die Auswahl (in dieselbe Gruppe).
+  Deckende Bilder (JPEG oder ohne Transparenz) füllen die Leinwand – typisch für einen neuen Hintergrund –, Bilder mit
+  Transparenz werden eingepasst. Die Leinwandgröße bleibt die des ersten Bildes.
+- **Reihenfolge:** „Eine Ebene nach vorn/hinten“ springt über genau eine **sichtbare** Ebene und betritt bzw. verlässt dabei
+  Gruppen (so wandert ein Hintergrund schrittweise zwischen Tiefenebenen); ausgeblendete Knoten werden übersprungen.
+  „Ganz nach vorn/hinten“ zuerst innerhalb der Gruppe, beim zweiten Mal in der Wurzel. Kürzel nach dem eingegebenen Zeichen
+  (`]`, `[`, mit ⇧ `}`/`{`): auf der deutschen Mac-Tastatur also ⌘⌥6 / ⌘⌥5; die US-Tastenposition wird bewusst nicht
+  ausgewertet, weil dort auf deutscher Tastatur „+“ (Zoom) liegt.
+- **Rahmen auf der Leinwand** (Werkzeug „Verschieben“): Fläche ziehen = verschieben, Ecke = skalieren um die Mitte, Griff =
+  drehen (⇧ = 15°), Pfeiltasten = 1 px (⇧ = 10 px). Gruppen haben nur einen Verschieben-Rahmen (alle Ebenen der Gruppe);
+  Skalieren/Drehen ganzer Gruppen fehlt (Gruppen haben im Datenmodell keine Transformation). Gesperrte Ebenen bewegen sich nicht.
+- **Zusätzlich:** Löschen von Ebenen/Gruppen (Papierkorb, ⌘⌫); Originale bleiben im Projekt (Undo).
+- **Betrifft:** Spec f, Datenmodell, Phase 4
+
 ## 2026-10-14 – Phase 3: Tiefenebenen
 
 - **Frage:** Wie werden Tiefenbänder lückenlos und ohne Halo zusammengesetzt?
