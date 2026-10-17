@@ -8,6 +8,7 @@ import { PlusIcon } from './Icons';
 import { FocusSection, MaskSection, NodeSection, ShadowParams, ShadowSection } from './LayerSections';
 import { TransformSection } from './TransformSection';
 import { StackPresetMenu } from './PresetMenus';
+import { GroupMaskSection } from './EffectMixSection';
 
 function EffectStack({
   hostId,
@@ -122,7 +123,10 @@ export function Inspector() {
         </>
       )}
       {host.kind === 'group' && host.id !== project.root.id && (
-        <GroupEditSection key={`group-${host.id}`} group={host} />
+        <>
+          <GroupMaskSection key={`gmask-${host.id}`} group={host} />
+          <GroupEditSection key={`group-${host.id}`} group={host} />
+        </>
       )}
       <div className="section-title-row">
         <h3 className="section-title">

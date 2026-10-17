@@ -20,22 +20,25 @@ function checkEffects(v: unknown, where: string): void {
     const at = `${where}.effects[${i}]`;
     if (e.blendMode !== undefined && !BLEND_MODES.includes(e.blendMode as never))
       fail(`${at}.blendMode unbekannt`);
-    const m = e.mask;
-    if (m === undefined) return;
-    if (!isObj(m)) fail(`${at}.mask ungültig`);
-    if (m.kind === 'map') {
-      if (
-        !['luminance', 'edges', 'depth'].includes(m.map as string) ||
-        !isNum(m.from) ||
-        !isNum(m.to) ||
-        !isNum(m.feather) ||
-        typeof m.invert !== 'boolean'
-      )
-        fail(`${at}.mask (Kartenbereich) unvollständig`);
-    } else if (m.kind === 'layer') {
-      if (!isStr(m.layerId) || typeof m.invert !== 'boolean') fail(`${at}.mask (Ebene) unvollständig`);
-    } else fail(`${at}.mask.kind unbekannt`);
+    if (e.mask !== undefined) checkNodeMask(e.mask, `${at}.mask`);
   });
+}
+
+/** Maske eines Effekts oder einer Gruppe (EffectMask). */
+function checkNodeMask(m: unknown, at: string): void {
+  if (!isObj(m)) fail(`${at} ungültig`);
+  if (m.kind === 'map') {
+    if (
+      !['luminance', 'edges', 'depth'].includes(m.map as string) ||
+      !isNum(m.from) ||
+      !isNum(m.to) ||
+      !isNum(m.feather) ||
+      typeof m.invert !== 'boolean'
+    )
+      fail(`${at} (Kartenbereich) unvollständig`);
+  } else if (m.kind === 'layer') {
+    if (!isStr(m.layerId) || typeof m.invert !== 'boolean') fail(`${at} (Ebene) unvollständig`);
+  } else fail(`${at}.kind unbekannt`);
 }
 
 const BLEND_MODES = [
@@ -111,6 +114,7 @@ function checkNode(n: unknown, where: string, originals: Record<string, unknown>
     checkLayer(n, where, originals);
   } else if (n.kind === 'group') {
     if (!Array.isArray(n.children)) fail(`${where}.children fehlt`);
+    if (n.mask !== undefined) checkNodeMask(n.mask, `${where}.mask`);
     n.children.forEach((c: unknown, i) => {
       checkNode(c, `${where}.children[${i}]`, originals);
     });
@@ -125,6 +129,8 @@ function migrate(raw: Record<string, unknown>): Record<string, unknown> {
   let v = json.formatVersion === 2 ? { ...json, formatVersion: 3 } : json;
   if (v.formatVersion === 3) v = { ...v, formatVersion: 4 };
   if (v.formatVersion === 4) v = { ...v, formatVersion: 5 };
+  // 5 → 6: Gruppen erhalten optional eine eigene Maske
+  if (v.formatVersion === 5) v = { ...v, formatVersion: 6 };
   return v;
 }
 

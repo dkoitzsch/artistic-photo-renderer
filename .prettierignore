@@ -7,3 +7,4 @@ ml-service/.pytest_cache
 tests/.cache
 **/__pycache__
 docs/spec-effekte-und-malvorlagen.md
+docs/spec-ml-fotobearbeitung.md

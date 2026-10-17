@@ -12,6 +12,7 @@ import {
   removeEffect,
   setEffectParams,
   setEffectMask,
+  setGroupMask,
   updateEffect,
   updateHost,
   updateLayer,
@@ -20,7 +21,7 @@ import {
   setParamInGroup,
   setStrengthInGroup,
   moveNode,
-  wrapInGroup,
+  wrapNodesInGroup,
   ungroup,
   findNode,
   insertAbove,
@@ -155,6 +156,16 @@ export function setEffectMaskCommand(
     mask ? 'Effektmaske geändert' : 'Effektmaske entfernt',
     (p) => setEffectMask(p, nodeId, instanceId, mask),
     gesture ? `effect-mask:${instanceId}` : undefined,
+  );
+  if (!gesture) endGesture();
+}
+
+/** Maske einer Gruppe setzen/ändern/entfernen. */
+export function setGroupMaskCommand(groupId: string, mask: EffectMask | undefined, gesture = false): void {
+  commit(
+    mask ? 'Gruppenmaske geändert' : 'Gruppenmaske entfernt',
+    (p) => setGroupMask(p, groupId, mask),
+    gesture ? `group-mask:${groupId}` : undefined,
   );
   if (!gesture) endGesture();
 }
@@ -422,13 +433,21 @@ export function moveNodeCommand(nodeId: string, targetGroupId: string, index: nu
 }
 
 export function groupNodeCommand(nodeId: string): void {
+  groupNodesCommand([nodeId]);
+}
+
+/** Fasst die Knoten (Geschwister) in einer neuen Gruppe zusammen und wählt sie aus. */
+export function groupNodesCommand(nodeIds: string[]): void {
   let groupId = '';
-  commit('Gruppiert', (p) => {
-    const r = wrapInGroup(p, nodeId);
+  commit(nodeIds.length > 1 ? `${nodeIds.length} Ebenen gruppiert` : 'Gruppiert', (p) => {
+    const r = wrapNodesInGroup(p, nodeIds);
     groupId = r.groupId;
     return r.project;
   });
-  if (groupId) useAppStore.getState().select(groupId);
+  if (groupId) {
+    useAppStore.getState().select(groupId);
+    useAppStore.getState().setExtraSelection([]);
+  }
 }
 
 export function ungroupCommand(groupId: string): void {

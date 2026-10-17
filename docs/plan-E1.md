@@ -12,7 +12,7 @@ Grundlage: [spec-effekte-und-malvorlagen.md](spec-effekte-und-malvorlagen.md), E
 - [x] 5. Presets: eigene Presets mit Vorschaubild, Stapel-Presets (OPFS, Export/Import), ≥ 2 Presets je Effekt
 - [x] 6. Analysekarten `luminance`, `edges` im Browser; Effekt-Eingang über `requires`; Ansicht „Analysekarte“; Karte als
       Effektmaske
-- [ ] 6a. Gruppen (Spec-Ergänzung 2.2a): eigene Maske auf Gruppen (Ebenenmaske oder Kartenbereich des
+- [x] 6a. Gruppen (Spec-Ergänzung 2.2a): eigene Maske auf Gruppen (Ebenenmaske oder Kartenbereich des
       Gruppenergebnisses), Kartenmasken für Effekte auf Gruppen, Oberfläche, Tests
 - [ ] 7. Dienst: Effekt-Registry (gleiche Manifeste + `effect.py`), `PUT /images/{sha}`, `POST /effects/{id}/render`,
       `GET`/`DELETE /jobs/{id}`, Hash-Cache, Lizenzprüfung

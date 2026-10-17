@@ -3,7 +3,7 @@
 
 import type { ParamValue } from '../effects/manifest';
 
-export const PROJECT_FORMAT_VERSION = 5;
+export const PROJECT_FORMAT_VERSION = 6;
 
 export type BlendMode =
   'normal' | 'multiply' | 'screen' | 'overlay' | 'soft-light' | 'lighten' | 'darken' | 'difference';
@@ -158,6 +158,11 @@ export type Group = {
   opacity: number;
   blendMode: BlendMode;
   visible: boolean;
+  /**
+   * Maske der Gruppe (Spec „Effekte“ 2.2a): wirkt nach den Gruppeneffekten auf das Gruppenergebnis.
+   * Kartenbereiche beziehen sich auf das zusammengeführte Ergebnis vor den Gruppeneffekten (Tiefe: erste Ebene mit Tiefe).
+   */
+  mask?: EffectMask;
   origin?: { kind: 'auto-fg-bg' | 'depth-split' | 'sam-objects'; sourceLayerId: string };
 };
 
@@ -507,6 +512,38 @@ export function wrapInGroup(
   return { project: replaceNode(project, nodeId, group), groupId: group.id };
 }
 
+/**
+ * Fasst mehrere Geschwister-Knoten in einer neuen Gruppe zusammen (Reihenfolge bleibt; die Gruppe liegt an der Stelle
+ * des vordersten). Knoten aus verschiedenen Gruppen: nichts geschieht.
+ */
+export function wrapNodesInGroup(
+  project: Project,
+  nodeIds: string[],
+  name = 'Gruppe',
+): { project: Project; groupId: string } {
+  const ids = nodeIds.filter((id) => id !== project.root.id);
+  if (ids.length === 0) return { project, groupId: '' };
+  if (ids.length === 1) return wrapInGroup(project, ids[0] ?? '', name);
+  const parent = parentOf(project.root, ids[0] ?? '');
+  if (!parent || !ids.every((id) => parent.children.some((c) => c.id === id)))
+    return { project, groupId: '' };
+  const picked = parent.children.filter((c) => ids.includes(c.id));
+  const group: Group = {
+    kind: 'group',
+    id: newId(),
+    name,
+    children: picked,
+    editMode: 'individual',
+    effects: [],
+    opacity: 1,
+    blendMode: 'normal',
+    visible: true,
+  };
+  const top = Math.max(...picked.map((c) => parent.children.indexOf(c)));
+  const children = parent.children.flatMap((c, i) => (i === top ? [group] : ids.includes(c.id) ? [] : [c]));
+  return { project: updateNode(project, parent.id, (n) => ({ ...n, children }) as Group), groupId: group.id };
+}
+
 /** Löst eine Gruppe auf: ihre Kinder treten an ihre Stelle (Gruppeneffekte entfallen). */
 export function ungroup(project: Project, groupId: string): Project {
   if (groupId === project.root.id) return project;
@@ -604,4 +641,13 @@ export function moveToEdge(project: Project, nodeId: string, dir: 1 | -1, rootOn
   const len = target.children.filter((c) => c.id !== nodeId).length;
   const next = moveNode(project, nodeId, target.id, dir === 1 ? len : 0);
   return next;
+}
+
+/** Setzt oder entfernt (undefined) die Maske einer Gruppe. */
+export function setGroupMask(project: Project, groupId: string, mask: EffectMask | undefined): Project {
+  return updateNode(project, groupId, (n) => {
+    if (n.kind !== 'group') return n;
+    const { mask: _old, ...rest } = n;
+    return mask ? { ...rest, mask } : rest;
+  });
 }

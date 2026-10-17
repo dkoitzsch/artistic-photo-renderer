@@ -12,6 +12,7 @@ import {
   ungroup,
   setParamInGroup,
   setEffectMask,
+  setGroupMask,
   type EffectInstance,
   type SceneNode,
 } from '../../src/state/project';
@@ -107,11 +108,11 @@ describe('parseProject', () => {
     expect(() => parseProject({ ...p, root: { ...p.root, kind: 'layer' } })).toThrow();
   });
 
-  it('migriert Format 2 → 5 und prüft Tiefenmasken und Transformation', () => {
+  it('migriert Format 2 → 6 und prüft Tiefenmasken und Transformation', () => {
     const p = createProjectFromImage(original);
     const v2 = JSON.parse(JSON.stringify({ ...p, formatVersion: 2 })) as Record<string, unknown>;
     const migrated = parseProject(v2);
-    expect(migrated.formatVersion).toBe(5);
+    expect(migrated.formatVersion).toBe(6);
     expect(migrated.root).toEqual(p.root);
 
     const layer = p.root.children[0];
@@ -152,9 +153,9 @@ describe('parseProject', () => {
     expect(() => parseProject(JSON.parse(JSON.stringify(badScale)))).toThrow(/transform/);
   });
 
-  it('Format 5: Mischmodus und Maske je Effekt', () => {
+  it('Format 5/6: Mischmodus und Maske je Effekt', () => {
     const p = addEffect(createProjectFromImage(original), createProjectFromImage(original).root.id, fx('m'));
-    expect(p.formatVersion).toBe(5);
+    expect(p.formatVersion).toBe(6);
     const withMix = {
       ...p,
       root: {
@@ -179,8 +180,27 @@ describe('parseProject', () => {
       parseProject(bad({ mask: { kind: 'map', map: 'xray', from: 0, to: 1, feather: 0, invert: false } })),
     ).toThrow(/Kartenbereich/);
     expect(() => parseProject(bad({ mask: { kind: 'brush' } }))).toThrow(/mask\.kind/);
-    // altes Projekt (Format 4) wird ohne Änderung auf 5 gehoben
-    expect(parseProject({ ...JSON.parse(JSON.stringify(p)), formatVersion: 4 }).formatVersion).toBe(5);
+    // altes Projekt (Format 4) wird ohne Änderung auf 6 gehoben
+    expect(parseProject({ ...JSON.parse(JSON.stringify(p)), formatVersion: 4 }).formatVersion).toBe(6);
+  });
+
+  it('Format 6: Maske einer Gruppe', () => {
+    const p = createProjectFromImage(original);
+    const g = {
+      ...p,
+      root: {
+        ...p.root,
+        mask: { kind: 'map', map: 'edges', from: 0.2, to: 1, feather: 0.05, invert: false },
+      },
+    };
+    expect(parseProject(JSON.parse(JSON.stringify(g)))).toEqual(g);
+    expect(() => parseProject({ ...p, root: { ...p.root, mask: { kind: 'map', map: 'xray' } } })).toThrow(
+      /root\.mask/,
+    );
+    let q = setGroupMask(p, p.root.id, { kind: 'layer', layerId: 'x', invert: false });
+    expect(q.root.mask).toEqual({ kind: 'layer', layerId: 'x', invert: false });
+    q = setGroupMask(q, q.root.id, undefined);
+    expect('mask' in q.root).toBe(false);
   });
 
   it('setEffectMask setzt und entfernt die Maske', () => {

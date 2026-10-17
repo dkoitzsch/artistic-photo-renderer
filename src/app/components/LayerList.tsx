@@ -7,7 +7,7 @@ import { addImageDialog } from '../../io/openDialog';
 import {
   deleteNodeCommand,
   edgeNodeCommand,
-  groupNodeCommand,
+  groupNodesCommand,
   moveNodeCommand,
   setNodeVisibleCommand,
   stepNodeCommand,
@@ -93,6 +93,8 @@ export function LayerList() {
   const project = useProject();
   const selected = useAppStore((s) => s.selectedNodeId);
   const select = useAppStore((s) => s.select);
+  const extra = useAppStore((s) => s.extraSelection);
+  const setExtra = useAppStore((s) => s.setExtraSelection);
   const thumbs = useThumbnails(project);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [drop, setDrop] = useState<Drop | null>(null);
@@ -134,10 +136,15 @@ export function LayerList() {
         className={`layer-item${node.visible ? '' : ' hidden'}${zone ? ` drop-${zone}` : ''}`}
       >
         <div
-          className={`layer-row${selected === node.id ? ' selected' : ''}${dragId === node.id ? ' dragging' : ''}`}
+          className={`layer-row${selected === node.id ? ' selected' : ''}${extra.includes(node.id) ? ' selected extra' : ''}${dragId === node.id ? ' dragging' : ''}`}
           style={{ paddingLeft: `calc(var(--space-1) + ${depth * 14}px)` }}
           draggable={!isRoot}
-          onClick={() => {
+          onClick={(e) => {
+            // ⌘-/⇧-Klick: weitere Knoten zur Auswahl hinzufügen bzw. entfernen (z. B. zum Gruppieren)
+            if ((e.metaKey || e.shiftKey) && selected && selected !== node.id && !isRoot) {
+              setExtra(extra.includes(node.id) ? extra.filter((x) => x !== node.id) : [...extra, node.id]);
+              return;
+            }
             select(node.id);
           }}
           onDragStart={(e) => {
@@ -327,9 +334,9 @@ export function LayerList() {
           className="button small"
           disabled={!sel || sel.id === project.root.id}
           onClick={() => {
-            if (sel) groupNodeCommand(sel.id);
+            if (sel) groupNodesCommand([sel.id, ...extra]);
           }}
-          title="Ausgewählte Ebene in eine neue Gruppe packen"
+          title="Ausgewählte Ebenen in einer neuen Gruppe zusammenfassen (weitere mit ⌘- oder ⇧-Klick auswählen)"
           data-testid="group-button"
         >
           Gruppieren

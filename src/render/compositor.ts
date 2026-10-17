@@ -129,6 +129,9 @@ type Geometry = {
   key: string;
 };
 
+/** Reichweite einer Kantenmaske (wie EDGE_MAP_REACH in effects/reach.ts). */
+const EDGE_MASK_REACH = 8;
+
 const IDENTITY_AFFINE: Affine = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
 
 type Aux = {
@@ -219,8 +222,44 @@ export class Compositor {
     mask: EffectMask | undefined,
     host: { layer: Layer; geo: Geometry } | null,
     opts: RenderOptions,
+    /** ohne Ebene (Gruppen): Bild, aus dem Helligkeit/Kanten stammen, und die Gruppe (für Tiefe) */
+    source?: { input: RenderResult; group: Group },
   ): { key: string; get: () => { tex: GPUTexture; owned: boolean } } | null {
     if (!mask) return null;
+    if (mask.kind === 'map' && !host && source) {
+      if (mask.map === 'depth') {
+        // Tiefe: von der ersten Ebene der Gruppe mit Tiefenkarte
+        let depthLayer: Layer | undefined;
+        for (const n of walk(source.group))
+          if (n.kind === 'layer' && (n.depthMap || n.mask.kind === 'depth')) {
+            depthLayer = n;
+            break;
+          }
+        if (!depthLayer) return null;
+        return this.effectMask(
+          frame,
+          mask,
+          { layer: depthLayer, geo: this.geometry(depthLayer, opts) },
+          opts,
+        );
+      }
+      // Helligkeit/Kanten aus dem Eingangsbild (Leinwand-Ausschnitt)
+      const { input } = source;
+      const spec = `${mask.map}|${mask.from},${mask.to},${mask.feather},${mask.invert ? 'inv' : ''}`;
+      return {
+        key: `inmask|${input.key}|${spec}`,
+        get: () => {
+          const temps: GPUTexture[] = [];
+          const maps = this.inputMaps(frame, input.tex, opts, [mask.map], temps);
+          const map = mask.map === 'edges' ? maps.edges : maps.luminance;
+          const out = this.core.pool.acquire(opts.region.width, opts.region.height, 'input-mask');
+          if (map) this.core.mapRange(frame, map, mask.from, mask.to, mask.feather, mask.invert, out);
+          else this.core.fill(frame, out, [1, 1, 1, 1]);
+          for (const t of temps) this.core.pool.release(t);
+          return { tex: out, owned: true };
+        },
+      };
+    }
     if (mask.kind === 'map') {
       if (!host) return null;
       const { layer, geo } = host;
@@ -695,7 +734,27 @@ export class Compositor {
         } else comp = { tex: base, key, owned: true };
       }
     }
-    return this.effects(frame, group.id, group.effects, comp, opts, null, null);
+    // Gruppenmaske aus dem zusammengeführten Ergebnis (vor den Gruppeneffekten), dann Effekte, dann maskieren
+    const gmask = this.effectMask(frame, group.mask, null, opts, { input: comp, group });
+    const gmaskTex = gmask ? gmask.get() : null;
+    const res = this.effects(frame, group.id, group.effects, comp, opts, null, null, group);
+    if (!gmask || !gmaskTex) return res;
+    const key = `${res.key}*gmask(${gmask.key})`;
+    const slot = `${opts.variant}:${group.id}:gmask`;
+    const cached = opts.cache?.get(slot, key);
+    let out: RenderResult;
+    if (cached) out = { tex: cached, key, owned: false };
+    else {
+      const t = this.core.pool.acquire(opts.region.width, opts.region.height, 'group-masked');
+      this.core.maskApply(frame, res.tex, gmaskTex.tex, t);
+      if (opts.cache) {
+        opts.cache.set(slot, key, t);
+        out = { tex: t, key, owned: false };
+      } else out = { tex: t, key, owned: true };
+    }
+    this.release(res);
+    if (gmaskTex.owned) this.core.pool.release(gmaskTex.tex);
+    return out;
   }
 
   private effects(
@@ -706,6 +765,7 @@ export class Compositor {
     opts: RenderOptions,
     aux: AuxProvider | null,
     host: { layer: Layer; geo: Geometry } | null,
+    group: Group | null = null,
   ): RenderResult {
     let cur = input;
     if (opts.ignoreEffects) return cur;
@@ -714,7 +774,7 @@ export class Compositor {
       if (!fx.enabled) return;
       const plugin = getPlugin(fx.effectId);
       if (plugin?.status !== 'ok' || !this.runner.isCompiled(plugin)) return;
-      const emask = this.effectMask(frame, fx.mask, host, opts);
+      const emask = this.effectMask(frame, fx.mask, host, opts, group ? { input: cur, group } : undefined);
       const mixKey = `|bm${fx.blendMode ?? 'normal'}|m${emask?.key ?? '-'}`;
       const key = `${cur.key}|${fx.effectId}#${plugin.revision}${JSON.stringify([fx.params, fx.strength, fx.region])}${auxKey}${mixKey}`;
       const slot = `${opts.variant}:${hostId}:fx${i}`;
@@ -763,8 +823,12 @@ export class Compositor {
 
 /** Summe der Effekt-Reichweiten (px, volle Auflösung) entlang des tiefsten Pfads – Überlappung der Export-Kacheln. */
 export function projectReach(node: SceneNode, reachOf: (fx: EffectInstance) => number): number {
-  const sum = (list: EffectInstance[]) => list.filter((e) => e.enabled).reduce((s, e) => s + reachOf(e), 0);
-  const own = sum(node.effects);
+  // Kantenmasken aus dem Eingang (Gruppen) lesen wie die Kantenkarte bis zu 8 px Umgebung
+  const edgeMask = (m: EffectMask | undefined) =>
+    m?.kind === 'map' && m.map === 'edges' ? EDGE_MASK_REACH : 0;
+  const sum = (list: EffectInstance[]) =>
+    list.filter((e) => e.enabled).reduce((s, e) => s + reachOf(e) + edgeMask(e.mask), 0);
+  const own = sum(node.effects) + (node.kind === 'group' ? edgeMask(node.mask) : 0);
   if (node.kind === 'layer') {
     const sh = node.shadow;
     const shadowReach = sh?.visible

@@ -7,6 +7,7 @@ import {
   newImageLayer,
   removeNode,
   stepNode,
+  wrapNodesInGroup,
   type Group,
   type Project,
   type SceneNode,
@@ -172,5 +173,15 @@ describe('Ebenen-Reihenfolge', () => {
     const layer = { ...newImageLayer(orig('c'), IDENTITY_TRANSFORM), name: 'neu' };
     const p = insertAbove(start, layer, 'mitte');
     expect(shape(p.root)).toEqual({ Bild: ['L', { Tiefe: ['Original', 'fern', 'mitte', 'neu', 'nah'] }] });
+  });
+
+  it('mehrere Geschwister zu einer Gruppe zusammenfassen (Reihenfolge bleibt)', () => {
+    const { p: start } = scene();
+    const r = wrapNodesInGroup(start, ['nah', 'fern'], 'Paar');
+    expect(shape(r.project.root)).toEqual({
+      Bild: ['L', { Tiefe: ['Original', 'mitte', { Paar: ['fern', 'nah'] }] }],
+    });
+    // verschiedene Elterngruppen: nichts geschieht
+    expect(wrapNodesInGroup(start, ['L', 'nah']).project).toBe(start);
   });
 });

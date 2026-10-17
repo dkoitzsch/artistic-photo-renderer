@@ -67,6 +67,8 @@ type AppState = {
   screen: 'overview' | 'editor';
   history: History<Project> | null;
   selectedNodeId: string | null;
+  /** zusätzlich ausgewählte Knoten (⌘-/⇧-Klick in der Ebenenliste), z. B. zum Gruppieren */
+  extraSelection: string[];
   view: View;
   viewport: Size;
   /** Vorher/Nachher: Teilung als Anteil der Leinwandbreite (0..1), null = aus */
@@ -99,6 +101,7 @@ type AppState = {
   setScreen: (screen: AppState['screen']) => void;
   setHistory: (history: History<Project> | null) => void;
   select: (id: string | null) => void;
+  setExtraSelection: (ids: string[]) => void;
   setView: (view: View) => void;
   setViewport: (viewport: Size) => void;
   setCompareSplit: (split: number | null) => void;
@@ -134,6 +137,7 @@ export const useAppStore = create<AppState>()((set) => ({
   screen: 'editor',
   history: null,
   selectedNodeId: null,
+  extraSelection: [],
   view: { zoom: 1, offsetX: 0, offsetY: 0 },
   viewport: { width: 1, height: 1 },
   compareSplit: null,
@@ -162,7 +166,8 @@ export const useAppStore = create<AppState>()((set) => ({
   setGpu: (gpu) => set({ gpu }),
   setScreen: (screen) => set({ screen }),
   setHistory: (history) => set({ history }),
-  select: (selectedNodeId) => set({ selectedNodeId }),
+  select: (selectedNodeId) => set({ selectedNodeId, extraSelection: [] }),
+  setExtraSelection: (extraSelection) => set({ extraSelection }),
   setView: (view) => set({ view }),
   setViewport: (viewport) => set({ viewport }),
   setCompareSplit: (compareSplit) => set({ compareSplit }),
