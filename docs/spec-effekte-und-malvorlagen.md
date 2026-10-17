@@ -379,15 +379,16 @@ Aus dem aktuellen Ergebnis (beliebiger Effekt-Stapel oder Originalbild) eine pra
 Jede Phase endet mit: lauffähigem Stand, grünen Tests, kurzer Änderungsnotiz und einer Demo-Liste („so kann man es ausprobieren“).
 
 ### Phase E1 – Fundament & erste Effekte
-- Effekt-Registry (Browser + Python), Schnittstelle nach Abschnitt 3, Integration ins bestehende Ebenen-/Maskenmodell
-- Effekt-Browser, Stapel-Panel, Parameter-Panel (automatisch erzeugt), Presets, Seed, Projektdatei-Speicherung
-- Vorschau/Endrender-Mechanik, Job-API mit Fortschritt und Abbruch
-- Analysekarten `luminance`, `edges`
-- Effekte: `pixel-sort`, `rgb-split`, `dither`, `pixelate`, `ink-lines`, `comic`, `kuwahara`, `halftone-cmyk`, `film-grain`, `low-poly`, `posterize-palette`, `bloom`, `tilt-shift`, `double-exposure`
-- PSD-Export der Effekt-Ebenen
-- Gruppen (Ergänzung 2.2a): Maske auf Gruppen, Effekte mit Masken und Blend-Modes auf Gruppen, PSD-Ausgabe als Ebenengruppen
-- Golden-Image-Testinfrastruktur
+- [x] Effekt-Registry (Browser + Python), Schnittstelle nach Abschnitt 3, Integration ins bestehende Ebenen-/Maskenmodell
+- [x] Effekt-Browser, Stapel-Panel, Parameter-Panel (automatisch erzeugt), Presets, Seed, Projektdatei-Speicherung
+- [x] Vorschau/Endrender-Mechanik, Job-API mit Fortschritt und Abbruch
+- [x] Analysekarten `luminance`, `edges`
+- [x] Effekte: `pixel-sort`, `rgb-split`, `dither`, `pixelate`, `ink-lines`, `comic`, `kuwahara`, `halftone-cmyk`, `film-grain`, `low-poly`, `posterize-palette`, `bloom`, `tilt-shift`, `double-exposure`
+- [x] PSD-Export der Effekt-Ebenen
+- [x] Gruppen (Ergänzung 2.2a): Maske auf Gruppen, Effekte mit Masken und Blend-Modes auf Gruppen, PSD-Ausgabe als Ebenengruppen
+- [x] Golden-Image-Testinfrastruktur
 **Abnahme:** Mindestens drei Effekte gleichzeitig auf unterschiedlichen, maskierten Ebenen kombinierbar; Export als PSD und PNG in voller Auflösung.
+✅ Abgenommen am 17.10.2026 – siehe [abnahme-E1.md](abnahme-E1.md).
 
 ### Phase E2 – Effektbreite & Malplan-Grundlagen
 - Analysekarte `flow`

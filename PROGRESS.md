@@ -1,0 +1,191 @@
+# PROGRESS – Projektgedächtnis Blur & Layer Studio
+
+Laufend gepflegtes Gedächtnis des Projekts: Stand, offene Punkte, Logbuch, Stolpersteine und Messwerte. Es ergänzt die
+übrigen Dateien, die so verteilt sind:
+
+| Datei                                                                      | Inhalt                           |
+| -------------------------------------------------------------------------- | -------------------------------- |
+| [CLAUDE.md](CLAUDE.md)                                                     | Arbeitsregeln und Architektur    |
+| [DECISIONS.md](DECISIONS.md)                                               | Einzelentscheidungen im Wortlaut |
+| [docs/abnahme-E1.md](docs/abnahme-E1.md)                                   | Abnahme und Demo-Liste E1        |
+| [docs/optimierungen-und-varianten.md](docs/optimierungen-und-varianten.md) | Ideenspeicher                    |
+
+Neueste Einträge stehen jeweils oben. Zuletzt aktualisiert: **17.10.2026**.
+
+---
+
+## 1. Aktueller Stand
+
+| Bereich                                                                                    | Stand                                                                                                                   |
+| ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| Basis-Spec ([SPEC-artistic-photo-renderer.md](SPEC-artistic-photo-renderer.md))            | Phasen 0–4 abgeschlossen. Phase 5 (Pinsel, SAM) ist **nächste**, wartet auf Freigabe.                                   |
+| Erweiterung ([docs/spec-effekte-und-malvorlagen.md](docs/spec-effekte-und-malvorlagen.md)) | **E1 abgeschlossen** (Schritte 0–17, [docs/plan-E1.md](docs/plan-E1.md)). E2–E5 folgen nach der alten Phase 5.          |
+| Danach                                                                                     | [docs/spec-ml-fotobearbeitung.md](docs/spec-ml-fotobearbeitung.md) (M0–M3), erst nach E5. Die Datei bleibt unverändert. |
+| Tests                                                                                      | 101 Unit-Tests (Vitest), 22 Dienst-Tests (pytest), 100 E2E- und Golden-Tests (Playwright, echtes Chrome mit WebGPU)     |
+| Branch                                                                                     | alles auf `main`, nach jedem Schritt gepusht (`origin` = github.com/dkoitzsch/artistic-photo-renderer)                  |
+
+Was die App kann:
+
+- **Grundfunktionen:**
+  - Bilder importieren und als Ebenen platzieren (Transform).
+  - Vordergrund und Hintergrund trennen (BiRefNet), mit Fokuspunkten (MediaPipe), Schatten und Tiefenebenen
+    (Depth Anything V2).
+  - Gruppen (verschachtelt, mit Effekten, Maske, Deckkraft und Mischmodus) und Parallax.
+- **Effekte:** 22 Plugins:
+  - GPU: 18 (7 aus den Phasen 1–3, 11 aus E1).
+  - Browser-CPU: Dithering und Pixel-Sorting.
+  - Browser-CPU und Python-Dienst: Low-Poly.
+  - Plugin `shadow` für Schatten-Ebenen.
+  - Jeder Effekt hat Maske, Mischmodus, Seed und Presets.
+- **Analysekarten:** Helligkeit und Kanten.
+- **Dienst-Effekte:** asynchron mit Job-Anzeige.
+- **Effekt-Browser** mit Lizenzsperre.
+- **Ausschnitt in voller Auflösung** beim Hineinzoomen.
+- **Export:** PNG, JPEG, WebP und PSD (Gruppen als Ebenengruppen, optional Effekte als eigene Ebenen), bis 24 MP.
+- **Lizenzmodus** „Kommerziell“ oder „Alle“, geprüft in UI, Worker und Dienst.
+
+---
+
+## 2. Offene Punkte (nach Priorität)
+
+| Prio   | Punkt                                                                                                                                                                           | Bezug                                     |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| **P1** | Freigabe für die alte **Phase 5** (Pinsel für Masken und Fokuskarte, SAM „objekttreu“) einholen, dann umsetzen                                                                  | CLAUDE.md, DECISIONS 17.10. „Reihenfolge“ |
+| **P1** | Manuell im echten Chrome prüfen: Browser-Kürzel ⌘0/⌘E/⌘O/⌘S (nur in Playwright getestet)                                                                                        | CLAUDE.md „Bekannte Grenzen“              |
+| **P1** | Manuell prüfen: Low-Poly-Export in 24 MP über die App. Der Dienst allein braucht 14 s. Playwright kann den 192-MB-Upload nicht abbilden, deshalb gibt es keinen E2E-Test dafür. | Stolperstein S1                           |
+| P2     | Upload an den Dienst verkleinern (16-Bit-PNG/zstd oder Original per Hash im Dienst)                                                                                             | Optimierungen 1.10                        |
+| P2     | Ölbild (Kuwahara) beim Ziehen in halber Auflösung, damit auch große Radien unter 33 ms bleiben                                                                                  | Optimierungen 1.2                         |
+| P2     | Kachelgleichheit ±1 beseitigen: alte Unschärfen auf `sample_src_canvas` umstellen, Halbton ganzzahlig rechnen                                                                   | Optimierungen 2.1                         |
+| P2     | CPU-Effekte parallel oder gekachelt rechnen (Pixel-Sorting zeilenweise auf mehreren Workern)                                                                                    | Optimierungen 1.1                         |
+| P2     | Mehrfachauswahl: löschen, verschieben, ein- und ausblenden für mehrere Ebenen                                                                                                   | Optimierungen 3.1                         |
+| P2     | Lizenzprüfung der E3-Modelle an der Quelle (SAM 2.1, U²-Net, MediaPipe Face; AdaIN/VGG) vor Beginn von E3                                                                       | DECISIONS 17.10. „Modelle“                |
+| P3     | Ausschnitt in voller Auflösung auch mit Worker- und Dienst-Ergebnissen, eigener Cache für den Ausschnitt                                                                        | Optimierungen 1.4/1.5                     |
+| P3     | PSD „Effekte als eigene Ebenen“ schneller (Zwischenstände einmal durchlaufen)                                                                                                   | Optimierungen 1.7                         |
+| P3     | Gruppenmaske nicht in jedem Frame neu berechnen                                                                                                                                 | Optimierungen 1.3                         |
+| P3     | E2E-Suite gegen `vite preview` laufen lassen (stabiler, schneller)                                                                                                              | Optimierungen 1.9                         |
+| P3     | RMBG-2.0 im Dienst braucht `HF_TOKEN`. Bei Bedarf dokumentieren oder Zugang einrichten.                                                                                         | CLAUDE.md                                 |
+
+---
+
+## 3. Logbuch (mit Commit-Bezug)
+
+| Datum  | Commit            | Inhalt                                                                                                                                            |
+| ------ | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 17.10. | _(dieser Commit)_ | E1 Schritt 17: Abnahme 24 MP (`acceptanceE1.spec.ts`), Messwerte, Demo-Liste, Optimierungsdokument, PROGRESS.md                                   |
+| 17.10. | `f0993a0`         | E1 Schritt 16: Ausschnitt in voller Auflösung beim Hineinzoomen (pixelgleich zum Export)                                                          |
+| 17.10. | `9063a4a`         | E1 Schritt 15: Effekt-Browser (Kennzeichen, Live-Vorschau 1:1, NC-Sperre), Gruppe „Erweitert“, Fehlergrenzen                                      |
+| 17.10. | `08c6279`         | E1 Schritt 14: PSD – Gruppen als Ebenengruppen, Option „Effekte als eigene Ebenen“                                                                |
+| 17.10. | `73a61ec`         | E1 Schritt 13: Doppelbelichtung (Parametertyp `image`)                                                                                            |
+| 17.10. | `2c5f853`         | E1 Schritt 12: Dithering, Pixel-Sorting (Browser-CPU), Low-Poly (CPU / Dienst, pixelgleich)                                                       |
+| 17.10. | `26dda4a`         | E1 Schritt 11: Ölbild (anisotroper Kuwahara)                                                                                                      |
+| 17.10. | `ee133af`         | E1 Schritt 10: Tusche-Linien, Comic, Halbton; kachelgenaue Abtastung `sample_src_canvas`                                                          |
+| 17.10. | `9356b79`         | E1 Schritt 9: RGB-Versatz, Pixel, Filmkorn, Bloom, Tilt-Shift, Posterisierung (k-Means in Oklab)                                                  |
+| 17.10. | `635a36c`         | E1 Schritt 8: Asynchrone Effekte (Web Worker und Dienst), Job-Anzeige, „Vollauflösung rendern“                                                    |
+| 17.10. | `e1cf583`         | E1 Schritt 7: Dienst – Effekt-Registry, Bild-Upload, Render-Jobs mit Cache und Abbruch                                                            |
+| 17.10. | `f2b84ba`         | E1 Schritt 6a: Gruppenmaske, Effektmasken aus dem Gruppenergebnis, Mehrfachauswahl zum Gruppieren                                                 |
+| 17.10. | `20276fd`         | Spec-Ergänzung Gruppen (2.2a) eingearbeitet. Dabei wurde versehentlich `docs/spec-ml-fotobearbeitung.md` mit eingecheckt, inhaltlich unverändert. |
+| 17.10. | `878e71f`         | E1 Schritt 6: Analysekarten `luminance`, `edges`                                                                                                  |
+| 17.10. | `1765291`         | E1 Schritt 5: Presets (eigene, Stapel, Export/Import)                                                                                             |
+| 17.10. | `745b1f9`         | E1 Schritt 4: Seed, bitgleich in Shader, TypeScript und Python                                                                                    |
+| 17.10. | `4529f06`         | E1 Schritt 3: Mischmodus und Maske je Effekt (Projektformat 5)                                                                                    |
+| 17.10. | `71759e2`         | E1 Schritt 2: Manifest v2                                                                                                                         |
+| 17.10. | `f56ea54`         | E1 Schritt 1: Golden-Testinfrastruktur, Architektur-Testbild, `LICENSES-THIRD-PARTY.md`                                                           |
+| 17.10. | `437c9d0`         | Spec der Erweiterung von Prettier ausgenommen                                                                                                     |
+| 17.10. | `8d75c66`         | E1 Schritt 0: Grundsatzentscheidungen, Plan E1                                                                                                    |
+| 17.10. | `d950c3e`         | Neue Spec „Effekte & Malvorlagen“ (vom Nutzer)                                                                                                    |
+| 15.10. | `96c1a23`         | Phase 4: weitere Bilder als Ebenen, Transform, Reihenfolge                                                                                        |
+| 14.10. | `285621c`         | Phase 3: Tiefenebenen, Gruppenmodus, Parallax, PSD-Export                                                                                         |
+| 14.10. | `0f1bb61`         | Dialoge liegen über Fokuspunkten und Vorher/Nachher-Teiler                                                                                        |
+| 14.10. | `5046a47`         | Fokuspunkte entfernen, Vorher/Nachher mit Vorrang, Modell-Downloads steuerbar                                                                     |
+| 14.10. | `d822c4f`         | Phase 2: Vordergrund/Hintergrund, Fokuspunkte, Schatten, Lizenzmodus, Python-Dienst                                                               |
+| 14.10. | `d74dbe7`         | Phase 1: Plugin-System, Gauß/Farb-Overlay/Schwarz-Weiß, Undo, Autosave, Projektdatei                                                              |
+| 14.10. | `d84c668`         | Phase 0: Gerüst (WebGPU, Import, Zoom/Pan, PNG-Export, Design-Tokens)                                                                             |
+| 14.10. | `6661ab9`         | Spec hochgeladen                                                                                                                                  |
+
+---
+
+## 4. Stolpersteine
+
+| #   | Symptom                                                                                                         | Ursache                                                                                                             | Lösung                                                                                               | Dateien                                                                              |
+| --- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| S1  | Messlauf mit Low-Poly in 24 MP hängt bzw. bricht ab: „Cannot create a string longer than 0x1fffffe8 characters“ | Playwright verarbeitet den 192-MB-Request-Body (RGBA float16) als Zeichenkette. Die App selbst ist nicht betroffen. | Dienst direkt gemessen (14 s). Kein E2E-Test mit Dienst-Effekt in 24 MP. Upload verkleinern ist P2.  | `src/ml/serviceEffects.ts`                                                           |
+| S2  | Seed-Test: Klick auf den Würfel läuft nach 30 s in einen Timeout                                                | Der automatische Seed-Parameter liegt in der eingeklappten Gruppe „Erweitert“ (Schritt 15)                          | Test klappt die Gruppe zuerst auf                                                                    | `tests/e2e/seed.spec.ts`, `src/effects/validate.ts`                                  |
+| S3  | Dienst-Test meldet „Effekt fehlt“                                                                               | Die neue NC-Sperre in `addEffectCommand` verbietet NC-Effekte im Modus „Kommerziell“                                | Test legt den Effekt im Modus „Alle“ an und schaltet dann zurück                                     | `tests/e2e/async.spec.ts`, `src/state/commands.ts`                                   |
+| S4  | Effekt kompiliert nicht und erscheint trotzdem im Golden-Test                                                   | Parameter `smooth` ist ein reserviertes WGSL-Wort                                                                   | Umbenannt in `soften`. Der Validator lehnt reservierte Wörter ab, der Golden-Test prüft Status `ok`. | `effects/posterize-palette/`, `src/effects/validate.ts`, `tests/e2e/effectGolden.ts` |
+| S5  | Schwarz-Weiß kompiliert nicht mehr                                                                              | Vorspiel-Funktion `value_noise` kollidiert mit der eigenen Funktion des Plugins                                     | Zufallshelfer im Vorspiel mit Präfix `rand_`                                                         | `src/effects/prelude.ts`                                                             |
+| S6  | Endlos-Rendern („Maximum update depth“) im Preset-Menü                                                          | Ein Zustand-Selektor gab bei jedem Aufruf ein neues, gefiltertes Array zurück                                       | Rohliste selektieren, danach filtern                                                                 | `src/app/components/PresetMenus.tsx`                                                 |
+| S7  | Kachelnähte im Export (±1–3 Stufen)                                                                             | Hardware-Sampler und Float-Rechnung relativ zum Ausschnitt                                                          | Abtastung in Leinwand-Koordinaten (`canvas_px`, `sample_src_canvas`). Rest ±1 durch Metal fast-math. | `src/effects/prelude.ts`, `effects/halftone-cmyk/`                                   |
+| S8  | Tusche-Linien füllen dunkle Flächen schwarz                                                                     | XDoG-Schwelle wirkt flächig                                                                                         | Parameter `fill`, Standard: nur Linien                                                               | `effects/ink-lines/`                                                                 |
+| S9  | Export mit asynchronen Effekten dreht sich leer                                                                 | Ein Vorschau-Kick „stahl“ die gesammelten Anfragen                                                                  | Promise je Eintrag und `waitFor(keys)`                                                               | `src/render/asyncEffects.ts`, `src/render/engine.ts` (`renderResolved`)              |
+| S10 | Erster Test nach neuer Abhängigkeit sieht ein Neuladen der Seite                                                | Vite optimiert die Abhängigkeit beim ersten Import im Worker und lädt neu                                           | `optimizeDeps.include: ['delaunator']`                                                               | `vite.config.ts`                                                                     |
+| S11 | Test-Effekt-Ordner, die zur Laufzeit angelegt wurden, waren flaky                                               | Vite lädt beim Anlegen oder Löschen eines Plugin-Ordners die Seite neu                                              | Feste Test-Effekte in `tests/effects/`, nur mit DEV-Schalter `bls.testEffects` geladen               | `src/effects/registry.ts`, `tests/effects/`                                          |
+| S12 | Langer E2E-Gesamtlauf hängt oder läuft in einen Timeout                                                         | Liegengebliebene Playwright-Chromes, Dev-Server nach Neuladen langsam                                               | fps-Test 90 s, Startprüfung 15 s. Langfristig `vite preview`.                                        | `tests/e2e/helpers.ts`, `tests/e2e/phase1.spec.ts`                                   |
+| S13 | PSD: halbtransparente Bereiche weichen ab, wenn eine Gruppe Effekte hat                                         | Gerenderte Gruppenebene **und** sichtbare Kinder überlagern sich                                                    | Kinder ausblenden. Gruppeneffekt-Ebenen ohne Gruppenmaske rendern (sonst wirkt sie doppelt).         | `src/io/psd.ts`                                                                      |
+| S14 | Typecheck scheitert im Katalog-Unit-Test                                                                        | `node:fs` hat in der App-tsconfig keine Typen                                                                       | Mit `import.meta.glob` umgeschrieben                                                                 | `tests/unit/effectsCatalog.test.ts`                                                  |
+| S15 | BiRefNet 1024 läuft in Chrome nicht (ungültiges WGSL, 11 statt 10 Storage-Buffer, `bad_alloc`)                  | Grenzen von JSEP, nativem EP und WASM                                                                               | 512er-Re-Export (MIT) + Guided Filter. Volle Größe im Dienst.                                        | `models/registry.json`, `src/ml/worker.ts`                                           |
+| S16 | ORT-WebGPU mit Standardgerät scheitert                                                                          | Standardgerät erlaubt nur 8 Storage-Buffer pro Stufe                                                                | Eigenes WebGPU-Gerät mit Adapter-Limits                                                              | `src/ml/worker.ts`                                                                   |
+| S17 | MediaPipe: zweiter Landmarker startet nicht                                                                     | MediaPipe löscht `ModuleFactory` nach dem ersten Landmarker, ein ES-Modul läuft aber nur einmal                     | `ModuleFactory` vor jedem `createFromOptions` setzen                                                 | `src/ml/worker.ts`                                                                   |
+| S18 | Dunkler oder durchsichtiger Saum um den Vordergrund beim Weichzeichnen des Hintergrunds                         | Vordergrundfarben bluten über die invertierte Maske ein                                                             | Lochfüllung per Push-Pull statt invertierter Maske                                                   | `src/render/shaders/pushpull.wgsl`                                                   |
+
+---
+
+## 5. Gravierende Änderungen (Grund und verworfene Alternativen)
+
+| Änderung                                                                                                                          | Grund                                                                                                                               | Verworfen                                                                                                                                           |
+| --------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Ausschnitt in voller Auflösung** (E1/16): sichtbarer Bereich nach 150 ms Ruhe wie im Export gerendert                           | Vorschau 2048 px zeigt feine Effekte (Raster, Striche) falsch. Pixelgleich zum Export, ein einziger Render ohne zweiten Cache-Pfad. | Kachel-Cache in voller Auflösung wie ein Bildbetrachter (zu aufwendig für den Nutzen). Ständiges Rendern in voller Auflösung (zerstört die 60 fps). |
+| **Asynchrone Effekte** (E1/8): Compositor bleibt synchron und reicht den Eingang durch, bis das Ergebnis da ist                   | Kein Umbau der Render-Pipeline. Stärke, Maske und Mischmodus wirken wie bei GPU-Effekten.                                           | Asynchroner Compositor (großer Umbau). GPU-Näherung als Platzhalter (je Effekt Zusatzarbeit, bleibt als Variante).                                  |
+| **Dritter Ausführungsort „browser-cpu“** (E1/0)                                                                                   | Sequenzielle Verfahren (Fehlerdiffusion, Sortieren, Delaunay) passen nicht in Kacheln und brauchen den Dienst nicht                 | Alles in den Dienst (läuft dann nicht ohne Dienst). WASM (noch nicht nötig).                                                                        |
+| **Analysekarten im Browser auf der GPU** (E1/6)                                                                                   | Schnell, ohne Dienst nutzbar, im Ebenenraum gecacht wie die Tiefe                                                                   | Berechnung im Dienst, wie die Spec vorschlug. Bleibt für ML-Karten ab E3.                                                                           |
+| **Ein Manifest, zwei Implementierungen** (E1/2, E1/7)                                                                             | Ein Effekt wird an genau einer Stelle beschrieben. Der Dienst liest dieselben `manifest.json`.                                      | Getrennte Python-Registry (doppelte Pflege).                                                                                                        |
+| **Effekte bleiben Filter auf Ebenen/Gruppen**, plus eigene Maske und eigener Mischmodus (E1/3)                                    | Passt zum bestehenden Modell. „Effekt auf mehrere Ebenen“ geht über eine Gruppe.                                                    | Einstellungsebenen „wirkt auf alles darunter“ (bei Bedarf später).                                                                                  |
+| **PSD: Gruppen mit Effekten** – Kinder ausgeblendet, darunter das gerenderte Ergebnis; Option „Effekte als eigene Ebenen“ (E1/14) | Gesamtbild exakt gleich (psd-tools: 99 % ≤ 1 Stufe), Kinder bleiben bearbeitbar                                                     | Gruppe flach rendern (Struktur geht verloren). Smart-Objekte (ag-psd kann es kaum).                                                                 |
+| **Transform: Maske, Lochfüllung und Tiefe im Ebenenraum, Effekte im Leinwandraum** (Phase 4)                                      | Masken wandern mit der Ebene. Effekt-Radien bleiben in Leinwand-px, die Kachelüberlappung bleibt gleich.                            | Effekte im Ebenenraum (Radien hängen dann von der Skalierung ab)                                                                                    |
+| **Hintergrund mit Lochfüllung statt invertierter Maske** (Phase 2)                                                                | Kein Saum, gemessen 225/225 statt 170 im Randring                                                                                   | Invertierte Maske (Spec-Wortlaut). Bleibt abschaltbar.                                                                                              |
+| **Mischmodi wahrnehmungsnah** (Kontrastmodi auf sRGB-Werten) (Phase 1)                                                            | Gleiches Aussehen wie in Bildprogrammen und im PSD                                                                                  | Alles linear (PSD sähe anders aus)                                                                                                                  |
+| **Kein WebGL2-Render-Pfad** (Phase 0, bestätigt in E1)                                                                            | Zielbrowser ist Chrome auf dem Mac. Shader-Arbeit würde sich verdoppeln.                                                            | WebGL2-Rückfall                                                                                                                                     |
+| **Plugins zur Build-Zeit** (`import.meta.glob`) (Phase 0)                                                                         | Hot Reload im Dev-Server reicht für eine lokale App                                                                                 | Laufzeit-Ordnerwahl per File System Access API                                                                                                      |
+
+---
+
+## 6. Abweichungen von der Spec
+
+Jede Abweichung steht im Wortlaut in [DECISIONS.md](DECISIONS.md).
+
+| Spec-Stelle                       | Spec sagt                                                       | Umgesetzt                                                                                                                     | Grund                                                |
+| --------------------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Effekte 2.3                       | Zwei Ausführungsorte (Browser, Dienst), Browser „WebGL2/WebGPU“ | Drei Ausführungsorte (`webgpu`, `browser-cpu`, `python`), nur WebGPU                                                          | Sequenzielle Verfahren, Zielplattform                |
+| Effekte 2.4                       | Vorschau Standard 1600 px; Parameter relativ zur Bildgröße      | Vorschau 2048 px (Basis-Spec); Parameter in Leinwand-px, dazu Ausschnitt in voller Auflösung                                  | Bestand und Basis-Spec; Variante in Optimierungen 4  |
+| Effekte 4                         | Analysekarten im Dienst berechnet                               | `luminance`/`edges` im Browser auf der GPU (Dienst rechnet dasselbe Verfahren für eigene Effekte)                             | Geschwindigkeit, ohne Dienst nutzbar                 |
+| Effekte 3.3                       | Vorschaukacheln für alle Effekte                                | Live nur für GPU-Effekte. Worker- und Dienst-Effekte zeigen ein festes `preview.png`.                                         | Eine Live-Berechnung wäre zu teuer                   |
+| Effekte 9 (PSD)                   | Gruppen mit Effekten: Kinder + je Effekt eine Ebene             | Standard: Kinder ausgeblendet + gerendertes Ergebnis. Genau die Spec-Form gibt es mit der Option „Effekte als eigene Ebenen“. | Exaktes Gesamtbild im Standard                       |
+| Basis 2 (Hintergrund)             | Invertierte Maske + Lochfüllung                                 | Lochfüllung ersetzt die Maske (abschaltbar)                                                                                   | Saum vermeiden                                       |
+| Basis (Browser-Segmentierung)     | BiRefNet (lite), 1024 px                                        | BiRefNet lite 512 + Guided Filter, 1024 nur im Dienst                                                                         | 1024 läuft in Chrome nicht                           |
+| Basis (Halbauflösung beim Ziehen) | Bei großen Radien automatisch halbe Auflösung                   | Nicht eingebaut                                                                                                               | Nicht nötig (siehe Messwerte)                        |
+| Basis (Import)                    | HEIC, „falls der Browser es dekodiert“                          | HEIC nicht unterstützt, mit Hinweis; kein eigener Dekoder                                                                     | Chrome dekodiert es nicht, libheif ist LGPL und groß |
+| Basis (PSD)                       | –                                                               | 8 Bit sRGB, Masken nur als deaktivierte Ebenenmasken                                                                          | ag-psd und Photoshop-Kompatibilität                  |
+| Basis (WebGL2-Rückfall)           | Minimaler Rückfall                                              | Nur Meldung                                                                                                                   | Entscheidung Phase 0                                 |
+
+---
+
+## 7. Performance-Messungen
+
+Referenz-Hardware: Apple M4 Pro (14 CPU-/20 GPU-Kerne), 48 GB, macOS 26.6, Chrome 155. „Warm“ heißt Modell geladen und
+Shader kompiliert.
+
+| Datum  | Messung                                                                                       | Wert                                                                        | Ziel (Spec)                 | Quelle                               |
+| ------ | --------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- | --------------------------- | ------------------------------------ |
+| 17.10. | 24 MP, 3 maskierte Ebenen, 6 Effekte + Gruppeneffekt: Vorschau 2048 px nach Parameteränderung | Median 24 ms, max. 70 ms                                                    | < 500 ms (interaktiv)       | `acceptanceE1.spec.ts`               |
+| 17.10. | dieselbe Szene: Ausschnitt in voller Auflösung bei 100 %                                      | 186 ms (davon 150 ms Ruhepause)                                             | –                           | `acceptanceE1.spec.ts`               |
+| 17.10. | dieselbe Szene: PNG-Export 24 MP                                                              | 1,3 s                                                                       | < 10 s                      | `acceptanceE1.spec.ts`               |
+| 17.10. | dieselbe Szene: PSD-Export 24 MP (Standard)                                                   | 6,1 s                                                                       | –                           | `acceptanceE1.spec.ts`               |
+| 17.10. | GPU-Effekte einzeln, 1600 × 1067, ganzer Frame neu                                            | Echtzeit-Effekte 0,4–2,7 ms. Ölbild (interaktiv) 19 ms. Ohne Effekt 0,3 ms. | Echtzeit ≥ 30 fps (< 33 ms) | `acceptanceE1.spec.ts`               |
+| 17.10. | Export 24 MP mit Dithering bzw. Pixel-Sorting (Browser-CPU)                                   | je ≤ 3 s                                                                    | Fortschritt und Abbruch     | einmalige Messung                    |
+| 17.10. | Low-Poly-Endrender 24 MP im Dienst                                                            | 14 s Rechnung, 0,2 s Upload, 0,1 s Download                                 | Fortschritt und Abbruch     | einmalige Messung direkt am Dienst   |
+| 14.10. | Phase 2: ortsabhängiger Gauß mit Fokuspunkten, 2048 px, Regler ziehen                         | Median 16 ms, p90 17,4 ms                                                   | ≥ 30 fps                    | `phase2.spec.ts`                     |
+| 14.10. | Phase 2: Linsenunschärfe, 2048 px, Regler ziehen                                              | Median 1,6 ms, p90 2,6 ms                                                   | ≥ 30 fps                    | `phase2.spec.ts`                     |
+| 14.10. | Phase 1: 3 Effekte (Gauß 1–300 px, Schwarz-Weiß + Korn, Farb-Overlay), 2048 px                | Median 1,6–2,7 ms, p90 3,5–7,7 ms                                           | ≥ 30 fps, Ziel 60           | `phase1.spec.ts`                     |
+| 14.10. | Segmentierung BiRefNet lite 512 im Browser                                                    | 3,6 s kalt, 0,6 s warm                                                      | < 3 s (warm)                | Phase-2-Abnahme                      |
+| 14.10. | Segmentierung BiRefNet voll im Dienst (MPS)                                                   | 0,8 s                                                                       | < 3 s                       | Phase-2-Abnahme                      |
+| 14.10. | Tiefe Depth Anything V2 Small im Browser                                                      | 964 ms kalt, 152 ms warm                                                    | –                           | Phase-3-Abnahme                      |
+| 14.10. | Gauß-Pyramide gegen exakte CPU-Faltung                                                        | max. 3/255, Mittel < 0,2/255                                                | –                           | DECISIONS „Gauß-Radius und Pyramide“ |

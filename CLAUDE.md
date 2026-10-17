@@ -12,9 +12,11 @@ Abweichungen nur mit Eintrag in [DECISIONS.md](DECISIONS.md) und Hinweis an den 
 Abgeschlossen: **Phase 0 – Gerüst**, **Phase 1 – Ganzes Bild**, **Phase 2 – Vordergrund, Fokus, Schatten**,
 **Phase 3 – Tiefenebenen und Gruppen**, **Phase 4 – Weitere Bilder**. Erledigte Punkte werden in der Spec abgehakt.
 
-**In Arbeit: Erweiterung „Effekte & Malvorlagen“** ([docs/spec-effekte-und-malvorlagen.md](docs/spec-effekte-und-malvorlagen.md)),
-Phase **E1** nach [docs/plan-E1.md](docs/plan-E1.md). Danach: alte Phase 5 (Pinsel, SAM), dann E2 … E5.
-Nach jedem Schritt: Tests, Commit, Push.
+**Erweiterung „Effekte & Malvorlagen“** ([docs/spec-effekte-und-malvorlagen.md](docs/spec-effekte-und-malvorlagen.md)):
+**Phase E1 abgeschlossen** ([docs/plan-E1.md](docs/plan-E1.md), Abnahme und Demo-Liste: [docs/abnahme-E1.md](docs/abnahme-E1.md),
+Ideen für später: [docs/optimierungen-und-varianten.md](docs/optimierungen-und-varianten.md)).
+Nächste (wartet auf Freigabe): alte Phase 5 (Pinsel, SAM), dann E2 … E5. Danach `docs/spec-ml-fotobearbeitung.md` (nicht anfassen).
+Nach jedem Schritt: Tests, [PROGRESS.md](PROGRESS.md) nachführen (Stand, offene Punkte, Logbuch, Stolpersteine, Messwerte), Commit, Push.
 
 ## Ordnerstruktur (✓ = existiert)
 
@@ -82,7 +84,7 @@ Node ≥ 22.12 (`.nvmrc`). Dev-Server auf **Port 5317** (5173 ist auf diesem Rec
 Phasen-Abschluss: `npm run lint && npm run typecheck && npm test && npm run test:service && npm run build && npm run test:e2e`
 (E2E mit Modellen braucht einmalig `npm run models:fetch`, sonst werden diese Tests übersprungen.)
 
-## Architektur (Stand Phase 4)
+## Architektur (Stand E1)
 
 **Datenfluss:** UI → Befehl (`state/commands.ts`) → History (`state/history.ts`, unveränderliche Schnappschüsse) →
 Zustand-Store → `CanvasView` ruft pro Frame `Engine.present()` → Compositor rendert nur Geändertes → Anzeige.
@@ -145,6 +147,34 @@ Autosave (`io/autosave.ts`) beobachtet den Store und schreibt ins OPFS.
   Reihenfolge, Löschen; Import als Ebene `io/import.ts` `importImageAsLayer`, Dialog `io/openDialog.ts` `addImageDialog`.
 - Baum: `insertAbove`, `removeNode`, `stepNode` (über genau eine sichtbare Ebene, auch in Gruppen hinein), `moveToEdge`.
 
+**Erweiterung E1 (Effekte):**
+
+- Manifest v2 (`effects/manifest.ts`, `validate.ts`): `implementations` {preview, final} ∈ `webgpu` | `browser-cpu` | `python`,
+  `license`, `cost`, `randomized` (Seed-Parameter automatisch), `requires` (Analysekarten), Parameter-`group` („Erweitert“
+  eingeklappt), Typen `seed`, `palette` (`array<vec4f,16>` + `<key>_count`), `image` (Zweitbild in `src_b`). WGSL-Schlüsselwörter
+  als Parameternamen werden abgelehnt.
+- Vorspiel (`effects/prelude.ts`): Zufall `rand_pcg3`/`rand_cell`/`rand_at`/`rand_noise`/`rand_fbm` (bitgleich zu
+  `effects/random.ts` und Python), Oklab, Analysekarten `load_luminance`, `edge_strength|tangent|coherence` (Bindungen 9/10),
+  kachelgenaue Abtastung `canvas_px`/`sample_src_canvas`.
+- Effekt-Mischung: `EffectInstance.blendMode` und `.mask` (`EffectMask`: Kartenbereich Helligkeit/Kanten/Tiefe oder Ebenenmaske);
+  Gruppen haben eine eigene `mask` (Projektformat 6). Shader `mix.wgsl` + gemeinsames `blendmodes.wgsl`.
+- Analysekarten: `shaders/analysis.wgsl` (Sobel, Strukturtensor σ = 2, Tangente, Kohärenz) im Ebenenraum; Gruppeneffekte
+  rechnen sie aus ihrem Eingang. Ansicht „Analysekarte“ (`AnalysisPanel.tsx`). Dienst: `ml_service/analysis.py` (gleiches Verfahren).
+- Asynchrone Effekte (`render/asyncEffects.ts`): Compositor fordert fehlende Ergebnisse an und reicht so lange den Eingang durch;
+  Web Worker (`effects/cpu.worker.ts`, Plugins mit `effect.worker.ts`) oder Dienst (`ml/serviceEffects.ts` → `PUT /images/{sha}`,
+  `POST /effects/{id}/render`, `GET`/`DELETE /jobs/{id}`, Hash-Cache, `ml_service/effects.py` lädt `effect.py`). Export wartet
+  über `Engine.renderResolved`; Job-Anzeige mit Abbruch; „Vollauflösung rendern“.
+- Presets (`src/presets/`): eigene und Stapel-Presets im OPFS (`presets/presets.json`), Vorschaubilder, Menüs `PresetMenus.tsx`;
+  mitgelieferte Presets in `effects/<id>/presets.json`.
+- Effekt-Browser (`EffectBrowser.tsx`): Kennzeichen, Live-Vorschau (Ausschnitt 1:1) nur für GPU-Effekte, sonst `preview.png`;
+  NC-Effekte im Modus „Kommerziell“ gesperrt (auch `addEffectCommand`, `ncLayers`). `ErrorBoundary` je Bereich.
+- Ausschnitt in voller Auflösung (`Engine.updateDetail`/`renderDetail`): ab Zoom > 1,25 × Vorschau nach 150 ms Ruhe, wie Export
+  gerendert (pixelgleich), in `view.wgsl` über die Vorschau gelegt.
+- PSD (`io/psd.ts`): Gruppen immer als Ebenengruppen (Gruppenmaske aktiv), Gruppeneffekte gerendert; Option „Effekte als eigene
+  Ebenen“ (Stärke → Deckkraft, Mischmodus, Effektmaske als Ebenenmaske).
+- Test-Effekte in `tests/effects/` (nur Dev mit `localStorage['bls.testEffects']='1'`), Test-Dienst auf Port 8766
+  (`TEST_SERVICE_URL`), Golden-Helfer `tests/e2e/effectGolden.ts` + Fälle `effectCases.ts`, Abnahme `acceptanceE1.spec.ts`.
+
 **Neuen Effekt anlegen:** siehe [effects/README.md](effects/README.md) – nur einen Ordner unter `effects/` anlegen.
 
 ## Referenz-Hardware
@@ -157,7 +187,7 @@ Eine Phase ist erst fertig, wenn
 
 1. Tests (`npm test`, `npm run test:e2e`), Lint (`npm run lint`), Typecheck und Build (`npm run build`) grün sind,
 2. jedes Abnahmekriterium einzeln geprüft und das Ergebnis dokumentiert ist,
-3. die Punkte in der Spec abgehakt und diese Datei aktualisiert sind,
+3. die Punkte in der Spec abgehakt und diese Datei sowie `PROGRESS.md` aktualisiert sind,
 4. auf `main` committet ist (kein Push ohne Anweisung).
 
 Eine neue Phase beginnt nur nach ausdrücklicher Freigabe durch den Nutzer.
