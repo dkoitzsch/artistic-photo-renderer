@@ -491,6 +491,20 @@ export class Engine {
     return { pixels: await this.encode(t, [0, 0], t.width, t.height), width: t.width, height: t.height };
   }
 
+  /** Original verkleinert (lange Kante edge) als 8-Bit-sRGB – z. B. für die Palettengewinnung. */
+  async originalImageData(originalId: string, edge = 256): Promise<ImageData | null> {
+    if (!this.sources.has(originalId)) return null;
+    const full = this.sources.original(originalId);
+    const s = Math.min(1, edge / Math.max(full.width, full.height));
+    const w = Math.max(1, Math.round(full.width * s));
+    const h = Math.max(1, Math.round(full.height * s));
+    const frame = new Frame(this.device, this.core.pool, 'original-small');
+    const src = this.sources.at(frame, originalId, w, h);
+    frame.submit();
+    this.sources.endFrame();
+    return new ImageData(await this.encode(src, [0, 0], w, h), w, h);
+  }
+
   /** Live-Miniatur: ein Effekt mit Standardwerten (oder values) auf der ersten Ebene des Projekts. */
   async effectThumbnail(
     project: Project,

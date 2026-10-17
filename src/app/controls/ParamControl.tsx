@@ -16,11 +16,14 @@ export function ParamControl({
   value,
   onChange,
   onGestureEnd,
+  extractPalette,
 }: {
   spec: ParamSpec;
   value: ParamValue | undefined;
   onChange: (v: ParamValue, gesture: boolean) => void;
   onGestureEnd: () => void;
+  /** für Paletten-Parameter: Palette aus der Ebene bzw. einer Bilddatei gewinnen */
+  extractPalette?: (count: number, file?: File) => Promise<Rgb[] | null>;
 }) {
   const v = value ?? spec.default;
   switch (spec.type) {
@@ -123,6 +126,7 @@ export function ParamControl({
             onChange(list, false);
           }}
           testId={`param-${spec.key}`}
+          {...(extractPalette ? { extract: extractPalette } : {})}
         />
       );
     case 'image':

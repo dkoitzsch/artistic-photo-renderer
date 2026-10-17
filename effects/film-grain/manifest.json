@@ -1,0 +1,194 @@
+{
+  "id": "film-grain",
+  "name": "Filmkorn & Halation",
+  "version": "1.0.0",
+  "category": "Druck & analoge Fotografie",
+  "description": "Analoges Filmkorn (vor allem in den Mitteltönen), rötliches Überstrahlen heller Stellen und Lichteinfälle am Rand.",
+  "inputs": ["source"],
+  "passes": 3,
+  "implementations": {
+    "preview": "webgpu",
+    "final": "webgpu"
+  },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung; prozedurales Rauschen (PCG3D-Hash), keine Fremdtexturen."
+  },
+  "cost": "realtime",
+  "randomized": true,
+  "requires": [],
+  "params": [
+    {
+      "key": "amount",
+      "label": "Korn",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 35,
+      "unit": "%"
+    },
+    {
+      "key": "size",
+      "label": "Korngröße",
+      "type": "float",
+      "min": 0.5,
+      "max": 8,
+      "default": 1.4,
+      "step": 0.1,
+      "unit": "px"
+    },
+    {
+      "key": "colorGrain",
+      "label": "Farbkorn",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 15,
+      "unit": "%"
+    },
+    {
+      "key": "halation",
+      "label": "Halation",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 0,
+      "unit": "%"
+    },
+    {
+      "key": "halationRadius",
+      "label": "Halation-Radius",
+      "type": "float",
+      "min": 2,
+      "max": 200,
+      "default": 30,
+      "unit": "px",
+      "scale": "log"
+    },
+    {
+      "key": "halationThreshold",
+      "label": "Halation ab Helligkeit",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 75,
+      "unit": "%"
+    },
+    {
+      "key": "halationColor",
+      "label": "Halation-Farbe",
+      "type": "color",
+      "default": [1, 0.35, 0.12]
+    },
+    {
+      "key": "leaks",
+      "label": "Lichteinfall",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 0,
+      "unit": "%"
+    },
+    {
+      "key": "leakColor",
+      "label": "Farbe des Lichteinfalls",
+      "type": "color",
+      "default": [1, 0.5, 0.18]
+    },
+    {
+      "key": "leakPosition",
+      "label": "Lichteinfall von",
+      "type": "enum",
+      "options": [
+        {
+          "value": "top-left",
+          "label": "oben links"
+        },
+        {
+          "value": "top-right",
+          "label": "oben rechts"
+        },
+        {
+          "value": "bottom-left",
+          "label": "unten links"
+        },
+        {
+          "value": "bottom-right",
+          "label": "unten rechts"
+        },
+        {
+          "value": "left",
+          "label": "links"
+        },
+        {
+          "value": "right",
+          "label": "rechts"
+        }
+      ],
+      "default": "top-right"
+    },
+    {
+      "key": "leakSize",
+      "label": "Größe des Lichteinfalls",
+      "type": "float",
+      "min": 10,
+      "max": 100,
+      "default": 45,
+      "unit": "%"
+    }
+  ],
+  "visibleIf": {
+    "halationRadius": "halation!=0",
+    "halationThreshold": "halation!=0",
+    "halationColor": "halation!=0",
+    "leakColor": "leaks!=0",
+    "leakPosition": "leaks!=0",
+    "leakSize": "leaks!=0"
+  },
+  "reach": "halationRadius",
+  "presets": [
+    {
+      "name": "Feines Korn",
+      "values": {
+        "amount": 25,
+        "size": 1,
+        "colorGrain": 8,
+        "halation": 0,
+        "leaks": 0
+      }
+    },
+    {
+      "name": "Grobes Korn (ISO 3200)",
+      "values": {
+        "amount": 70,
+        "size": 2.6,
+        "colorGrain": 30,
+        "halation": 0,
+        "leaks": 0
+      }
+    },
+    {
+      "name": "Cinestill (Halation)",
+      "values": {
+        "amount": 30,
+        "size": 1.4,
+        "halation": 70,
+        "halationRadius": 25,
+        "halationThreshold": 70,
+        "leaks": 0
+      }
+    },
+    {
+      "name": "Vintage mit Lichteinfall",
+      "values": {
+        "amount": 45,
+        "size": 1.8,
+        "colorGrain": 20,
+        "halation": 25,
+        "leaks": 35,
+        "leakSize": 38,
+        "leakPosition": "top-right"
+      }
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "id": "rgb-split",
+  "name": "RGB-Versatz",
+  "version": "1.0.0",
+  "category": "Digital & Glitch",
+  "description": "Chromatische Aberration: Rot und Blau werden gegeneinander verschoben – in eine Richtung oder vom Bildzentrum nach außen.",
+  "inputs": ["source"],
+  "passes": 1,
+  "implementations": { "preview": "webgpu", "final": "webgpu" },
+  "license": { "commercialUse": true, "notes": "Eigene Implementierung." },
+  "cost": "realtime",
+  "randomized": false,
+  "requires": [],
+  "params": [
+    {
+      "key": "amount",
+      "label": "Versatz",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 6,
+      "step": 0.1,
+      "unit": "px",
+      "scale": "log"
+    },
+    {
+      "key": "mode",
+      "label": "Modus",
+      "type": "enum",
+      "options": [
+        { "value": "radial", "label": "Radial" },
+        { "value": "linear", "label": "Linear" }
+      ],
+      "default": "radial"
+    },
+    { "key": "angle", "label": "Richtung", "type": "angle", "default": 0 },
+    {
+      "key": "falloff",
+      "label": "Zunahme zum Rand",
+      "hint": "0 % = überall gleich stark, 100 % = in der Mitte kein Versatz",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 70,
+      "unit": "%",
+      "group": "Erweitert"
+    }
+  ],
+  "visibleIf": { "angle": "mode=linear", "falloff": "mode=radial" },
+  "reach": "amount",
+  "presets": [
+    { "name": "Leichte Linse", "values": { "amount": 3, "mode": "radial", "falloff": 80 } },
+    { "name": "Glitch", "values": { "amount": 18, "mode": "linear", "angle": 0 } },
+    { "name": "Starke Linse", "values": { "amount": 14, "mode": "radial", "falloff": 60 } }
+  ]
+}

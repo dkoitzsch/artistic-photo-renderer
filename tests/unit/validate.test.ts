@@ -141,4 +141,13 @@ describe('validateManifest', () => {
     expect(r.manifest.implementations).toEqual({ preview: 'browser-cpu', final: 'browser-cpu' });
     expect(r.manifest.requires).toEqual(['edges']);
   });
+
+  it('lehnt WGSL-Schlüsselwörter als Parameternamen ab', () => {
+    const r = validateManifest(
+      { ...base(), params: [{ key: 'smooth', label: 'Glätten', type: 'float', min: 0, max: 1, default: 0 }] },
+      'echo-offset',
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.errors.join()).toMatch(/reserviertes Wort/);
+  });
 });

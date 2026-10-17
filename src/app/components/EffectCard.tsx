@@ -10,7 +10,11 @@ import {
   setStrengthCommand,
   toggleDecoupledCommand,
 } from '../../state/commands';
-import type { EffectInstance } from '../../state/project';
+import { extractPalette as kmeansPalette } from '../../effects/palette';
+import type { Rgb } from '../../effects/manifest';
+import { getEngine } from '../../render/runtime';
+import { findHost, walkLayers, type EffectInstance } from '../../state/project';
+import { getProject } from '../../state/store';
 import { ParamControl } from '../controls/ParamControl';
 import { EffectMixSection } from './EffectMixSection';
 import { EffectPresetMenu } from './PresetMenus';
@@ -51,6 +55,26 @@ export function EffectCard({
   const cardRef = useRef<HTMLDivElement>(null);
   const manifest = plugin?.manifest ?? null;
   const name = manifest?.name ?? effect.effectId;
+
+  /** Palette aus dem Original der Ebene (bei Gruppen: erste Ebene) oder aus einer Bilddatei (Referenzbild) */
+  const extractPalette = async (count: number, file?: File): Promise<Rgb[] | null> => {
+    let img: ImageData | null = null;
+    if (file) {
+      const bmp = await createImageBitmap(file, { resizeWidth: 256, resizeQuality: 'medium' });
+      const c = new OffscreenCanvas(bmp.width, bmp.height);
+      const g = c.getContext('2d');
+      g?.drawImage(bmp, 0, 0);
+      img = g?.getImageData(0, 0, bmp.width, bmp.height) ?? null;
+      bmp.close();
+    } else {
+      const project = getProject();
+      const found = project ? findHost(project.root, nodeId) : undefined;
+      const host = found?.layer ?? (found && 'kind' in found.host ? found.host : undefined);
+      const layer = host?.kind === 'layer' ? host : host ? [...walkLayers(host)][0] : undefined;
+      if (layer) img = (await getEngine()?.originalImageData(layer.originalId)) ?? null;
+    }
+    return img ? kmeansPalette(img.data, count) : null;
+  };
 
   const visible = (key: string): boolean => {
     const cond = manifest?.visibleIf?.[key];
@@ -149,6 +173,7 @@ export function EffectCard({
                 <div key={spec.key} className={`param-row${groupMode ? ' with-lock' : ''}`}>
                   <ParamControl
                     spec={spec}
+                    extractPalette={extractPalette}
                     value={effect.params[spec.key]}
                     onChange={(v, gesture) => {
                       setParamCommand(nodeId, effect.instanceId, spec.key, v, gesture);

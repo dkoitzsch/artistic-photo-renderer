@@ -36,6 +36,17 @@ const GOLDEN_DIR = new URL('../golden/effects/', import.meta.url).pathname;
 /** Öffnet ein Testbild, legt den Effekt auf die erste Ebene und setzt Preset/Parameter. */
 export async function applyEffect(page: Page, c: EffectCase, fixtureFile: string): Promise<void> {
   await openFixture(page, fixtureFile);
+  // Plugin muss fehlerfrei geladen und kompiliert sein (sonst würde der Effekt still übersprungen)
+  await expect
+    .poll(
+      () =>
+        page.evaluate((id) => {
+          const p = window.__bls.plugins.getState().plugins[id];
+          return p ? `${p.status} ${p.errors.join(' | ')}`.trim() : 'fehlt';
+        }, c.effectId),
+      { timeout: 15_000 },
+    )
+    .toBe('ok');
   await page.evaluate(
     ({ effectId, preset, params }) => {
       const bls = window.__bls;

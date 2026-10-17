@@ -1,0 +1,74 @@
+{
+  "id": "tilt-shift",
+  "name": "Tilt-Shift / Miniatur",
+  "version": "1.0.0",
+  "category": "Licht & Atmosphäre",
+  "description": "Schmales Schärfeband, nach oben und unten zunehmend unscharf, dazu kräftigere Farben – die Szene wirkt wie ein Modell.",
+  "inputs": ["source"],
+  "passes": 5,
+  "implementations": { "preview": "webgpu", "final": "webgpu" },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung (nutzt die Gauß-Unschärfe des Kerns)."
+  },
+  "cost": "realtime",
+  "randomized": false,
+  "requires": [],
+  "params": [
+    {
+      "key": "position",
+      "label": "Lage des Schärfebands",
+      "hint": "0 % = oben, 100 % = unten",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 58,
+      "unit": "%"
+    },
+    { "key": "width", "label": "Breite", "type": "float", "min": 0, "max": 100, "default": 12, "unit": "%" },
+    {
+      "key": "transition",
+      "label": "Übergang",
+      "type": "float",
+      "min": 1,
+      "max": 100,
+      "default": 28,
+      "unit": "%"
+    },
+    { "key": "angle", "label": "Neigung", "type": "angle", "default": 0 },
+    {
+      "key": "blur",
+      "label": "Unschärfe",
+      "type": "float",
+      "min": 0,
+      "max": 150,
+      "default": 28,
+      "unit": "px",
+      "scale": "log"
+    },
+    {
+      "key": "saturation",
+      "label": "Sättigung +",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 25,
+      "unit": "%"
+    }
+  ],
+  "reach": "blur",
+  "presets": [
+    {
+      "name": "Miniatur",
+      "values": { "position": 60, "width": 10, "transition": 25, "blur": 30, "saturation": 35 }
+    },
+    {
+      "name": "Diagonal",
+      "values": { "position": 50, "width": 14, "transition": 30, "angle": 20, "blur": 24, "saturation": 20 }
+    },
+    {
+      "name": "Schmaler Fokus",
+      "values": { "position": 50, "width": 4, "transition": 18, "blur": 45, "saturation": 10 }
+    }
+  ]
+}

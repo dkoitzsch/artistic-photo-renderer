@@ -209,6 +209,7 @@ export class EffectRunner {
         height,
         scale: placement.scale,
         canvasSize: placement.canvasSize,
+        origin: placement.origin,
         params: values,
         raw,
         source: input,

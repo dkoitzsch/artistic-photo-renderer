@@ -1,0 +1,98 @@
+{
+  "id": "bloom",
+  "name": "Bloom / Leuchten",
+  "version": "1.0.0",
+  "category": "Licht & Atmosphäre",
+  "description": "Helle Bereiche strahlen weich in ihre Umgebung – von sanftem Glanz bis zu Neon.",
+  "inputs": ["source"],
+  "passes": 4,
+  "implementations": {
+    "preview": "webgpu",
+    "final": "webgpu"
+  },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung (Schwellwert + mehrstufige Gauß-Unschärfe)."
+  },
+  "cost": "realtime",
+  "randomized": false,
+  "requires": [],
+  "params": [
+    {
+      "key": "threshold",
+      "label": "Ab Helligkeit",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 65,
+      "unit": "%"
+    },
+    {
+      "key": "knee",
+      "label": "Weicher Übergang",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 30,
+      "unit": "%",
+      "group": "Erweitert"
+    },
+    {
+      "key": "radius",
+      "label": "Radius",
+      "type": "float",
+      "min": 2,
+      "max": 300,
+      "default": 40,
+      "unit": "px",
+      "scale": "log"
+    },
+    {
+      "key": "intensity",
+      "label": "Stärke",
+      "type": "float",
+      "min": 0,
+      "max": 300,
+      "default": 80,
+      "unit": "%"
+    },
+    {
+      "key": "tint",
+      "label": "Farbe",
+      "type": "color",
+      "default": [1, 1, 1]
+    }
+  ],
+  "reach": "radius",
+  "presets": [
+    {
+      "name": "Sanftes Leuchten",
+      "values": {
+        "threshold": 70,
+        "radius": 30,
+        "intensity": 60,
+        "tint": [1, 1, 1]
+      }
+    },
+    {
+      "name": "Traum",
+      "values": {
+        "threshold": 58,
+        "knee": 50,
+        "radius": 80,
+        "intensity": 65,
+        "tint": [1, 0.94, 0.86]
+      }
+    },
+    {
+      "name": "Neon",
+      "values": {
+        "threshold": 62,
+        "knee": 20,
+        "radius": 25,
+        "intensity": 150,
+        "tint": [0.85, 0.9, 1]
+      }
+    }
+  ]
+}

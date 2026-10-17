@@ -9,12 +9,25 @@ export function PaletteControl({
   value,
   onChange,
   testId,
+  extract,
 }: {
   label: string;
   value: Rgb[];
   onChange: (v: Rgb[]) => void;
   testId?: string;
+  /** Palette gleicher Größe aus der Ebene (ohne Datei) oder aus einer Bilddatei gewinnen */
+  extract?: (count: number, file?: File) => Promise<Rgb[] | null>;
 }) {
+  const fromFile = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/jpeg,image/png,image/webp';
+    input.addEventListener('change', () => {
+      const f = input.files?.[0];
+      if (f && extract) void extract(value.length, f).then((p) => p && onChange(p));
+    });
+    input.click();
+  };
   return (
     <div className="control-row palette-row" data-testid={testId}>
       <span className="control-label">{label}</span>
@@ -60,6 +73,27 @@ export function PaletteControl({
           >
             −
           </button>
+        )}
+        {extract && (
+          <>
+            <button
+              className="button small"
+              title={`${value.length} Farben aus dem Bild dieser Ebene gewinnen`}
+              data-testid={testId ? `${testId}-from-layer` : undefined}
+              onClick={() => {
+                void extract(value.length).then((p) => p && onChange(p));
+              }}
+            >
+              Aus Ebene
+            </button>
+            <button
+              className="button small"
+              title={`${value.length} Farben aus einem Referenzbild gewinnen`}
+              onClick={fromFile}
+            >
+              Aus Bild …
+            </button>
+          </>
         )}
       </span>
     </div>

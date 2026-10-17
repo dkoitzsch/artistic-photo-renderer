@@ -22,6 +22,8 @@ export interface EffectContext {
   readonly scale: number;
   /** Leinwandgröße in Render-px (bei Export-Kacheln größer als width/height) */
   readonly canvasSize: readonly [number, number];
+  /** Lage der Ausgabe auf der Leinwand in Render-px (≠ 0 bei Export-Kacheln) */
+  readonly origin: readonly [number, number];
   /** Shaderwerte der Parameter (px bereits skaliert, Winkel in Radiant, Farben linear, enum als Index) */
   readonly params: Readonly<Record<string, number | number[]>>;
   /** Rohwerte wie im Projekt gespeichert */

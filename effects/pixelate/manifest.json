@@ -1,0 +1,54 @@
+{
+  "id": "pixelate",
+  "name": "Pixel / Mosaik",
+  "version": "1.0.0",
+  "category": "Digital & Glitch",
+  "description": "Grobe Bildpunkte als Quadrate oder Sechsecke; Farbe je Zelle als Mittelwert, Median oder Zellmitte.",
+  "inputs": ["source"],
+  "passes": 2,
+  "implementations": { "preview": "webgpu", "final": "webgpu" },
+  "license": { "commercialUse": true, "notes": "Eigene Implementierung." },
+  "cost": "realtime",
+  "randomized": false,
+  "requires": [],
+  "params": [
+    {
+      "key": "size",
+      "label": "Zellgröße",
+      "type": "float",
+      "min": 2,
+      "max": 256,
+      "default": 16,
+      "step": 1,
+      "unit": "px",
+      "scale": "log"
+    },
+    {
+      "key": "shape",
+      "label": "Form",
+      "type": "enum",
+      "options": [
+        { "value": "square", "label": "Quadrat" },
+        { "value": "hexagon", "label": "Sechseck" }
+      ],
+      "default": "square"
+    },
+    {
+      "key": "color",
+      "label": "Zellfarbe",
+      "type": "enum",
+      "options": [
+        { "value": "mean", "label": "Mittelwert" },
+        { "value": "median", "label": "Median" },
+        { "value": "center", "label": "Zellmitte" }
+      ],
+      "default": "mean"
+    }
+  ],
+  "reach": "size * 1.2",
+  "presets": [
+    { "name": "8-Bit", "values": { "size": 12, "shape": "square", "color": "median" } },
+    { "name": "Grobes Mosaik", "values": { "size": 48, "shape": "square", "color": "mean" } },
+    { "name": "Waben", "values": { "size": 28, "shape": "hexagon", "color": "mean" } }
+  ]
+}
