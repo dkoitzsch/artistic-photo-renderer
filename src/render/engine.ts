@@ -2,8 +2,10 @@
 
 import { defaultParams, type ParamValue } from '../effects/manifest';
 import { usePluginStore, type Plugin } from '../effects/pluginStore';
-import { findNode, firstLayer, type Group, type Project, type SceneNode } from '../state/project';
+import { findNode, firstLayer, walk, type Group, type Project, type SceneNode } from '../state/project';
+import { getPlugin } from '../effects/pluginStore';
 import type { View } from '../state/viewMath';
+import { AsyncEffects } from './asyncEffects';
 import { Compositor, ResultCache, type Rect } from './compositor';
 import { GpuCore } from './core';
 import { EffectRunner } from './effectRunner';
@@ -52,6 +54,8 @@ export class Engine {
   readonly sources: SourceStore;
   readonly runner: EffectRunner;
   readonly compositor: Compositor;
+  /** Effekte im Web Worker bzw. im Python-Dienst */
+  readonly async: AsyncEffects;
   private readonly cache: ResultCache;
 
   private readonly viewPipeline: GPURenderPipeline;
@@ -70,7 +74,8 @@ export class Engine {
     this.core = new GpuCore(device);
     this.sources = new SourceStore(this.core);
     this.runner = new EffectRunner(this.core);
-    this.compositor = new Compositor(this.core, this.sources, this.runner);
+    this.async = new AsyncEffects(device);
+    this.compositor = new Compositor(this.core, this.sources, this.runner, this.async);
     this.cache = new ResultCache(this.core.pool);
 
     const viewModule = device.createShaderModule({ label: 'view', code: colorWgsl + viewWgsl });
@@ -193,6 +198,8 @@ export class Engine {
       }
       this.drawInto(frame, project, view, dpr, colors, splitX);
       frame.submit();
+      // fehlende Ergebnisse von Worker-/Dienst-Effekten im Hintergrund berechnen (danach rendert die Vorschau neu)
+      this.async.kick();
       this.cache.endFrame();
       this.sources.endFrame();
       effectRuns = this.compositor.effectRuns - runsBefore;
@@ -265,6 +272,7 @@ export class Engine {
   /** Verwirft Vorschau-Caches (z. B. beim Projektwechsel). */
   resetPreview(): void {
     this.cache.clear();
+    this.async.clear();
     this.lastAfter = null;
     this.lastBefore = null;
   }
@@ -283,6 +291,8 @@ export class Engine {
   ): Promise<Uint8ClampedArray<ArrayBuffer>> {
     const { width: W, height: H } = project.canvas;
     const out = new Uint8ClampedArray(W * H * 4);
+    // Worker-/Dienst-Effekte brauchen das ganze Bild: dann am Stück statt in Kacheln
+    if (hasAsyncEffects(project)) tileSize = Math.max(W, H);
     // Ausrichtung auf 64 px, damit Pyramiden (Downsampling ×2) in allen Kacheln gleich liegen.
     const ALIGN = 64;
     const pad = Math.ceil((overlap + 8) / ALIGN) * ALIGN;
@@ -303,17 +313,15 @@ export class Engine {
         const y1 = Math.min(H, tile.y + tile.height + pad);
         const region: Rect = { x: x0, y: y0, width: x1 - x0, height: y1 - y0 };
 
-        const frame = new Frame(this.device, this.core.pool, 'export');
-        const res = this.compositor.render(frame, project, {
+        const res = await this.renderResolved(project, {
           scale: 1,
           canvasSize: [W, H],
           region,
           ignoreEffects: false,
           cache: null,
           variant: 'export',
+          final: true,
         });
-        frame.submit();
-        this.sources.endFrame();
         const pixels = await this.encode(res.tex, [tile.x - x0, tile.y - y0], tile.width, tile.height);
         if (res.owned) this.core.pool.release(res.tex);
 
@@ -334,17 +342,15 @@ export class Engine {
    */
   async floatStats(project: Project): Promise<{ nonFinite: number; min: number; max: number }> {
     const { width: W, height: H } = project.canvas;
-    const frame = new Frame(this.device, this.core.pool, 'stats');
-    const res = this.compositor.render(frame, project, {
+    const res = await this.renderResolved(project, {
       scale: 1,
       canvasSize: [W, H],
       region: { x: 0, y: 0, width: W, height: H },
       ignoreEffects: false,
       cache: null,
       variant: 'stats',
+      final: true,
     });
-    frame.submit();
-    this.sources.endFrame();
     const data = await this.readFloat(res.tex);
     if (res.owned) this.core.pool.release(res.tex);
     let nonFinite = 0;
@@ -404,6 +410,37 @@ export class Engine {
     const data = await this.readFloat(res.tex);
     if (res.owned) this.core.pool.release(res.tex);
     return data;
+  }
+
+  /**
+   * Rendert, bis alle Worker-/Dienst-Effekte ihr Ergebnis haben (je verketteter Effekt ein Durchlauf).
+   * Fehler oder Abbruch eines solchen Effekts brechen ab.
+   */
+  async renderResolved(
+    project: Project,
+    opts: Parameters<Compositor['render']>[2],
+  ): Promise<RenderResultLike> {
+    for (let pass = 0; ; pass++) {
+      const frame = new Frame(this.device, this.core.pool, opts.variant);
+      const res = this.compositor.render(frame, project, opts);
+      const missing = [...this.compositor.missingAsync];
+      frame.submit();
+      this.sources.endFrame();
+      if (missing.length === 0) return res;
+      if (res.owned) this.core.pool.release(res.tex);
+      if (pass >= 16) throw new Error('Zu viele verkettete Worker-/Dienst-Effekte.');
+      await this.async.waitFor(missing);
+      const failed = this.async.failures(missing);
+      const first = failed[0];
+      if (first) {
+        for (const f of failed) this.async.retry(f.key);
+        throw new Error(
+          first.status === 'cancelled'
+            ? `${first.label}: abgebrochen`
+            : `${first.label}: ${first.error ?? 'fehlgeschlagen'}`,
+        );
+      }
+    }
   }
 
   /** Kodiert einen Ausschnitt einer Arbeitstextur zu 8-Bit-sRGB (gerades Alpha). */
@@ -651,4 +688,20 @@ function halfToFloat(h: number): number {
   if (e === 0) return s * 2 ** -14 * (m / 1024);
   if (e === 31) return m ? NaN : s * Infinity;
   return s * 2 ** (e - 15) * (1 + m / 1024);
+}
+
+type RenderResultLike = { tex: GPUTexture; key: string; owned: boolean };
+
+/** Enthält das Projekt (sichtbare) Effekte, deren Endrender im Worker oder Dienst läuft? */
+export function hasAsyncEffects(project: Project): boolean {
+  for (const n of walk(project.root)) {
+    if (!n.visible) continue;
+    const lists = n.kind === 'layer' && n.shadow ? [n.effects, n.shadow.effects] : [n.effects];
+    for (const list of lists)
+      for (const fx of list) {
+        const impl = getPlugin(fx.effectId)?.manifest?.implementations;
+        if (fx.enabled && impl && (impl.final !== 'webgpu' || impl.preview !== 'webgpu')) return true;
+      }
+  }
+  return false;
 }

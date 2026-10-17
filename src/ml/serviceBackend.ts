@@ -6,7 +6,18 @@ import type { ServiceInfo } from '../state/store';
 import type { Progress } from './protocol';
 import type { ModelEntry } from './registry';
 
-export const SERVICE_URL = 'http://127.0.0.1:8765';
+/** Adresse des lokalen Dienstes; im Dev-Server für Tests über localStorage['bls.serviceUrl'] änderbar. */
+export const SERVICE_URL = ((): string => {
+  if (import.meta.env.DEV) {
+    try {
+      const v = localStorage.getItem('bls.serviceUrl');
+      if (v) return v;
+    } catch {
+      // ohne localStorage: Standard
+    }
+  }
+  return 'http://127.0.0.1:8765';
+})();
 
 async function fetchJson<T>(url: string, init?: RequestInit, timeoutMs = 2000): Promise<T> {
   const ctrl = new AbortController();

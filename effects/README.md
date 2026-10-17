@@ -150,6 +150,29 @@ Effekte, die an Fokuspunkten schwächer wirken sollen, nehmen `focus` in `inputs
 `focusBlur` (Wirkung an den Punkten in % der Stärke) und `focusSoftness` (0…100 %). Pro Pixel:
 `radius = mix(stärke, stärke · focusBlur / 100, focus_sharpness(p, focusSoftness / 100))`.
 
+## Ausführung auf der CPU im Browser (effect.worker.ts)
+
+Für globale oder sequenzielle Verfahren (Fehlerdiffusion, Pixel-Sorting, Triangulierung) mit
+`"implementations": { "preview": "browser-cpu", "final": "browser-cpu" }`:
+
+```ts
+import { defineCpuEffect } from '../../src/effects/cpuApi';
+
+export default defineCpuEffect({
+  render(img, ctx) {
+    // img: Float32Array RGBA (linear, vormultipliziert), ctx.width × ctx.height – ganze Ebene am Stück
+    ctx.progress(0.5);
+    const lum = ctx.luminance(); // Analysekarten wie im Shader/Dienst; ctx.edges()
+    const r = ctx.rand(x, y, 0); // gleicher Zufall wie rand_at(canvas_pos(p), seed, 0) im Shader
+    return img;
+  },
+});
+```
+
+**Ablauf:** Fehlt ein Ergebnis, zeigt die Vorschau zunächst den Eingang; der Worker rechnet im Hintergrund, danach
+aktualisiert sich die Vorschau. Der Export rechnet solche Effekte in voller Auflösung am Stück (ohne Kacheln) und wartet
+auf alle Ergebnisse. Laufende Berechnungen erscheinen in der unteren Leiste mit Fortschritt und „Abbrechen“.
+
 ## Ausführung im Python-Dienst (effect.py)
 
 Mit `"implementations": { "preview": "webgpu", "final": "python" }` (oder `python` für beide) rechnet der lokale Dienst.

@@ -1,5 +1,8 @@
+import { renderFullResolution } from '../../io/export';
+import { hasAsyncEffects } from '../../render/engine';
+import { getEngine } from '../../render/runtime';
 import { jumpToHistory } from '../../state/commands';
-import { useAppStore } from '../../state/store';
+import { useAppStore, useProject } from '../../state/store';
 import { ChevronDownIcon, ChevronUpIcon } from './Icons';
 
 function HistoryList() {
@@ -32,6 +35,9 @@ export function BottomPanel() {
   const gpu = useAppStore((s) => s.gpu);
   const busy = useAppStore((s) => s.busy);
   const tasks = useAppStore((s) => s.tasks);
+  const asyncJobs = useAppStore((s) => s.asyncJobs);
+  const project = useProject();
+  const showFullRes = project !== null && hasAsyncEffects(project);
   const last = notices.at(-1);
 
   return (
@@ -68,6 +74,56 @@ export function BottomPanel() {
           ))}
         </ul>
       )}
+      {asyncJobs.length > 0 && (
+        <ul className="task-list" data-testid="effect-jobs">
+          {asyncJobs.map((j) => (
+            <li
+              key={j.key}
+              className={`task${j.status === 'error' ? ' error' : ''}`}
+              data-testid="effect-job"
+            >
+              <span className="task-label">
+                {j.label} · {j.impl === 'python' ? 'Dienst' : 'Browser-CPU'}
+              </span>
+              <span className="task-detail">
+                {j.status === 'error'
+                  ? j.error
+                  : j.status === 'cancelled'
+                    ? 'abgebrochen'
+                    : j.status === 'pending'
+                      ? 'wartet …'
+                      : `${Math.round(j.progress * 100)} %`}
+              </span>
+              {(j.status === 'pending' || j.status === 'running') && (
+                <span className="task-bar">
+                  <span className="task-fill" style={{ width: `${Math.round(j.progress * 100)}%` }} />
+                </span>
+              )}
+              {j.status === 'pending' || j.status === 'running' ? (
+                <button
+                  className="button small"
+                  data-testid="effect-job-cancel"
+                  onClick={() => {
+                    getEngine()?.async.cancel(j.key);
+                  }}
+                >
+                  Abbrechen
+                </button>
+              ) : (
+                <button
+                  className="button small"
+                  data-testid="effect-job-retry"
+                  onClick={() => {
+                    getEngine()?.async.retry(j.key);
+                  }}
+                >
+                  Erneut
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
       <div className="statusbar">
         <button
           className="statusbar-toggle"
@@ -94,6 +150,17 @@ export function BottomPanel() {
         >
           Verlauf
         </button>
+        {showFullRes && (
+          <button
+            className="statusbar-tab"
+            disabled={busy !== null}
+            title="Alle Effekte in voller Auflösung berechnen (Worker-/Dienst-Effekte im Endrender)"
+            onClick={() => void renderFullResolution()}
+            data-testid="render-full"
+          >
+            Vollauflösung rendern
+          </button>
+        )}
         <span className={`statusbar-last ${busy ? '' : (last?.level ?? '')}`} data-testid="last-notice">
           {busy ?? last?.text ?? ''}
         </span>

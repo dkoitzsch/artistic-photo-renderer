@@ -16,7 +16,7 @@ Grundlage: [spec-effekte-und-malvorlagen.md](spec-effekte-und-malvorlagen.md), E
       Gruppenergebnisses), Kartenmasken für Effekte auf Gruppen, Oberfläche, Tests
 - [x] 7. Dienst: Effekt-Registry (gleiche Manifeste + `effect.py`), `PUT /images/{sha}`, `POST /effects/{id}/render`,
       `GET`/`DELETE /jobs/{id}`, Hash-Cache, Lizenzprüfung
-- [ ] 8. Asynchrone Effekte im Browser (Ausführungsorte „python“ und „browser-cpu“), Job-Anzeige mit Abbruch,
+- [x] 8. Asynchrone Effekte im Browser (Ausführungsorte „python“ und „browser-cpu“), Job-Anzeige mit Abbruch,
       „Vollauflösung rendern“, Export wartet
 - [ ] 9. Effekte: `rgb-split`, `pixelate`, `film-grain`, `bloom`, `tilt-shift`, `posterize-palette`
 - [ ] 10. Effekte: `ink-lines`, `comic`, `halftone-cmyk`

@@ -33,7 +33,7 @@ class State:
     def __init__(
         self,
         factory: SegmenterFactory | None = None,
-        prefetch: bool = True,
+        prefetch: bool | None = None,
         downloader: Downloader | None = None,
         cache_dir: Path | None = None,
         effects: dict[str, EffectDef] | None = None,
@@ -54,6 +54,8 @@ class State:
         self.factory = factory or models.make_model
         self.device = "test" if factory else models.pick_device()
         self.downloads = downloader or Downloader(models.CACHE_DIR / "models", token=models.hf_token)
+        if prefetch is None:
+            prefetch = os.environ.get("BLS_PREFETCH", "1") != "0"
         if prefetch:
             # Kommerziell nutzbare Modelle beim Start herunterladen (Fortschritt in /health, pausier-/stoppbar)
             for m in self.models.values():

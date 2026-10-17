@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { DownloadState } from '../ml/protocol';
+import type { AsyncJobInfo } from '../render/asyncEffects';
 import type { GpuInfo } from '../render/gpu';
 import { createHistory, present, type History } from './history';
 import type { LicenseMode, Project } from './project';
@@ -34,7 +35,20 @@ export type ServiceModel = {
     error?: string | null;
   };
 };
-export type ServiceInfo = { device: string; version: string; models: ServiceModel[] };
+/** Effekt mit Python-Implementierung im Dienst */
+export type ServiceEffect = {
+  id: string;
+  version: string;
+  commercialUse: boolean;
+  available: boolean;
+  note?: string | null;
+};
+export type ServiceInfo = {
+  device: string;
+  version: string;
+  models: ServiceModel[];
+  effects?: ServiceEffect[];
+};
 export type ServiceStatus = { state: 'unknown' | 'online' | 'offline'; info?: ServiceInfo };
 
 /** Laufende ML-Aufgabe (Fortschritt in der unteren Leiste) */
@@ -96,6 +110,10 @@ type AppState = {
   parallax: ParallaxState;
   exportOpen: boolean;
   analysisView: AnalysisView;
+  /** laufende/fehlgeschlagene Worker- und Dienst-Effekte */
+  asyncJobs: AsyncJobInfo[];
+  /** zählt hoch, wenn neue Effekt-Ergebnisse vorliegen (Vorschau neu rendern) */
+  renderTick: number;
 
   setGpu: (gpu: GpuStatus) => void;
   setScreen: (screen: AppState['screen']) => void;
@@ -127,6 +145,8 @@ type AppState = {
   setParallax: (patch: Partial<ParallaxState>) => void;
   setExportOpen: (open: boolean) => void;
   setAnalysisView: (patch: Partial<AnalysisView>) => void;
+  setAsyncJobs: (jobs: AsyncJobInfo[]) => void;
+  bumpRenderTick: () => void;
 };
 
 let nextNoticeId = 1;
@@ -162,6 +182,8 @@ export const useAppStore = create<AppState>()((set) => ({
   parallax: { enabled: false, strength: 50, axis: 'both', pointer: [0, 0] },
   exportOpen: false,
   analysisView: { map: 'edges', opacity: 0.85 },
+  asyncJobs: [],
+  renderTick: 0,
 
   setGpu: (gpu) => set({ gpu }),
   setScreen: (screen) => set({ screen }),
@@ -199,6 +221,8 @@ export const useAppStore = create<AppState>()((set) => ({
   setParallax: (patch) => set((s) => ({ parallax: { ...s.parallax, ...patch } })),
   setExportOpen: (exportOpen) => set({ exportOpen }),
   setAnalysisView: (patch) => set((s) => ({ analysisView: { ...s.analysisView, ...patch } })),
+  setAsyncJobs: (asyncJobs) => set({ asyncJobs }),
+  bumpRenderTick: () => set((s) => ({ renderTick: s.renderTick + 1 })),
 }));
 
 /** Aktuelles Projekt (Gegenwart der History) oder null. */

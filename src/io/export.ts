@@ -131,6 +131,28 @@ export async function exportConfirmed(options: ExportOptions = DEFAULT_EXPORT): 
   }
 }
 
+/**
+ * „Vollauflösung rendern“: rechnet alle Effekte in voller Auflösung (Worker-/Dienst-Effekte im Endrender) und hält die
+ * Ergebnisse für Export und PSD bereit; Fortschritt und Abbruch in der Job-Leiste.
+ */
+export async function renderFullResolution(): Promise<void> {
+  const { notify, setBusy } = useAppStore.getState();
+  const project = getProject();
+  const engine = getEngine();
+  if (!project || !engine) return;
+  setBusy('Vollauflösung wird gerendert …');
+  try {
+    const t0 = performance.now();
+    const overlap = projectReach(project.root, (fx) => effectReach(fx, project.canvas));
+    await engine.renderFull(project, overlap, exportSettings.tileSize);
+    notify('info', `Vollauflösung gerendert (${((performance.now() - t0) / 1000).toFixed(1)} s).`);
+  } catch (e) {
+    notify('error', `Vollauflösung: ${e instanceof Error ? e.message : String(e)}`);
+  } finally {
+    setBusy(null);
+  }
+}
+
 /** Schnellexport als PNG (mit Lizenzprüfung). */
 export function exportPng(): Promise<void> {
   return exportAs(DEFAULT_EXPORT);

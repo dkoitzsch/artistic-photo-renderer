@@ -23,5 +23,5 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "include": ["src", "effects", "tests/unit"]
+  "include": ["src", "effects", "tests/unit", "tests/effects"]
 }

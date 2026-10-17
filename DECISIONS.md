@@ -10,6 +10,20 @@ Abweichungen von der Spec und Festlegungen bei unklaren Anforderungen. Neueste o
 - **Betrifft:** (Spec-Abschnitt / Phase)
 -->
 
+## 2026-10-17 – E1: Asynchrone Effekte (Browser-CPU und Python-Dienst)
+
+- **Ablauf:** Der Compositor bleibt synchron. Fehlt das Ergebnis eines Worker-/Dienst-Effekts, meldet er eine Anfrage mit
+  einer Kopie seines Eingangs und reicht den Eingang durch. Nach dem Frame wird das Arbeitsformat (RGBA float16) roh
+  ausgelesen und an Worker bzw. Dienst gegeben; das Ergebnis kommt als Textur in einen Cache (Budget 1,5 GB), die Vorschau
+  rendert neu. Stärke, Wirkbereich, Effektmaske und Mischmodus wirken danach wie bei GPU-Effekten.
+- **Export:** Enthält das Projekt solche Effekte, rendert der Export am Stück (ohne Kacheln, bis 24 MP) und wiederholt den
+  Durchlauf, bis alle Ergebnisse vorliegen (eine Runde je verketteter asynchroner Effekt). Fehler/Abbruch beenden den
+  Export mit Meldung. „Vollauflösung rendern“ in der unteren Leiste rechnet vorab.
+- **Dienst:** Bild über SHA-256 adressiert und nur einmal hochgeladen; Ergebnis-Cache im Dienst über Hash aus Bild,
+  Effekt, Version, Parametern und Lage. Zufall in Shader, Browser-CPU und Python bitgleich (PCG3D, Referenzwerte in Tests).
+- **Tests:** eigener Testdienst auf Port 8766 (Test-Effekte, keine Modell-Downloads, eigener Cache), damit ein laufender
+  Dev-Dienst auf 8765 nicht stört; im Dev-Server über `localStorage['bls.serviceUrl']` umschaltbar.
+
 ## 2026-10-17 – Spec-Ergänzung Gruppen (2.2a): Abgleich mit dem Bestand
 
 - **Vorhanden:** Gruppen inkl. Verschachtelung, Gruppieren/Auflösen/Ziehen (Phase 3), Effekte auf Gruppen (wirken auf das

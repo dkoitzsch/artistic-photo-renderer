@@ -1,6 +1,7 @@
 // Rendert den Projektbaum (hinten → vorn) in eine Textur. Für die Vorschau werden Zwischenergebnisse
 // pro Layer und Effektschritt gecacht (Schlüssel aus Eingang + Parametern); nur Geändertes wird neu berechnet.
 
+import { defaultParams } from '../effects/manifest';
 import { getPlugin } from '../effects/pluginStore';
 import {
   findNode,
@@ -17,6 +18,7 @@ import {
 import { apply, invert, isAligned, placement, type Affine } from '../state/transform';
 import type { GpuCore } from './core';
 import type { EffectRunner } from './effectRunner';
+import type { AsyncEffects } from './asyncEffects';
 import type { SourceStore } from './sources';
 import type { Frame, TexturePool } from './texturePool';
 
@@ -36,6 +38,8 @@ export type RenderOptions = {
   cache: ResultCache | null;
   /** trennt Cache-Einträge (z. B. "after" / "before") */
   variant: string;
+  /** Endrender (Export): Effekte nutzen ihre "final"-Ausführung statt "preview" */
+  final?: boolean;
 };
 
 export type RenderResult = { tex: GPUTexture; key: string; owned: boolean };
@@ -161,10 +165,14 @@ export class Compositor {
   private originals: Record<string, OriginalRef> = {};
   private root: Group | null = null;
 
+  /** Asynchrone Effekte, deren Ergebnis in diesem Durchlauf noch fehlte (Schlüssel) */
+  missingAsync: string[] = [];
+
   constructor(
     private readonly core: GpuCore,
     private readonly sources: SourceStore,
     private readonly runner: EffectRunner,
+    private readonly async: AsyncEffects,
   ) {}
 
   private use(project: Project): void {
@@ -380,6 +388,7 @@ export class Compositor {
 
   render(frame: Frame, project: Project, opts: RenderOptions): RenderResult {
     this.use(project);
+    this.missingAsync = [];
     const res = this.node(frame, project.root, opts);
     if (res) return res;
     const tex = this.core.pool.acquire(opts.region.width, opts.region.height, 'empty');
@@ -773,15 +782,65 @@ export class Compositor {
     effects.forEach((fx, i) => {
       if (!fx.enabled) return;
       const plugin = getPlugin(fx.effectId);
-      if (plugin?.status !== 'ok' || !this.runner.isCompiled(plugin)) return;
+      const manifest = plugin?.manifest;
+      if (plugin?.status !== 'ok' || !manifest) return;
+      const impl = opts.final ? manifest.implementations.final : manifest.implementations.preview;
+      if (impl === 'webgpu' && !this.runner.isCompiled(plugin)) return;
       const emask = this.effectMask(frame, fx.mask, host, opts, group ? { input: cur, group } : undefined);
       const mixKey = `|bm${fx.blendMode ?? 'normal'}|m${emask?.key ?? '-'}`;
-      const key = `${cur.key}|${fx.effectId}#${plugin.revision}${JSON.stringify([fx.params, fx.strength, fx.region])}${auxKey}${mixKey}`;
+      const key = `${cur.key}|${fx.effectId}#${plugin.revision}${JSON.stringify([fx.params, fx.strength, fx.region])}${auxKey}${mixKey}|${impl}`;
       const slot = `${opts.variant}:${hostId}:fx${i}`;
       const cached = opts.cache?.get(slot, key);
       if (cached) {
         this.release(cur);
         cur = { tex: cached, key, owned: false };
+        return;
+      }
+      if (impl !== 'webgpu') {
+        // Ergebnis aus Worker/Dienst: Schlüssel ohne Mischung (Stärke/Maske/Mischmodus wirken danach hier)
+        const asyncKey = `${cur.key}|${fx.effectId}#${manifest.version}${JSON.stringify(fx.params)}|${impl}`;
+        const done = this.async.result(asyncKey);
+        if (!done) {
+          const p = { ...defaultParams(manifest), ...fx.params };
+          this.async.request(
+            frame,
+            asyncKey,
+            {
+              label: `${manifest.name}${opts.final ? ' (Vollauflösung)' : ''}`,
+              impl,
+              final: opts.final ?? false,
+              effectId: fx.effectId,
+              params: p,
+              seed: typeof p.seed === 'number' ? p.seed : 0,
+              scale: opts.scale,
+              origin: [opts.region.x, opts.region.y],
+              canvasSize: opts.canvasSize,
+            },
+            cur.tex,
+          );
+          this.missingAsync.push(asyncKey);
+          return; // Eingang vorerst durchreichen
+        }
+        this.effectRuns++;
+        const m = emask?.get() ?? null;
+        const weight = Math.max(0, Math.min(1, fx.strength));
+        const mode = fx.blendMode ?? 'normal';
+        let out: GPUTexture;
+        if (weight >= 1 && fx.region === 'whole' && mode === 'normal' && !m) {
+          out = this.core.pool.acquire(done.width, done.height, 'async-result');
+          frame.encoder.copyTextureToTexture({ texture: done }, { texture: out }, [done.width, done.height]);
+        } else {
+          out = this.core.pool.acquire(done.width, done.height, 'async-mix');
+          const focus = fx.region === 'whole' ? this.core.black : (aux?.get([]).focus ?? this.core.black);
+          const region = { whole: 0, 'focus-weighted': 1, 'inverse-focus': 2 }[fx.region];
+          this.core.mix(frame, cur.tex, done, focus, out, weight, region, mode, m?.tex ?? null);
+        }
+        if (m?.owned) this.core.pool.release(m.tex);
+        this.release(cur);
+        if (opts.cache) {
+          opts.cache.set(slot, key, out);
+          cur = { tex: out, key, owned: false };
+        } else cur = { tex: out, key, owned: true };
         return;
       }
       this.effectRuns++;

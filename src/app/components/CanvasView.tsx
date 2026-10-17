@@ -58,6 +58,7 @@ export function CanvasView({ theme }: { theme: 'light' | 'dark' }) {
   const viewMode = useAppStore((s) => s.viewMode);
   const parallax = useAppStore((s) => s.parallax);
   const analysisView = useAppStore((s) => s.analysisView);
+  const renderTick = useAppStore((s) => s.renderTick);
   const selectedId = useAppStore((s) => s.selectedNodeId);
   const view = useAppStore((s) => s.view);
   const viewport = useAppStore((s) => s.viewport);
@@ -131,6 +132,7 @@ export function CanvasView({ theme }: { theme: 'light' | 'dark' }) {
     selectedId,
     parallax,
     analysisView,
+    renderTick,
   ]);
 
   // Mausrad/Trackpad: Pinch bzw. ⌘/Strg + Rad zoomt um den Cursor, sonst verschieben.
