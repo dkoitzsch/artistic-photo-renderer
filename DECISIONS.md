@@ -10,6 +10,37 @@ Abweichungen von der Spec und Festlegungen bei unklaren Anforderungen. Neueste o
 - **Betrifft:** (Spec-Abschnitt / Phase)
 -->
 
+## 2026-10-17 – E2: Grundsatzentscheidungen
+
+- **Freigabe:** Der Nutzer hat E2 am 17.10.2026 freigegeben („E2 umsetzen“). Laut Entscheidung „Reihenfolge“ (E1) folgt
+  danach die alte Phase 5, dann E3.
+- **Ausführungsorte (Abweichung von Spec 5):** Alle E2-Effekte laufen im Browser. Die mit „B/P“ markierten (`datamosh`,
+  `hatching`, `charcoal`, `pointillism`, `mosaic-glass`) rechnen Vorschau **und** Endrender auf der GPU – kachelgenau, Vorschau
+  und Export sind dasselbe Verfahren. `stipple` (Spec: P) läuft als Browser-CPU-Effekt im Web Worker. Begründung: auf der
+  Referenz-Hardware schnell genug, ohne Dienst nutzbar, kein zweites Verfahren mit Abgleich. Eine Dienst-Fassung lässt sich
+  über `implementations.final = "python"` jederzeit nachrüsten.
+- **Analysekarte `flow`:** Richtungsfeld aus der Summe zweier geglätteter Strukturtensoren, J(σ = 6) + ¼ · J(σ = 24)
+  (Original-px): nah an Kanten folgt die Richtung der Kante, in ruhigen Flächen setzt sich die großräumige Richtung fort.
+  Kanal rg = Tangente, b = Kohärenz. Gleiches Verfahren auf der GPU, im Worker und im Dienst (Abgleich-Tests wie bei `edges`).
+- **ASCII-Schrift:** Glyphen werden zur Laufzeit per Canvas 2D in einen Atlas gerendert (Kern-Hilfe `ctx.glyphs`), Schriften:
+  die mitgelieferte Inter (OFL-1.1) und die System-Monospace. Gerenderte Bilder sind keine Schriftsoftware; keine Lizenzfrage.
+  Neuer Parametertyp `text` (Zeichenkette, im Shader nur ihre Länge).
+- **Globale Effekte** (`kaleido`, `polar`, `god-rays`, Wölbung bei `scanlines-crt`) lesen weit entfernte Pixel. Ihre
+  Reichweite deckt die Leinwand; der Export rendert dann am Stück statt in Kacheln, der Ausschnitt in voller Auflösung
+  entfällt bei zu großer Fläche.
+- **Malplan:** Einstellungen im Projekt (`project.malplan`, Projektformat 7). Analyse im Web Worker auf dem gerenderten
+  Ergebnis mit höchstens 1600 px langer Kante: Glättung, Farbreduktion (k-Means in Oklab, „Anzahl Farben“), Flächen
+  (Zusammenhangskomponenten, Verschmelzen bis „Anzahl Formen“). Alle Hilfen leiten sich daraus ab. Konturen sind Vektoren
+  (Flächengrenzen → Douglas-Peucker → Chaikin), damit die Vorlage in Originalgröße scharf druckt.
+- **Maltechnik:** wird in E2 gespeichert und im PDF genannt; Schichtreihenfolge und technikabhängige Hilfen folgen mit dem
+  Schichtplan (E4).
+- **Beamer-Modus:** eigenes Fenster (aufs Projektor-Display ziehen, dort Vollbild), Bild per `postMessage`, Trapezkorrektur
+  als Homographie (CSS `matrix3d`) über vier Eckgriffe; Ecken werden im Projekt gespeichert.
+- **PDF:** eigener kleiner PDF-Schreiber (`src/io/pdf.ts`, PDF 1.4, Standardschrift Helvetica mit WinAnsi-Kodierung,
+  Bilder JPEG/Flate, Vektorpfade). Verworfen: pdf-lib (seit 2021 ohne Pflege, viel ungenutzter Umfang), jsPDF (Größe).
+  Einmalige unabhängige Prüfung mit pypdf über `uv run --with pypdf` (nicht installiert), wie psd-tools in Phase 3.
+- **Betrifft:** Spec „Effekte“ 4, 5, 7, 10; Plan [docs/plan-E2.md](docs/plan-E2.md)
+
 ## 2026-10-17 – Ausschnitt in voller Auflösung beim Hineinzoomen (E1 Schritt 16)
 
 - **Frage:** Die Vorschau hat höchstens 2048 px. Beim Hineinzoomen in große Bilder sieht man Vorschau-Pixel, und auflösungsabhängige

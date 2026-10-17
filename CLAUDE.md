@@ -15,7 +15,8 @@ Abgeschlossen: **Phase 0 – Gerüst**, **Phase 1 – Ganzes Bild**, **Phase 2 �
 **Erweiterung „Effekte & Malvorlagen“** ([docs/spec-effekte-und-malvorlagen.md](docs/spec-effekte-und-malvorlagen.md)):
 **Phase E1 abgeschlossen** ([docs/plan-E1.md](docs/plan-E1.md), Abnahme und Demo-Liste: [docs/abnahme-E1.md](docs/abnahme-E1.md),
 Ideen für später: [docs/optimierungen-und-varianten.md](docs/optimierungen-und-varianten.md)).
-Nächste (wartet auf Freigabe): alte Phase 5 (Pinsel, SAM), dann E2 … E5. Danach `docs/spec-ml-fotobearbeitung.md` (nicht anfassen).
+**Phase E2 in Arbeit** ([docs/plan-E2.md](docs/plan-E2.md)). Danach alte Phase 5 (Pinsel, SAM), dann E3 … E5
+(Reihenfolge laut DECISIONS.md). Danach `docs/spec-ml-fotobearbeitung.md` (nicht anfassen).
 Nach jedem Schritt: Tests, [PROGRESS.md](PROGRESS.md) nachführen (Stand, offene Punkte, Logbuch, Stolpersteine, Messwerte), Commit, Push.
 
 ## Ordnerstruktur (✓ = existiert)
