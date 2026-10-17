@@ -3,7 +3,7 @@
 
 import type { ParamValue } from '../effects/manifest';
 
-export const PROJECT_FORMAT_VERSION = 4;
+export const PROJECT_FORMAT_VERSION = 5;
 
 export type BlendMode =
   'normal' | 'multiply' | 'screen' | 'overlay' | 'soft-light' | 'lighten' | 'darken' | 'difference';
@@ -81,6 +81,18 @@ export type ShadowLayer = {
 
 export type EffectRegion = 'whole' | 'focus-weighted' | 'inverse-focus';
 
+/** Karten, deren Wertebereich als Effektmaske dient (0…1). */
+export type MaskMapId = 'luminance' | 'depth';
+
+/**
+ * Eigene Maske eines Effekts (zusätzlich zur Ebenenmaske):
+ * "map": Bereich einer Analysekarte der Ebene, z. B. Helligkeit 0–30 % (weicher Rand feather, Kartenwerte 0…1);
+ * "layer": aufbereitete Maske einer anderen Ebene (z. B. die Person aus der Vordergrund-Aufteilung).
+ */
+export type EffectMask =
+  | { kind: 'map'; map: MaskMapId; from: number; to: number; feather: number; invert: boolean }
+  | { kind: 'layer'; layerId: string; invert: boolean };
+
 export type EffectInstance = {
   instanceId: string;
   effectId: string;
@@ -92,6 +104,10 @@ export type EffectInstance = {
   region: EffectRegion;
   /** Gruppenmodus: diese Parameter werden von der Gruppenbearbeitung nicht überschrieben (Schloss) */
   decoupled?: string[];
+  /** Mischmodus des Effekts mit seinem Eingang (fehlt = normal: Effekt ersetzt den Eingang) */
+  blendMode?: BlendMode;
+  /** eigene Maske des Effekts (fehlt = überall) */
+  mask?: EffectMask;
 };
 
 /**
@@ -318,6 +334,22 @@ export function updateEffect(
 ): Project {
   return updateEffects(project, nodeId, (list) =>
     list.map((e) => (e.instanceId === instanceId ? { ...e, ...patch } : e)),
+  );
+}
+
+/** Setzt oder entfernt (undefined) die eigene Maske eines Effekts. */
+export function setEffectMask(
+  project: Project,
+  nodeId: string,
+  instanceId: string,
+  mask: EffectMask | undefined,
+): Project {
+  return updateEffects(project, nodeId, (list) =>
+    list.map((e) => {
+      if (e.instanceId !== instanceId) return e;
+      const { mask: _old, ...rest } = e;
+      return mask ? { ...rest, mask } : rest;
+    }),
   );
 }
 

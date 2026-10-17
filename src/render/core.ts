@@ -2,6 +2,7 @@
 
 import type { BlendMode, MaskEdge } from '../state/project';
 import blendWgsl from './shaders/blend.wgsl?raw';
+import blendModesWgsl from './shaders/blendmodes.wgsl?raw';
 import colorWgsl from './shaders/color.wgsl?raw';
 import encodeWgsl from './shaders/encode.wgsl?raw';
 import fillWgsl from './shaders/fill.wgsl?raw';
@@ -115,8 +116,8 @@ export class GpuCore {
     this.importPipeline = compute(importWgsl, 'import');
     this.encodePipeline = compute(encodeWgsl, 'encode');
     this.resamplePipeline = compute(resampleWgsl, 'resample');
-    this.mixPipeline = compute(mixWgsl, 'mix');
-    this.blendPipeline = compute(blendWgsl, 'blend');
+    this.mixPipeline = compute(blendModesWgsl + mixWgsl, 'mix');
+    this.blendPipeline = compute(blendModesWgsl + blendWgsl, 'blend');
     this.fillPipeline = compute(fillWgsl, 'fill');
     this.focusPipeline = compute(focusmapWgsl, 'focusmap');
     this.maskApplyPipeline = compute(maskapplyWgsl, 'maskapply');
@@ -132,7 +133,7 @@ export class GpuCore {
       'maskops',
       maskopsWgsl,
       ['uniform', 'tex', 'storage'],
-      ['load', 'minmax', 'threshold', 'curve', 'band'],
+      ['load', 'minmax', 'threshold', 'curve', 'band', 'luma'],
     );
     this.guided = new ModulePipelines(
       device,
@@ -197,7 +198,10 @@ export class GpuCore {
     dispatch2d(frame, this.resamplePipeline, bg, dst.width, dst.height, 'resample');
   }
 
-  /** dst = mix(base, fx, weight · Regionsgewicht) */
+  /**
+   * dst = mix(base, B(base, fx), weight · Regionsgewicht · Effektmaske); B = Mischmodus (normal: fx ersetzt base).
+   * mask: Effektmaske (r) oder null.
+   */
   mix(
     frame: Frame,
     base: GPUTexture,
@@ -206,16 +210,19 @@ export class GpuCore {
     dst: GPUTexture,
     weight: number,
     region: number,
+    mode: BlendMode = 'normal',
+    mask: GPUTexture | null = null,
   ): void {
     const u = new ArrayBuffer(16);
     new Float32Array(u, 0, 1)[0] = weight;
-    new Uint32Array(u, 4, 1)[0] = region;
+    new Uint32Array(u, 4, 3).set([region, BLEND_MODE_INDEX[mode], mask ? 1 : 0]);
     const bg = this.bind(this.mixPipeline, [
       { buffer: frame.uniform(u) },
       base.createView(),
       fx.createView(),
       focus.createView(),
       dst.createView(),
+      (mask ?? this.white).createView(),
     ]);
     dispatch2d(frame, this.mixPipeline, bg, dst.width, dst.height, 'mix');
   }
@@ -440,6 +447,33 @@ export class GpuCore {
       this.maskRun(frame, 'curve', a, dst, this.maskUniform(frame, {}));
     }
     this.pool.release(a);
+  }
+
+  /**
+   * Wertebereich einer Karte (r, 0…1) als Maske: 1 in [from, to], weicher Rand ±feather, optional umgekehrt.
+   * from ≤ 0 bzw. to ≥ 1: keine untere/obere Kante. Karte wird bilinear auf dst skaliert.
+   */
+  mapRange(
+    frame: Frame,
+    map: GPUTexture,
+    from: number,
+    to: number,
+    feather: number,
+    invert: boolean,
+    dst: GPUTexture,
+  ): void {
+    this.maskRun(
+      frame,
+      'band',
+      map,
+      dst,
+      this.maskUniform(frame, { dir: [from, to], radius: feather, invert }),
+    );
+  }
+
+  /** Helligkeit (wahrgenommen, 0…1) eines Bildes; dst gleich groß wie src. */
+  luma(frame: Frame, src: GPUTexture, dst: GPUTexture): void {
+    this.maskRun(frame, 'luma', src, dst, this.maskUniform(frame, {}));
   }
 
   /** Erweitert eine Maske (r) um radius px (Max-Filter). */

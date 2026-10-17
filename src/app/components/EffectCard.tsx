@@ -13,6 +13,7 @@ import {
 } from '../../state/commands';
 import type { EffectInstance } from '../../state/project';
 import { ParamControl } from '../controls/ParamControl';
+import { EffectMixSection } from './EffectMixSection';
 import { Slider } from '../controls/Slider';
 import {
   ChevronDownIcon,
@@ -210,6 +211,7 @@ export function EffectCard({
             onGestureEnd={endGesture}
             testId="param-strength"
           />
+          <EffectMixSection nodeId={nodeId} effect={effect} />
         </div>
       )}
     </div>

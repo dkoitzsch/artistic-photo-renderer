@@ -7,7 +7,7 @@ Grundlage: [spec-effekte-und-malvorlagen.md](spec-effekte-und-malvorlagen.md), E
       `LICENSES-THIRD-PARTY.md`
 - [x] 2. Manifest v2: `implementations`, `license`, `cost`, `randomized`, `requires`, Parameter-`group`, Typen `seed`,
       `palette`, `image`; Bestandseffekte migriert
-- [ ] 3. Maske und Mischmodus je Effekt (Projektformat 5, Migration)
+- [x] 3. Maske und Mischmodus je Effekt (Projektformat 5, Migration)
 - [ ] 4. Seed: Würfel-Knopf, Zufall nach Leinwandposition (kachel- und vorschaustabil)
 - [ ] 5. Presets: eigene Presets mit Vorschaubild, Stapel-Presets (OPFS, Export/Import), ≥ 2 Presets je Effekt
 - [ ] 6. Analysekarten `luminance`, `edges` im Browser; Effekt-Eingang über `requires`; Ansicht „Analysekarte“; Karte als

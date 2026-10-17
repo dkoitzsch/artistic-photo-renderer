@@ -1,5 +1,5 @@
 // Masken-Operationen (Kanal r): Min/Max (Schrumpfen/Erweitern), Schwelle, Kurve, Invertieren, Kanal-Kopie,
-// Tiefenband aus einer Tiefenkarte.
+// Tiefenband bzw. Wertebereich einer Karte, Helligkeit.
 
 struct M {
   dir: vec2f,
@@ -87,7 +87,23 @@ fn band(@builtin(global_invocation_id) id: vec3u) {
   var v = 1.0;
   if (near > 0.0) { v *= smoothstep(near - w, near + w, d); }
   if (far < 1.0) { v *= 1.0 - smoothstep(far - w, far + w, d); }
+  if (m.invert != 0u) { v = 1.0 - v; }
   put(id.xy, v);
+}
+
+// Helligkeit eines Bildes (rgba, linear, vormultipliziert) als wahrgenommener Wert 0…1 (sRGB-kodierte Luminanz);
+// transparente Pixel = 0. Gleiche Größe wie src.
+@compute @workgroup_size(8, 8)
+fn luma(@builtin(global_invocation_id) id: vec3u) {
+  let size = textureDimensions(dst);
+  if (id.x >= size.x || id.y >= size.y) { return; }
+  let c = textureLoad(src, vec2i(id.xy), 0);
+  var y = 0.0;
+  if (c.a > 0.0) {
+    let l = clamp(dot(c.rgb / c.a, vec3f(0.2126, 0.7152, 0.0722)), 0.0, 1.0);
+    y = linear_to_srgb(vec3f(l)).x;
+  }
+  put(id.xy, y);
 }
 
 @compute @workgroup_size(8, 8)

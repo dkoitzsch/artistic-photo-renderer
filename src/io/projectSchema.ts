@@ -17,8 +17,27 @@ function checkEffects(v: unknown, where: string): void {
   v.forEach((e: unknown, i) => {
     if (!isObj(e) || !isStr(e.instanceId) || !isStr(e.effectId) || !isObj(e.params) || !isNum(e.strength))
       fail(`${where}.effects[${i}] unvollständig`);
+    const at = `${where}.effects[${i}]`;
+    if (e.blendMode !== undefined && !BLEND_MODES.includes(e.blendMode as never)) fail(`${at}.blendMode unbekannt`);
+    const m = e.mask;
+    if (m === undefined) return;
+    if (!isObj(m)) fail(`${at}.mask ungültig`);
+    if (m.kind === 'map') {
+      if (
+        !['luminance', 'depth'].includes(m.map as string) ||
+        !isNum(m.from) ||
+        !isNum(m.to) ||
+        !isNum(m.feather) ||
+        typeof m.invert !== 'boolean'
+      )
+        fail(`${at}.mask (Kartenbereich) unvollständig`);
+    } else if (m.kind === 'layer') {
+      if (!isStr(m.layerId) || typeof m.invert !== 'boolean') fail(`${at}.mask (Ebene) unvollständig`);
+    } else fail(`${at}.mask.kind unbekannt`);
   });
 }
+
+const BLEND_MODES = ['normal', 'multiply', 'screen', 'overlay', 'soft-light', 'lighten', 'darken', 'difference'];
 
 function checkProvenance(v: unknown, where: string): void {
   if (!isObj(v) || !isStr(v.modelId) || typeof v.commercialUse !== 'boolean')
@@ -92,8 +111,11 @@ function checkNode(n: unknown, where: string, originals: Record<string, unknown>
 function migrate(raw: Record<string, unknown>): Record<string, unknown> {
   const json = raw.formatVersion === 1 ? migrate1to2(raw) : raw;
   // 2 → 3: Tiefenkarten (optional), 3 → 4: Transformation wird angewendet (bisher stets neutral) – keine Änderung nötig
-  const v3 = json.formatVersion === 2 ? { ...json, formatVersion: 3 } : json;
-  return v3.formatVersion === 3 ? { ...v3, formatVersion: 4 } : v3;
+  // 4 → 5: Effekte erhalten optional blendMode und mask (fehlen = bisheriges Verhalten)
+  let v = json.formatVersion === 2 ? { ...json, formatVersion: 3 } : json;
+  if (v.formatVersion === 3) v = { ...v, formatVersion: 4 };
+  if (v.formatVersion === 4) v = { ...v, formatVersion: 5 };
+  return v;
 }
 
 function migrate1to2(json: Record<string, unknown>): Record<string, unknown> {

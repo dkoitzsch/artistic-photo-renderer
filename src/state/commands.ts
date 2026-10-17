@@ -11,6 +11,7 @@ import {
   newId,
   removeEffect,
   setEffectParams,
+  setEffectMask,
   updateEffect,
   updateHost,
   updateLayer,
@@ -32,6 +33,7 @@ import {
   type OriginalRef,
   type Transform,
   type EffectInstance,
+  type EffectMask,
   type FocusMapSpec,
   type FocusPoint,
   type LicenseMode,
@@ -135,6 +137,25 @@ export function setEffectEnabledCommand(nodeId: string, instanceId: string, enab
   commit(enabled ? 'Effekt eingeschaltet' : 'Effekt ausgeschaltet', (p) =>
     updateEffect(p, nodeId, instanceId, { enabled }),
   );
+}
+
+export function setEffectBlendCommand(nodeId: string, instanceId: string, blendMode: BlendMode): void {
+  commit('Mischmodus des Effekts geändert', (p) => updateEffect(p, nodeId, instanceId, { blendMode }));
+}
+
+/** Eigene Maske eines Effekts setzen/ändern/entfernen; gesture fasst Reglerbewegungen zusammen. */
+export function setEffectMaskCommand(
+  nodeId: string,
+  instanceId: string,
+  mask: EffectMask | undefined,
+  gesture = false,
+): void {
+  commit(
+    mask ? 'Effektmaske geändert' : 'Effektmaske entfernt',
+    (p) => setEffectMask(p, nodeId, instanceId, mask),
+    gesture ? `effect-mask:${instanceId}` : undefined,
+  );
+  if (!gesture) endGesture();
 }
 
 /** Parameteränderung; gesture = true fasst Reglerbewegungen zusammen. */

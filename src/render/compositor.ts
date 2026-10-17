@@ -7,6 +7,7 @@ import {
   walk,
   type BlendMode,
   type EffectInstance,
+  type EffectMask,
   type Group,
   type Layer,
   type OriginalRef,
@@ -133,6 +134,7 @@ export class Compositor {
   /** Leinwand und Originale des gerade gerenderten Projekts (für die Lage der Ebenen) */
   private canvas: { width: number; height: number } = { width: 1, height: 1 };
   private originals: Record<string, OriginalRef> = {};
+  private root: Group | null = null;
 
   constructor(
     private readonly core: GpuCore,
@@ -143,6 +145,80 @@ export class Compositor {
   private use(project: Project): void {
     this.canvas = project.canvas;
     this.originals = project.originals;
+    this.root = project.root;
+  }
+
+  /** Karte einer Ebene im Ebenenraum (Helligkeit des Originals oder Tiefenkarte), gecacht. */
+  private layerMap(
+    frame: Frame,
+    layer: Layer,
+    geo: Geometry,
+    map: 'luminance' | 'depth',
+  ): { tex: GPUTexture; key: string } | null {
+    if (map === 'depth') return this.depthTexture(frame, layer, geo);
+    const [lw, lh] = geo.local;
+    const key = `luma|${layer.originalId}@${lw}x${lh}`;
+    const tex = this.sources.derive(key, lw, lh, (out) => {
+      this.core.luma(frame, this.sources.at(frame, layer.originalId, lw, lh), out);
+    });
+    return { tex, key };
+  }
+
+  /**
+   * Eigene Maske eines Effekts als Leinwand-Ausschnitt (lazy). host: Ebene des Effekts (für Kartenbereiche);
+   * bei Gruppen null – dort wirken nur Masken anderer Ebenen. null = keine Maske.
+   */
+  private effectMask(
+    frame: Frame,
+    mask: EffectMask | undefined,
+    host: { layer: Layer; geo: Geometry } | null,
+    opts: RenderOptions,
+  ): { key: string; get: () => { tex: GPUTexture; owned: boolean } } | null {
+    if (!mask) return null;
+    if (mask.kind === 'map') {
+      if (!host) return null;
+      const { layer, geo } = host;
+      const map = this.layerMap(frame, layer, geo, mask.map);
+      if (!map) return null;
+      const [lw, lh] = geo.local;
+      const spec = `${mask.from},${mask.to},${mask.feather},${mask.invert ? 'inv' : ''}`;
+      const key = `emask|${map.key.split('|')[1] ?? ''}@${lw}x${lh}|range${spec}`;
+      return {
+        key: `${key}${geo.key}`,
+        get: () => {
+          const local = this.sources.derive(key, lw, lh, (out) => {
+            this.core.mapRange(frame, map.tex, mask.from, mask.to, mask.feather, mask.invert, out);
+          });
+          return this.place(frame, geo, local, opts, 'effect-mask');
+        },
+      };
+    }
+    const other = this.root ? findNode(this.root, mask.layerId) : undefined;
+    if (other?.kind !== 'layer') return null;
+    const geo = this.geometry(other, opts);
+    const m = this.processedMask(frame, other, geo);
+    const key = `layermask|${m?.key ?? 'full'}${geo.key}|${mask.invert ? 'inv' : ''}`;
+    return {
+      key,
+      get: () => {
+        const r = opts.region;
+        let placed: { tex: GPUTexture; owned: boolean };
+        if (m) placed = this.place(frame, geo, m.tex, opts, 'effect-mask');
+        else {
+          // Ebene ohne Maske: ihre ganze Bildfläche
+          const ones = this.core.pool.acquire(geo.local[0], geo.local[1], 'ones');
+          this.core.fill(frame, ones, [1, 1, 1, 1]);
+          placed = this.place(frame, geo, ones, opts, 'effect-mask');
+          if (placed.tex !== ones) this.core.pool.release(ones);
+          else placed = { tex: ones, owned: true };
+        }
+        if (!mask.invert) return placed;
+        const inv = this.core.pool.acquire(r.width, r.height, 'effect-mask-inv');
+        this.core.loadMask(frame, placed.tex, inv, true);
+        if (placed.owned) this.core.pool.release(placed.tex);
+        return { tex: inv, owned: true };
+      },
+    };
   }
 
   /** Lage einer Ebene für diese Render-Auflösung. */
@@ -476,11 +552,14 @@ export class Compositor {
       };
       // Schatten leitet sich aus der maskierten Ebene ab (vor ihren Effekten)
       const input: RenderResult = { ...src, owned: false };
-      const generated = this.effects(frame, `${sh.id}:gen`, [gen], input, opts, aux);
+      const generated = this.effects(frame, `${sh.id}:gen`, [gen], input, opts, aux, null);
       // Plugin fehlt oder ist fehlerhaft → kein Schatten
-      shadow = generated === input ? null : this.effects(frame, sh.id, sh.effects, generated, opts, aux);
+      shadow =
+        generated === input
+          ? null
+          : this.effects(frame, sh.id, sh.effects, generated, opts, aux, { layer, geo });
     }
-    const result = this.effects(frame, layer.id, layer.effects, src, opts, aux);
+    const result = this.effects(frame, layer.id, layer.effects, src, opts, aux, { layer, geo });
     aux.release();
     return { result, shadow };
   }
@@ -544,7 +623,7 @@ export class Compositor {
         } else comp = { tex: base, key, owned: true };
       }
     }
-    return this.effects(frame, group.id, group.effects, comp, opts, null);
+    return this.effects(frame, group.id, group.effects, comp, opts, null, null);
   }
 
   private effects(
@@ -554,6 +633,7 @@ export class Compositor {
     input: RenderResult,
     opts: RenderOptions,
     aux: AuxProvider | null,
+    host: { layer: Layer; geo: Geometry } | null,
   ): RenderResult {
     let cur = input;
     if (opts.ignoreEffects) return cur;
@@ -562,7 +642,9 @@ export class Compositor {
       if (!fx.enabled) return;
       const plugin = getPlugin(fx.effectId);
       if (plugin?.status !== 'ok' || !this.runner.isCompiled(plugin)) return;
-      const key = `${cur.key}|${fx.effectId}#${plugin.revision}${JSON.stringify([fx.params, fx.strength, fx.region])}${auxKey}`;
+      const emask = this.effectMask(frame, fx.mask, host, opts);
+      const mixKey = `|bm${fx.blendMode ?? 'normal'}|m${emask?.key ?? '-'}`;
+      const key = `${cur.key}|${fx.effectId}#${plugin.revision}${JSON.stringify([fx.params, fx.strength, fx.region])}${auxKey}${mixKey}`;
       const slot = `${opts.variant}:${hostId}:fx${i}`;
       const cached = opts.cache?.get(slot, key);
       if (cached) {
@@ -577,12 +659,22 @@ export class Compositor {
         depth: this.core.black,
         hasFocus: false,
       };
-      const out = this.runner.apply(frame, plugin, fx, cur.tex, a, {
-        scale: opts.scale,
-        origin: [opts.region.x, opts.region.y],
-        canvasSize: opts.canvasSize,
-        hasFocus: a.hasFocus,
-      });
+      const m = emask?.get() ?? null;
+      const out = this.runner.apply(
+        frame,
+        plugin,
+        fx,
+        cur.tex,
+        a,
+        {
+          scale: opts.scale,
+          origin: [opts.region.x, opts.region.y],
+          canvasSize: opts.canvasSize,
+          hasFocus: a.hasFocus,
+        },
+        m?.tex ?? null,
+      );
+      if (m?.owned) this.core.pool.release(m.tex);
       this.release(cur);
       if (opts.cache) {
         opts.cache.set(slot, key, out);

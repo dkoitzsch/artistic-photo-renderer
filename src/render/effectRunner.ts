@@ -139,6 +139,8 @@ export class EffectRunner {
     input: GPUTexture,
     aux: AuxInputs,
     placement: EffectPlacement,
+    /** eigene Maske des Effekts (Leinwand-Ausschnitt, r) oder null */
+    effectMask: GPUTexture | null = null,
   ): GPUTexture {
     const compiled = this.compiled.get(plugin.folder);
     const manifest = plugin.manifest;
@@ -221,9 +223,10 @@ export class EffectRunner {
 
     const weight = Math.max(0, Math.min(1, instance.strength));
     const region = REGION_INDEX[instance.region];
-    if (weight >= 1 && region === 0) return output;
+    const mode = instance.blendMode ?? 'normal';
+    if (weight >= 1 && region === 0 && mode === 'normal' && !effectMask) return output;
     const mixed = pool.acquire(width, height, 'mix');
-    this.core.mix(frame, input, output, aux.focus, mixed, weight, region);
+    this.core.mix(frame, input, output, aux.focus, mixed, weight, region, mode, effectMask);
     pool.release(output);
     return mixed;
   }
