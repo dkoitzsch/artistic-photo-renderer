@@ -10,6 +10,20 @@ Abweichungen von der Spec und Festlegungen bei unklaren Anforderungen. Neueste o
 - **Betrifft:** (Spec-Abschnitt / Phase)
 -->
 
+## 2026-10-17 – Ausschnitt in voller Auflösung beim Hineinzoomen (E1 Schritt 16)
+
+- **Frage:** Die Vorschau hat höchstens 2048 px. Beim Hineinzoomen in große Bilder sieht man Vorschau-Pixel, und auflösungsabhängige
+  Effekte (Raster, Striche, Pixel) wirken anders als im Export.
+- **Entscheidung:** Sobald ein Geräte-Pixel kleiner als 1/1,25 Vorschau-Pixel ist und der sichtbare Bereich höchstens 8 MP
+  umfasst, rendert die Engine nach 150 ms Ruhe den sichtbaren Bereich (plus 25 % Vorrat) in Leinwandauflösung. Das geschieht
+  wie beim Export (Rand = Effekt-Reichweite, auf 64 px ausgerichtet), daher ist der Ausschnitt pixelgleich zum Export. Die
+  Anzeige legt ihn über die Vorschau. Jede Änderung (Projekt, Vorher/Nachher, Verlassen des Bereichs) verwirft ihn sofort.
+  Während man zieht, sieht man deshalb die Vorschau, und erst danach das Detail.
+  Ausgenommen sind Projekte mit Worker- oder Dienst-Effekten, die auf dem ganzen Bild rechnen, und Parallax.
+  Prüfansichten (Maske, Karten) liegen weiter in Vorschau-Auflösung darüber.
+- **Begründung:** Dafür genügt ein einziger Render-Durchlauf ohne zweiten Cache-Pfad, und die Interaktion bleibt bei 60 fps.
+- **Betrifft:** Spec „Effekte“ 2.4, Plan E1 Schritt 16.
+
 ## 2026-10-17 – E1: PSD-Export von Gruppen und Effekten
 
 - **Gruppen** sind immer PSD-Ebenengruppen (Deckkraft, Mischmodus, Sichtbarkeit; Gruppenmaske als **aktive** Maske der

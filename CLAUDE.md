@@ -173,7 +173,7 @@ Eine neue Phase beginnt nur nach ausdrücklicher Freigabe durch den Nutzer.
 - Bei 24 MP belegen Original, aufbereitete Maske und Lochfüllung je ~190 MB GPU-Speicher pro Ebene (LRU-Budget 1,5 GB).
 - Legt man einen Plugin-Ordner an oder löscht ihn, lädt Vite die Seite neu; die App öffnet das Projekt danach wieder.
   Änderungen an bestehenden Plugin-Dateien laden ohne Neuladen nach. Ein Produktions-Build braucht für neue Plugins einen Neubau.
-- Die Anzeige zeigt die Vorschau (≤ 2048 px); bei starkem Hineinzoomen in größere Bilder sieht man Vorschau-Pixel.
+- Die Anzeige zeigt die Vorschau (≤ 2048 px); beim Hineinzoomen folgt nach 150 ms Ruhe der sichtbare Ausschnitt in voller Auflösung (nicht bei Worker-/Dienst-Effekten und Parallax).
 - Ist der Dienst aus, meldet die Browser-Konsole alle 20 s einen fehlgeschlagenen `/health`-Aufruf (ML-Modus „Browser“ vermeidet das).
 - Tiefenebenen „objekttreu“ (SAM) fehlt noch (Phase 5/6). Die Tiefe einer Ebene ist für Parallax die Bandmitte.
 - PSD: 8 Bit sRGB; Ebenen enthalten ihre Effekte (nicht nachträglich änderbar), Masken nur als deaktivierte Ebenenmasken;

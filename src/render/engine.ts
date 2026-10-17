@@ -1,6 +1,7 @@
 // Zentrale Render-Engine: Originale, Plugins, Compositor, Vorschau (mit Cache), Anzeige und Export.
 
 import { defaultParams, type ParamValue } from '../effects/manifest';
+import { effectReach } from '../effects/reach';
 import { usePluginStore, type Plugin } from '../effects/pluginStore';
 import {
   findNode,
@@ -14,7 +15,7 @@ import {
 import { getPlugin } from '../effects/pluginStore';
 import type { View } from '../state/viewMath';
 import { AsyncEffects } from './asyncEffects';
-import { Compositor, ResultCache, type Rect } from './compositor';
+import { Compositor, projectReach, ResultCache, type Rect } from './compositor';
 import { GpuCore } from './core';
 import { EffectRunner } from './effectRunner';
 import { paddedBytesPerRow, unpadRows } from './readback';
@@ -43,7 +44,31 @@ export type Overlay = {
   opacity?: number;
 };
 
-const VIEW_UNIFORM_FLOATS = 24;
+const VIEW_UNIFORM_FLOATS = 32;
+
+/**
+ * Ausschnitt in voller Auflösung (Spec „Effekte“ Abschnitt 8): ab diesem Verhältnis Geräte-Pixel pro Vorschau-Pixel
+ * rendert die Engine den sichtbaren Ausschnitt nach einer kurzen Ruhepause in Leinwandauflösung nach.
+ */
+export const DETAIL_MIN_GAIN = 1.25;
+/** Größter Ausschnitt in Leinwand-Pixeln (sonst bleibt es bei der Vorschau) */
+export const DETAIL_MAX_PIXELS = 8_000_000;
+/** Ruhepause nach der letzten Änderung (Zoom, Verschieben, Regler), bevor der Ausschnitt gerendert wird */
+export const DETAIL_DELAY_MS = 150;
+
+type Detail = {
+  project: Project;
+  split: boolean;
+  /** gültiger Bereich in Leinwand-px (ohne Rand) */
+  rect: Rect;
+  /** gerenderter Bereich inkl. Effekt-Rand; Ursprung der Texturen in Leinwand-px */
+  region: Rect;
+  after: GPUTexture;
+  before: GPUTexture | null;
+};
+
+const contains = (a: Rect, b: Rect) =>
+  b.x >= a.x && b.y >= a.y && b.x + b.width <= a.x + a.width && b.y + b.height <= a.y + a.height;
 
 export function previewScale(project: Project): number {
   return Math.min(1, PREVIEW_MAX_EDGE / Math.max(project.canvas.width, project.canvas.height));
@@ -75,6 +100,13 @@ export class Engine {
   private overlayKind = 0;
   private overlayOpacity = 1;
   private compiling = new Set<string>();
+  private detail: Detail | null = null;
+  private detailTimer: ReturnType<typeof setTimeout> | null = null;
+  private lastProject: Project | null = null;
+  /** Ausschnitt in voller Auflösung bei Zoom über die Vorschau hinaus (abschaltbar, z. B. für Tests) */
+  detailEnabled = true;
+  /** wird aufgerufen, sobald ein Ausschnitt in voller Auflösung fertig ist (Anzeige neu zeichnen) */
+  onDetailReady: (() => void) | null = null;
 
   lastStats: FrameStats = { cpuMs: 0, gpuMs: 0, effectRuns: 0 };
 
@@ -204,6 +236,7 @@ export class Engine {
           this.overlayOpacity = overlay.opacity ?? 1;
         }
       }
+      this.updateDetail(project, view, dpr, splitX !== null, parallax !== null);
       this.drawInto(frame, project, view, dpr, colors, splitX);
       frame.submit();
       // fehlende Ergebnisse von Worker-/Dienst-Effekten im Hintergrund berechnen (danach rendert die Vorschau neu)
@@ -214,6 +247,7 @@ export class Engine {
     } else {
       this.lastAfter = null;
       this.lastBefore = null;
+      this.dropDetail();
       this.cache.clear();
       const frame = new Frame(this.device, this.core.pool, 'empty');
       this.drawInto(frame, null, view, dpr, colors, null);
@@ -241,6 +275,14 @@ export class Engine {
     u.set([...colors.checkerA, 1], 12);
     u.set([...colors.checkerB, 1], 16);
     u.set([splitX ?? -1, this.overlayKind, this.overlayOpacity], 20);
+    const detail = this.detail;
+    if (detail) {
+      u.set([detail.region.x, detail.region.y, 1, 0], 24);
+      u.set(
+        [detail.rect.x, detail.rect.y, detail.rect.x + detail.rect.width, detail.rect.y + detail.rect.height],
+        28,
+      );
+    }
 
     const after = this.lastAfter ?? this.core.black;
     const before = this.lastBefore ?? after;
@@ -251,6 +293,13 @@ export class Engine {
         { binding: 1, resource: after.createView() },
         { binding: 2, resource: before.createView() },
         { binding: 4, resource: (this.lastOverlay ?? this.core.black).createView() },
+        { binding: 5, resource: (detail?.after ?? this.core.black).createView() },
+        { binding: 6, resource: (detail?.before ?? detail?.after ?? this.core.black).createView() },
+        // Ausschnitt in Leinwandauflösung: ab 200 % scharfe Pixel
+        {
+          binding: 7,
+          resource: view.zoom * dpr >= 2 ? this.nearestSampler : this.core.linearSampler,
+        },
         // Ab 200 % (bezogen auf die Vorschau-Pixel) Pixel scharf darstellen, darunter bilinear.
         {
           binding: 3,
@@ -277,8 +326,108 @@ export class Engine {
     pass.end();
   }
 
+  /** Zustand des Ausschnitts in voller Auflösung (Tests, Statusanzeige). */
+  detailInfo(): { rect: Rect } | null {
+    return this.detail ? { rect: { ...this.detail.rect } } : null;
+  }
+
+  /** Sichtbarer Bereich in Leinwand-px, falls er einen Ausschnitt in voller Auflösung braucht. */
+  private detailRequest(project: Project, view: View, dpr: number): Rect | null {
+    const ps = previewScale(project);
+    const canvas = this.context?.canvas;
+    if (!this.detailEnabled || ps >= 1 || !canvas) return null;
+    if (view.zoom * dpr < ps * DETAIL_MIN_GAIN) return null;
+    // Worker-/Dienst-Effekte rechnen auf dem ganzen Bild – dafür bleibt es bei der Vorschau
+    if (hasAsyncEffects(project)) return null;
+    const { width: W, height: H } = project.canvas;
+    const x0 = Math.max(0, Math.floor(-view.offsetX / view.zoom));
+    const y0 = Math.max(0, Math.floor(-view.offsetY / view.zoom));
+    const x1 = Math.min(W, Math.ceil((canvas.width / dpr - view.offsetX) / view.zoom));
+    const y1 = Math.min(H, Math.ceil((canvas.height / dpr - view.offsetY) / view.zoom));
+    if (x1 <= x0 || y1 <= y0 || (x1 - x0) * (y1 - y0) > DETAIL_MAX_PIXELS) return null;
+    return { x: x0, y: y0, width: x1 - x0, height: y1 - y0 };
+  }
+
+  /** Verwirft einen veralteten Ausschnitt und plant bei Bedarf einen neuen (nach einer Ruhepause). */
+  private updateDetail(project: Project, view: View, dpr: number, split: boolean, parallax: boolean): void {
+    this.lastProject = project;
+    const want = parallax ? null : this.detailRequest(project, view, dpr);
+    const d = this.detail;
+    if (d && (!want || d.project !== project || d.split !== split || !contains(d.rect, want)))
+      this.dropDetail();
+    if (this.detailTimer !== null) clearTimeout(this.detailTimer);
+    this.detailTimer = null;
+    if (!want || this.detail) return;
+    this.detailTimer = setTimeout(() => {
+      this.detailTimer = null;
+      if (this.lastProject !== project) return;
+      this.renderDetail(project, want, split);
+      this.onDetailReady?.();
+    }, DETAIL_DELAY_MS);
+  }
+
+  private renderDetail(project: Project, visible: Rect, split: boolean): void {
+    const { width: W, height: H } = project.canvas;
+    // etwas Vorrat zum Verschieben, solange er ins Budget passt
+    const mx = Math.round(visible.width * 0.25);
+    const my = Math.round(visible.height * 0.25);
+    let rect: Rect = {
+      x: Math.max(0, visible.x - mx),
+      y: Math.max(0, visible.y - my),
+      width: 0,
+      height: 0,
+    };
+    rect.width = Math.min(W, visible.x + visible.width + mx) - rect.x;
+    rect.height = Math.min(H, visible.y + visible.height + my) - rect.y;
+    if (rect.width * rect.height > DETAIL_MAX_PIXELS) rect = visible;
+    // Rand für die Effekt-Reichweite, ausgerichtet wie beim Export (gleiche Pyramiden-Lage → gleiches Ergebnis)
+    const ALIGN = 64;
+    const pad =
+      Math.ceil((projectReach(project.root, (fx) => effectReach(fx, project.canvas)) + 8) / ALIGN) * ALIGN;
+    const x0 = Math.max(0, Math.floor((rect.x - pad) / ALIGN) * ALIGN);
+    const y0 = Math.max(0, Math.floor((rect.y - pad) / ALIGN) * ALIGN);
+    const region: Rect = {
+      x: x0,
+      y: y0,
+      width: Math.min(W, rect.x + rect.width + pad) - x0,
+      height: Math.min(H, rect.y + rect.height + pad) - y0,
+    };
+    const frame = new Frame(this.device, this.core.pool, 'detail');
+    const opts = { scale: 1, canvasSize: [W, H] as [number, number], region, cache: null };
+    const own = (res: { tex: GPUTexture; owned: boolean }): GPUTexture => {
+      if (res.owned) return res.tex;
+      // fremde Textur (z. B. Original): kopieren, damit der Ausschnitt unabhängig von Caches bleibt
+      const copy = this.core.pool.acquire(res.tex.width, res.tex.height, 'detail');
+      frame.encoder.copyTextureToTexture({ texture: res.tex }, { texture: copy }, [
+        res.tex.width,
+        res.tex.height,
+      ]);
+      return copy;
+    };
+    const after = own(
+      this.compositor.render(frame, project, { ...opts, ignoreEffects: false, variant: 'detail' }),
+    );
+    const before = split
+      ? own(
+          this.compositor.render(frame, project, { ...opts, ignoreEffects: true, variant: 'detail-before' }),
+        )
+      : null;
+    frame.submit();
+    this.sources.endFrame();
+    this.detail = { project, split, rect, region, after, before };
+  }
+
+  private dropDetail(): void {
+    const d = this.detail;
+    if (!d) return;
+    this.core.pool.release(d.after);
+    if (d.before) this.core.pool.release(d.before);
+    this.detail = null;
+  }
+
   /** Verwirft Vorschau-Caches (z. B. beim Projektwechsel). */
   resetPreview(): void {
+    this.dropDetail();
     this.cache.clear();
     this.async.clear();
     this.lastAfter = null;

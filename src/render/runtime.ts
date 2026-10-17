@@ -25,6 +25,10 @@ export function initRuntime(onLost: (message: string) => void): Promise<GpuInit>
         s.setAsyncJobs(e.async.jobs());
         if (e.async.takeNewResults()) s.bumpRenderTick();
       };
+      // Ausschnitt in voller Auflösung fertig → neu zeichnen
+      e.onDetailReady = () => {
+        useAppStore.getState().bumpRenderTick();
+      };
       void e.compilePlugins();
       // Neue oder geänderte Plugins (HMR) kompilieren.
       usePluginStore.subscribe(() => void e.compilePlugins());

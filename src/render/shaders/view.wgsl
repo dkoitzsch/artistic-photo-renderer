@@ -16,6 +16,10 @@ struct View {
                       // 4 Analysekarte grau (r), 5 Kantenkarte (Farbe = Richtung, Helligkeit = Stärke)
   overlay_opacity: f32, // nur 4/5: Deckkraft der Karte über dem Bild
   _p2: f32,
+  detail_origin: vec2f, // Ausschnitt in voller Auflösung: Ursprung der Textur in Leinwand-px
+  has_detail: f32,
+  _p3: f32,
+  detail_rect: vec4f,   // gültiger Bereich (x0, y0, x1, y1) in Leinwand-px
 }
 
 @group(0) @binding(0) var<uniform> view: View;
@@ -23,6 +27,9 @@ struct View {
 @group(0) @binding(2) var before_tex: texture_2d<f32>;
 @group(0) @binding(3) var samp: sampler;
 @group(0) @binding(4) var overlay_tex: texture_2d<f32>;
+@group(0) @binding(5) var detail_after: texture_2d<f32>;
+@group(0) @binding(6) var detail_before: texture_2d<f32>;
+@group(0) @binding(7) var detail_samp: sampler;
 
 @vertex
 fn vs(@builtin(vertex_index) i: u32) -> @builtin(position) vec4f {
@@ -50,6 +57,26 @@ fn sample_image(t: texture_2d<f32>, px: vec2f) -> vec4f {
   return sum / f32(n * n);
 }
 
+// Ausschnitt in Leinwandauflösung (1 Textur-px = 1 Leinwand-px); verkleinert mit Mehrfachabtastung wie oben.
+fn sample_detail(t: texture_2d<f32>, px: vec2f) -> vec4f {
+  let tex_size = vec2f(textureDimensions(t));
+  let footprint = 1.0 / (view.zoom * view.dpr);
+  let uv = (px - view.detail_origin) / tex_size;
+  if (footprint <= 1.0) {
+    return textureSampleLevel(t, detail_samp, uv, 0.0);
+  }
+  let n = u32(min(ceil(footprint), 6.0));
+  let step_uv = (footprint / f32(n)) / tex_size;
+  let start = uv - step_uv * (f32(n) - 1.0) * 0.5;
+  var sum = vec4f(0.0);
+  for (var y = 0u; y < n; y++) {
+    for (var x = 0u; x < n; x++) {
+      sum += textureSampleLevel(t, detail_samp, start + vec2f(f32(x), f32(y)) * step_uv, 0.0);
+    }
+  }
+  return sum / f32(n * n);
+}
+
 // Farbskala nah (warm) → fern (kühl), angelehnt an „turbo“
 fn depth_colormap(t: f32) -> vec3f {
   let x = clamp(1.0 - t, 0.0, 1.0);
@@ -69,7 +96,12 @@ fn fs(@builtin(position) pos: vec4f) -> @location(0) vec4f {
     let cell = vec2i(floor(rel / view.checker_size));
     let checker = select(view.checker_a.rgb, view.checker_b.rgb, ((cell.x + cell.y) & 1) == 1);
     var s: vec4f;
-    if (view.split_x >= 0.0 && css.x < view.split_x) {
+    let left = view.split_x >= 0.0 && css.x < view.split_x;
+    // textureSampleLevel braucht keine einheitliche Kontrollflussbedingung; alle Abtastungen bleiben gültig
+    let in_detail = view.has_detail > 0.5 && all(px >= view.detail_rect.xy) && all(px < view.detail_rect.zw);
+    if (in_detail) {
+      s = select(sample_detail(detail_after, px), sample_detail(detail_before, px), left);
+    } else if (left) {
       s = sample_image(before_tex, px);
     } else {
       s = sample_image(after_tex, px);

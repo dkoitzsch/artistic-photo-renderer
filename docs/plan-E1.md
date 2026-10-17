@@ -26,5 +26,5 @@ Grundlage: [spec-effekte-und-malvorlagen.md](spec-effekte-und-malvorlagen.md), E
 - [x] 14. PSD: Option „Effekte als eigene Ebenen“; Gruppen (auch mit Effekten) als Ebenengruppen mit Gruppenmaske
 - [x] 15. Effekt-Browser: Kennzeichen (Kosten, Lizenz, Karten), Ausschnitt-Vorschau, Sperre im kommerziellen Modus,
       Gruppe „Erweitert“
-- [ ] 16. Ausschnitt in voller Auflösung beim Hineinzoomen
+- [x] 16. Ausschnitt in voller Auflösung beim Hineinzoomen
 - [ ] 17. Abnahme (3 Effekte auf maskierten Ebenen, PSD + PNG in voller Auflösung, 24 MP), Demo-Liste, Optimierungs-Dokument
