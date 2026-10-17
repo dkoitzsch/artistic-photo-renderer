@@ -1,0 +1,98 @@
+{
+  "id": "halftone-cmyk",
+  "name": "Halbton / Siebdruck",
+  "version": "1.0.0",
+  "category": "Druck & analoge Fotografie",
+  "description": "Druckraster mit Cyan, Magenta, Gelb und Schwarz in eigenen Winkeln – oder einfarbig wie in der Zeitung.",
+  "inputs": ["source"],
+  "passes": 1,
+  "implementations": { "preview": "webgpu", "final": "webgpu" },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung (amplitudenmoduliertes Raster, subtraktive Mischung)."
+  },
+  "cost": "realtime",
+  "randomized": false,
+  "requires": [],
+  "params": [
+    {
+      "key": "cellSize",
+      "label": "Rasterweite",
+      "type": "float",
+      "min": 3,
+      "max": 60,
+      "default": 9,
+      "step": 0.5,
+      "unit": "px",
+      "scale": "log"
+    },
+    {
+      "key": "mode",
+      "label": "Farben",
+      "type": "enum",
+      "options": [
+        { "value": "cmyk", "label": "CMYK" },
+        { "value": "mono", "label": "Einfarbig" }
+      ],
+      "default": "cmyk"
+    },
+    {
+      "key": "shape",
+      "label": "Punktform",
+      "type": "enum",
+      "options": [
+        { "value": "round", "label": "Rund" },
+        { "value": "ellipse", "label": "Elliptisch" },
+        { "value": "line", "label": "Linien" },
+        { "value": "square", "label": "Quadrat" }
+      ],
+      "default": "round"
+    },
+    {
+      "key": "misregistration",
+      "label": "Passerversatz",
+      "type": "float",
+      "min": 0,
+      "max": 10,
+      "default": 0.8,
+      "step": 0.1,
+      "unit": "px"
+    },
+    {
+      "key": "black",
+      "label": "Schwarzaufbau",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 70,
+      "unit": "%"
+    },
+    { "key": "paper", "label": "Papier", "type": "color", "default": [0.97, 0.96, 0.92] },
+    { "key": "monoInk", "label": "Druckfarbe", "type": "color", "default": [0.08, 0.08, 0.1] },
+    { "key": "angleC", "label": "Winkel Cyan", "type": "angle", "default": 15, "group": "Erweitert" },
+    { "key": "angleM", "label": "Winkel Magenta", "type": "angle", "default": 75, "group": "Erweitert" },
+    { "key": "angleY", "label": "Winkel Gelb", "type": "angle", "default": 0, "group": "Erweitert" },
+    { "key": "angleK", "label": "Winkel Schwarz", "type": "angle", "default": 45, "group": "Erweitert" }
+  ],
+  "visibleIf": {
+    "monoInk": "mode=mono",
+    "black": "mode=cmyk",
+    "misregistration": "mode=cmyk",
+    "angleC": "mode=cmyk",
+    "angleM": "mode=cmyk",
+    "angleY": "mode=cmyk"
+  },
+  "reach": "cellSize * 1.5 + misregistration",
+  "presets": [
+    { "name": "Zeitungsdruck", "values": { "cellSize": 6, "mode": "mono", "shape": "round", "angleK": 45 } },
+    {
+      "name": "Pop-Art CMYK",
+      "values": { "cellSize": 14, "mode": "cmyk", "shape": "round", "misregistration": 1.5, "black": 60 }
+    },
+    {
+      "name": "Siebdruck grob",
+      "values": { "cellSize": 22, "mode": "cmyk", "shape": "ellipse", "misregistration": 3, "black": 80 }
+    },
+    { "name": "Linienraster", "values": { "cellSize": 8, "mode": "mono", "shape": "line", "angleK": 30 } }
+  ]
+}

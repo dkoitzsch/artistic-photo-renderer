@@ -91,6 +91,8 @@ Hilfsfunktionen: `src_size()`, `load_src(p)`, `sample_src(uv)`, `load_mask(p)`, 
 `has_focus()`, `focus_sharpness(p, softness)` (1 = scharf; ohne Fokuskarte 0),
 `canvas_pos(p)` (Position in Leinwand-px bei voller Auflösung – für ortsfeste Muster wie Korn),
 `unpremultiply(c)`, `premultiply(c)`, `luminance(rgb)`, `hash21(vec2u)`, `srgb_to_linear(rgb)`, `linear_to_srgb(rgb)`.
+`canvas_px(p)` (Leinwandposition in Render-px) und `sample_src_canvas(qa)` (bilinear an einer Leinwandposition): kachelgenau
+für alles, was an verschobenen Positionen liest – Positionen in Leinwand-Koordinaten rechnen, nicht relativ zur Kachel. `oklab_from_linear(rgb)`, `linear_from_oklab(lab)`: wahrnehmungsnaher Farbraum.
 
 **Zufall mit Seed** (für `"randomized": true`, Seed in `params.seed`): `rand_at(canvas_pos(p), params.seed, k)` liefert 0..1 je
 Leinwand-Pixel und Kanal `k`; `rand_noise(cp, zellgröße, seed)` und `rand_fbm(cp, zellgröße, oktaven, seed)` liefern weiches

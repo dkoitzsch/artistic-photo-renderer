@@ -50,6 +50,27 @@ fn sample_src(uv: vec2f) -> vec4f {
   return textureSampleLevel(src, linear_sampler, uv, 0.0);
 }
 
+/** Lage eines Pixels auf der Leinwand in Render-px (Pixelmitte). */
+fn canvas_px(p: vec2i) -> vec2f {
+  return vec2f(p) + 0.5 + params.origin;
+}
+
+/**
+ * Bilinear an einer Leinwandposition qa (Render-px, Pixelmitte bei +0.5), am Rand des Ausschnitts geklemmt.
+ * Kachelgenau: Positionen in Leinwand-Koordinaten rechnen (canvas_px), nicht relativ zur Kachel – so sind alle
+ * Gleitkomma-Operationen in jeder Export-Kachel gleich; nur der ganzzahlige Index wird auf die Kachel bezogen.
+ */
+fn sample_src_canvas(qa: vec2f) -> vec4f {
+  let x = qa - 0.5;
+  let i = vec2i(floor(x)) - vec2i(params.origin);
+  let f = x - floor(x);
+  return mix(
+    mix(load_src(i), load_src(i + vec2i(1, 0)), f.x),
+    mix(load_src(i + vec2i(0, 1)), load_src(i + vec2i(1, 1)), f.x),
+    f.y,
+  );
+}
+
 fn aux_load(t: texture_2d<f32>, p: vec2i) -> f32 {
   let s = vec2f(textureDimensions(t));
   let uv = (vec2f(p) + 0.5) / vec2f(src_size());

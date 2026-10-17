@@ -1,0 +1,89 @@
+{
+  "id": "comic",
+  "name": "Comic / Cel-Shading",
+  "version": "1.0.0",
+  "category": "Zeichnung & Grafik",
+  "description": "Flächige Tonwertstufen, kräftige Konturen und Ben-Day-Rasterpunkte in den Schatten.",
+  "inputs": ["source"],
+  "passes": 5,
+  "implementations": { "preview": "webgpu", "final": "webgpu" },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung (Oklab-Quantisierung, DoG-Konturen, Punktraster)."
+  },
+  "cost": "realtime",
+  "randomized": false,
+  "requires": [],
+  "params": [
+    { "key": "levels", "label": "Tonwertstufen", "type": "int", "min": 2, "max": 8, "default": 4 },
+    {
+      "key": "saturation",
+      "label": "Farbe +",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 35,
+      "unit": "%"
+    },
+    {
+      "key": "outline",
+      "label": "Konturstärke",
+      "type": "float",
+      "min": 0,
+      "max": 6,
+      "default": 1.6,
+      "step": 0.1,
+      "unit": "px"
+    },
+    {
+      "key": "outlineThreshold",
+      "label": "Konturen ab",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 50,
+      "unit": "%"
+    },
+    {
+      "key": "dotSize",
+      "label": "Rasterpunktgröße",
+      "type": "float",
+      "min": 2,
+      "max": 24,
+      "default": 7,
+      "unit": "px"
+    },
+    {
+      "key": "dots",
+      "label": "Rasterpunkte",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 60,
+      "unit": "%"
+    },
+    { "key": "dotAngle", "label": "Rasterwinkel", "type": "angle", "default": 45, "group": "Erweitert" },
+    {
+      "key": "lineColor",
+      "label": "Konturfarbe",
+      "type": "color",
+      "default": [0.05, 0.05, 0.08],
+      "group": "Erweitert"
+    }
+  ],
+  "reach": "outline * 8 + dotSize + 4",
+  "presets": [
+    {
+      "name": "Klassischer Comic",
+      "values": { "levels": 4, "saturation": 40, "outline": 1.6, "dots": 60, "dotSize": 7 }
+    },
+    {
+      "name": "Pop-Art",
+      "values": { "levels": 3, "saturation": 80, "outline": 2.2, "dots": 85, "dotSize": 10 }
+    },
+    {
+      "name": "Cel-Shading ohne Raster",
+      "values": { "levels": 5, "saturation": 25, "outline": 1.2, "dots": 0 }
+    }
+  ]
+}

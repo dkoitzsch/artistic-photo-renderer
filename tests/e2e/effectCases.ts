@@ -33,8 +33,6 @@ export const EFFECT_CASES: EffectCase[] = [
     fixture: 'portrait',
     effectId: 'rgb-split',
     params: { amount: 8, mode: 'radial' },
-    // ±1: Rundung der bilinearen Abtastkoordinaten je Kachel
-    tileTolerance: 1,
   },
   {
     name: 'rgb-split-linear-architecture',
@@ -76,5 +74,44 @@ export const EFFECT_CASES: EffectCase[] = [
     fixture: 'still-life',
     effectId: 'posterize-palette',
     preset: 'Erdtöne',
+  },
+  // ---- E1 Schritt 10 ----
+  { name: 'ink-lines-feder-architecture', fixture: 'architecture', effectId: 'ink-lines', preset: 'Feder' },
+  {
+    name: 'ink-lines-overlay-portrait',
+    fixture: 'portrait',
+    effectId: 'ink-lines',
+    preset: 'Konturen über dem Bild',
+  },
+  {
+    name: 'comic-classic-portrait',
+    fixture: 'portrait',
+    effectId: 'comic',
+    preset: 'Klassischer Comic',
+    flatBorder: false,
+  },
+  {
+    name: 'comic-cel-still-life',
+    fixture: 'still-life',
+    effectId: 'comic',
+    preset: 'Cel-Shading ohne Raster',
+  },
+  {
+    name: 'halftone-popart-still-life',
+    fixture: 'still-life',
+    effectId: 'halftone-cmyk',
+    preset: 'Pop-Art CMYK',
+    flatBorder: false,
+    // ±1 an einzelnen Punktkanten: Fast-Math des Shader-Compilers stellt Ausdrücke mit dem Ursprung je Kachel um
+    tileTolerance: 1,
+  },
+  {
+    name: 'halftone-newspaper-landscape',
+    fixture: 'landscape',
+    effectId: 'halftone-cmyk',
+    preset: 'Zeitungsdruck',
+    flatBorder: false,
+    // ±1 an einzelnen Punktkanten: Fast-Math des Shader-Compilers stellt Ausdrücke mit dem Ursprung je Kachel um
+    tileTolerance: 1,
   },
 ];

@@ -19,7 +19,7 @@ Grundlage: [spec-effekte-und-malvorlagen.md](spec-effekte-und-malvorlagen.md), E
 - [x] 8. Asynchrone Effekte im Browser (Ausführungsorte „python“ und „browser-cpu“), Job-Anzeige mit Abbruch,
       „Vollauflösung rendern“, Export wartet
 - [x] 9. Effekte: `rgb-split`, `pixelate`, `film-grain`, `bloom`, `tilt-shift`, `posterize-palette`
-- [ ] 10. Effekte: `ink-lines`, `comic`, `halftone-cmyk`
+- [x] 10. Effekte: `ink-lines`, `comic`, `halftone-cmyk`
 - [ ] 11. Effekt: `kuwahara` (anisotrop)
 - [ ] 12. Effekte: `dither`, `pixel-sort`, `low-poly`
 - [ ] 13. Effekt: `double-exposure`
