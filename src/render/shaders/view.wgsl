@@ -12,8 +12,9 @@ struct View {
   checker_a: vec4f,   // linear
   checker_b: vec4f,   // linear
   split_x: f32,       // CSS-Pixel; < 0 = keine Teilung (links „vorher“)
-  overlay: f32,       // 0 aus, 1 Maske (rot = ausgeblendet), 2 Fokuskarte, 3 Tiefe (Farbskala)
-  _p1: f32,
+  overlay: f32,       // 0 aus, 1 Maske (rot = ausgeblendet), 2 Fokuskarte, 3 Tiefe (Farbskala),
+                      // 4 Analysekarte grau (r), 5 Kantenkarte (Farbe = Richtung, Helligkeit = Stärke)
+  overlay_opacity: f32, // nur 4/5: Deckkraft der Karte über dem Bild
   _p2: f32,
 }
 
@@ -80,8 +81,17 @@ fn fs(@builtin(position) pos: vec4f) -> @location(0) vec4f {
         color = mix(color, vec3f(0.8, 0.05, 0.05), 0.6 * (1.0 - o));
       } else if (view.overlay < 2.5) {
         color = mix(color * 0.45, vec3f(1.0, 0.75, 0.1), 0.75 * o);
-      } else {
+      } else if (view.overlay < 3.5) {
         color = mix(color, srgb_to_linear(depth_colormap(o)), 0.8);
+      } else if (view.overlay < 4.5) {
+        color = mix(color, srgb_to_linear(vec3f(o)), view.overlay_opacity);
+      } else {
+        let e = textureSampleLevel(overlay_tex, samp, px / view.image_size, 0.0);
+        let t = e.gb * 2.0 - 1.0;
+        // Richtung (ohne Vorzeichen) als Farbton: Winkel 0..π → Farbkreis
+        let h = atan2(t.y, t.x) * 2.0;
+        let hue = 0.5 + 0.5 * vec3f(cos(h), cos(h - 2.094), cos(h + 2.094));
+        color = mix(color, srgb_to_linear(hue * e.r), view.overlay_opacity);
       }
     }
   }

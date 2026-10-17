@@ -34,7 +34,79 @@ const previewFiles = import.meta.glob<string>('/effects/*/preview.{jpg,png,webp}
   import: 'default',
 });
 
-const folderOf = (path: string) => path.split('/')[2] ?? '';
+/** Ordnername eines Plugin-Pfads (…/<ordner>/<datei>) */
+const folderOf = (path: string) => path.split('/').at(-2) ?? '';
+
+type ScriptLoader = () => Promise<{ default?: EffectModule }>;
+
+/** Dateien aller Plugins, nach Ordner. */
+type Sources = {
+  manifests: Map<string, string>;
+  shaders: Map<string, string>;
+  scripts: Map<string, ScriptLoader>;
+  previews: Map<string, string>;
+  workers: Map<string, string>;
+  pythons: Map<string, string>;
+};
+
+function bundledSources(): Sources {
+  return {
+    manifests: byFolder(manifestFiles),
+    shaders: byFolder(shaderFiles),
+    scripts: byFolder(scriptFiles),
+    previews: byFolder(previewFiles),
+    workers: byFolder(workerFiles),
+    pythons: byFolder(pythonFiles),
+  };
+}
+
+/**
+ * Test-Effekte unter tests/effects/ (nur im Dev-Server und nur mit localStorage['bls.testEffects'] = '1').
+ * Sie stehen fest im Repository statt zur Laufzeit angelegt zu werden; im Produktions-Build fehlen sie.
+ */
+async function testSources(): Promise<Sources | null> {
+  if (!import.meta.env.DEV) return null;
+  let on: boolean;
+  try {
+    on = localStorage.getItem('bls.testEffects') === '1';
+  } catch {
+    on = false;
+  }
+  if (!on) return null;
+  const load = async (files: Record<string, () => Promise<string>>) =>
+    new Map(
+      await Promise.all(Object.entries(files).map(async ([path, f]) => [folderOf(path), await f()] as const)),
+    );
+  return {
+    manifests: await load(
+      import.meta.glob<string>('/tests/effects/*/manifest.json', { query: '?raw', import: 'default' }),
+    ),
+    shaders: await load(
+      import.meta.glob<string>('/tests/effects/*/effect.wgsl', { query: '?raw', import: 'default' }),
+    ),
+    scripts: byFolder(import.meta.glob<{ default?: EffectModule }>('/tests/effects/*/effect.ts')),
+    previews: new Map(),
+    workers: await load(
+      import.meta.glob<string>('/tests/effects/*/effect.worker.ts', { query: '?url', import: 'default' }),
+    ),
+    pythons: await load(
+      import.meta.glob<string>('/tests/effects/*/effect.py', { query: '?url', import: 'default' }),
+    ),
+  };
+}
+
+function mergeSources(a: Sources, b: Sources | null): Sources {
+  if (!b) return a;
+  const m = <T>(x: Map<string, T>, y: Map<string, T>) => new Map([...x, ...y]);
+  return {
+    manifests: m(a.manifests, b.manifests),
+    shaders: m(a.shaders, b.shaders),
+    scripts: m(a.scripts, b.scripts),
+    previews: m(a.previews, b.previews),
+    workers: m(a.workers, b.workers),
+    pythons: m(a.pythons, b.pythons),
+  };
+}
 
 function byFolder<T>(files: Record<string, T>): Map<string, T> {
   return new Map(Object.entries(files).map(([path, v]) => [folderOf(path), v]));
@@ -46,13 +118,8 @@ function nextRevision(): number {
   return Math.max(0, ...revs) + 1;
 }
 
-export function discoverPlugins(): Record<string, Plugin> {
-  const manifests = byFolder(manifestFiles);
-  const shaders = byFolder(shaderFiles);
-  const scripts = byFolder(scriptFiles);
-  const previews = byFolder(previewFiles);
-  const workers = byFolder(workerFiles);
-  const pythons = byFolder(pythonFiles);
+export function discoverPlugins(sources: Sources = bundledSources()): Record<string, Plugin> {
+  const { manifests, shaders, scripts, previews, workers, pythons } = sources;
   const folders = new Set([...manifests.keys(), ...shaders.keys()]);
   const revision = nextRevision();
   const out: Record<string, Plugin> = {};
@@ -106,8 +173,10 @@ export function discoverPlugins(): Record<string, Plugin> {
 }
 
 /** Lädt die effect.ts-Module; Fehler landen beim jeweiligen Plugin statt die App anzuhalten. */
-async function loadScripts(plugins: Record<string, Plugin>): Promise<void> {
-  const scripts = byFolder(scriptFiles);
+async function loadScripts(
+  plugins: Record<string, Plugin>,
+  scripts: Map<string, ScriptLoader>,
+): Promise<void> {
   const { updatePlugin } = usePluginStore.getState();
   await Promise.all(
     Object.values(plugins).map(async (p) => {
@@ -127,9 +196,10 @@ async function loadScripts(plugins: Record<string, Plugin>): Promise<void> {
 
 /** Wird nach dem Laden (und nach jedem HMR-Update) aufgerufen; der Effekt-Kern kompiliert danach die Shader. */
 export const pluginsReady: Promise<void> = (async () => {
-  const plugins = discoverPlugins();
+  const sources = mergeSources(bundledSources(), await testSources());
+  const plugins = discoverPlugins(sources);
   usePluginStore.getState().setPlugins(plugins);
-  await loadScripts(plugins);
+  await loadScripts(plugins, sources.scripts);
 })();
 
 if (import.meta.hot) {

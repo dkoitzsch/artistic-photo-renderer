@@ -40,7 +40,10 @@ export type ServiceStatus = { state: 'unknown' | 'online' | 'offline'; info?: Se
 /** Laufende ML-Aufgabe (Fortschritt in der unteren Leiste) */
 export type MlTask = { id: number; label: string; detail: string; progress: number | null };
 
-export type ViewMode = 'result' | 'mask' | 'focus' | 'depth';
+export type ViewMode = 'result' | 'mask' | 'focus' | 'depth' | 'analysis';
+
+/** Ansicht „Analysekarte“: welche Karte, mit welcher Deckkraft (0..1) */
+export type AnalysisView = { map: 'luminance' | 'edges'; opacity: number };
 
 /** Parallax-Vorschau (verändert das Projekt nicht) */
 export type ParallaxState = {
@@ -90,6 +93,7 @@ type AppState = {
   modelsOpen: boolean;
   parallax: ParallaxState;
   exportOpen: boolean;
+  analysisView: AnalysisView;
 
   setGpu: (gpu: GpuStatus) => void;
   setScreen: (screen: AppState['screen']) => void;
@@ -119,6 +123,7 @@ type AppState = {
   setModelsOpen: (open: boolean) => void;
   setParallax: (patch: Partial<ParallaxState>) => void;
   setExportOpen: (open: boolean) => void;
+  setAnalysisView: (patch: Partial<AnalysisView>) => void;
 };
 
 let nextNoticeId = 1;
@@ -152,6 +157,7 @@ export const useAppStore = create<AppState>()((set) => ({
   modelsOpen: false,
   parallax: { enabled: false, strength: 50, axis: 'both', pointer: [0, 0] },
   exportOpen: false,
+  analysisView: { map: 'edges', opacity: 0.85 },
 
   setGpu: (gpu) => set({ gpu }),
   setScreen: (screen) => set({ screen }),
@@ -187,6 +193,7 @@ export const useAppStore = create<AppState>()((set) => ({
   setModelsOpen: (modelsOpen) => set({ modelsOpen }),
   setParallax: (patch) => set((s) => ({ parallax: { ...s.parallax, ...patch } })),
   setExportOpen: (exportOpen) => set({ exportOpen }),
+  setAnalysisView: (patch) => set((s) => ({ analysisView: { ...s.analysisView, ...patch } })),
 }));
 
 /** Aktuelles Projekt (Gegenwart der History) oder null. */

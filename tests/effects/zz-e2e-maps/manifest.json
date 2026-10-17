@@ -1,0 +1,27 @@
+{
+  "id": "zz-e2e-maps",
+  "name": "E2E Karten",
+  "version": "1.0.0",
+  "category": "Test",
+  "inputs": ["source"],
+  "passes": 1,
+  "requires": ["luminance", "edges"],
+  "params": [
+    {
+      "key": "show",
+      "label": "Karte",
+      "type": "enum",
+      "options": [
+        {
+          "value": "edges",
+          "label": "Kanten"
+        },
+        {
+          "value": "luminance",
+          "label": "Helligkeit"
+        }
+      ],
+      "default": "edges"
+    }
+  ]
+}

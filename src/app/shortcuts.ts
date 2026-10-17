@@ -112,6 +112,13 @@ const SHORTCUTS: Shortcut[] = [
     },
   },
   {
+    key: '5',
+    meta: false,
+    run: () => {
+      useAppStore.getState().setViewMode('analysis');
+    },
+  },
+  {
     key: 'v',
     meta: false,
     run: () => {

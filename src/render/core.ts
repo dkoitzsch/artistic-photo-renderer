@@ -1,6 +1,7 @@
 // Kern-Pipelines (unabhängig von Plugins) und gemeinsam genutzte Hilfsobjekte.
 
 import type { BlendMode, MaskEdge } from '../state/project';
+import analysisWgsl from './shaders/analysis.wgsl?raw';
 import blendWgsl from './shaders/blend.wgsl?raw';
 import blendModesWgsl from './shaders/blendmodes.wgsl?raw';
 import colorWgsl from './shaders/color.wgsl?raw';
@@ -104,6 +105,7 @@ export class GpuCore {
   private readonly guided: ModulePipelines;
   private readonly pushPull: ModulePipelines;
   private readonly warpPipelines: ModulePipelines;
+  private readonly analysis: ModulePipelines;
 
   constructor(readonly device: GPUDevice) {
     this.pool = new TexturePool(device);
@@ -148,6 +150,13 @@ export class GpuCore {
       pushpullWgsl,
       ['uniform', 'tex', 'tex', 'sampler', 'storage'],
       ['init', 'down', 'pull', 'finish'],
+    );
+    this.analysis = new ModulePipelines(
+      device,
+      'analysis',
+      analysisWgsl,
+      ['uniform', 'tex', 'tex', 'storage'],
+      ['tensor', 'edges'],
     );
     this.warpPipelines = new ModulePipelines(
       device,
@@ -469,6 +478,32 @@ export class GpuCore {
       dst,
       this.maskUniform(frame, { dir: [from, to], radius: feather, invert }),
     );
+  }
+
+  /**
+   * Kantenkarte aus einer Helligkeitskarte (r): r = Stärke, gb = Tangente (0.5 + 0.5·t), a = Kohärenz.
+   * pxScale: Texel pro Original-px (Gradient und Glättung σ = 2 Original-px skalieren mit).
+   */
+  edgeMap(frame: Frame, luma: GPUTexture, pxScale: number, dst: GPUTexture): void {
+    const { width, height } = dst;
+    const u = frame.uniform(new Float32Array([pxScale, 0, 0, 0]));
+    const run = (entry: string, a: GPUTexture, b: GPUTexture, out: GPUTexture) => {
+      this.analysis.run(
+        frame,
+        entry,
+        [{ buffer: u }, a.createView(), b.createView(), out.createView()],
+        width,
+        height,
+      );
+    };
+    const t = this.pool.acquire(width, height, 'tensor');
+    const ts = this.pool.acquire(width, height, 'tensor-smooth');
+    run('tensor', luma, luma, t);
+    // σ = 2 Original-px (Radius = 3σ), mindestens etwas Glättung
+    this.gaussian(frame, t, ts, Math.max(1.5, 6 * pxScale), 'clamp');
+    run('edges', ts, luma, dst);
+    this.pool.release(t);
+    this.pool.release(ts);
   }
 
   /** Helligkeit (wahrgenommen, 0…1) eines Bildes; dst gleich groß wie src. */

@@ -1,41 +1,9 @@
 // E1 Schritt 4: Seed. Ein Test-Effekt (randomized) gibt den Shader-Zufall als Grauwert aus; geprüft werden
 // Reproduzierbarkeit, Seed-Abhängigkeit, Kachel-Gleichheit und Gleichheit mit der CPU-Implementierung.
 
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import { randCell } from '../../src/effects/random';
-import { diffStats, openFixture, renderExport, waitForApp } from './helpers';
-
-const DIR = new URL('../../effects/zz-e2e-seed/', import.meta.url).pathname;
-
-test.beforeAll(() => {
-  mkdirSync(DIR, { recursive: true });
-  writeFileSync(
-    `${DIR}manifest.json`,
-    JSON.stringify({
-      id: 'zz-e2e-seed',
-      name: 'E2E Zufall',
-      version: '1.0.0',
-      category: 'Test',
-      inputs: ['source'],
-      passes: 1,
-      randomized: true,
-      params: [],
-    }),
-  );
-  writeFileSync(
-    `${DIR}effect.wgsl`,
-    `fn effect(p: vec2i) -> vec4f {
-  let r = rand_at(canvas_pos(p), params.seed, 0u);
-  return vec4f(vec3f(r), 1.0);
-}
-`,
-  );
-});
-
-test.afterAll(() => {
-  rmSync(DIR, { recursive: true, force: true });
-});
+import { diffStats, openFixture, renderExport, waitForApp, enableTestEffects } from './helpers';
 
 async function addSeedEffect(page: Page): Promise<{ layerId: string; fxId: string }> {
   await expect
@@ -58,6 +26,7 @@ const encode = (l: number) => 255 * (l <= 0.0031308 ? 12.92 * l : 1.055 * l ** (
 test('Seed: reproduzierbar, abhängig vom Seed, kachelgleich und gleich der CPU-Implementierung', async ({
   page,
 }) => {
+  await enableTestEffects(page);
   await waitForApp(page);
   await openFixture(page, 'golden/flat-gray.png');
   const { layerId, fxId } = await addSeedEffect(page);

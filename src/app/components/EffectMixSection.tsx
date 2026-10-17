@@ -16,7 +16,11 @@ import { Slider } from '../controls/Slider';
 import { Toggle } from '../controls/Toggle';
 import { BLEND_OPTIONS } from './LayerSections';
 
-const MAP_LABEL: Record<MaskMapId, string> = { luminance: 'Helligkeit', depth: 'Tiefe' };
+const MAP_LABEL: Record<MaskMapId, string> = {
+  luminance: 'Helligkeit',
+  edges: 'Kantenstärke',
+  depth: 'Tiefe',
+};
 
 function encode(m: EffectMask | undefined): string {
   if (!m) return '';
@@ -37,6 +41,7 @@ export function EffectMixSection({ nodeId, effect }: { nodeId: string; effect: E
   const options = [{ value: '', label: 'Keine (ganze Ebene)' }];
   if (hostLayer) {
     options.push({ value: 'map:luminance', label: 'Helligkeitsbereich' });
+    options.push({ value: 'map:edges', label: 'Kantenbereich (Kantenstärke)' });
     if (hostLayer.depthMap || hostLayer.mask.kind === 'depth')
       options.push({ value: 'map:depth', label: 'Tiefenbereich' });
   }
@@ -86,7 +91,13 @@ export function EffectMixSection({ nodeId, effect }: { nodeId: string; effect: E
         <>
           <Slider
             label={`${MAP_LABEL[mask.map]} von`}
-            hint={mask.map === 'depth' ? '0 % = nah, 100 % = fern' : '0 % = schwarz, 100 % = weiß'}
+            hint={
+              mask.map === 'depth'
+                ? '0 % = nah, 100 % = fern'
+                : mask.map === 'edges'
+                  ? '0 % = keine Kante, 100 % = starke Kante'
+                  : '0 % = schwarz, 100 % = weiß'
+            }
             value={Math.round(mask.from * 100)}
             min={0}
             max={100}

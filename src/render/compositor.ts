@@ -88,6 +88,15 @@ function findLayer(project: Project, id: string): Layer | undefined {
   return n?.kind === 'layer' ? n : undefined;
 }
 
+/** Die Ebene selbst oder (bei einer Gruppe) die erste sichtbare Unterebene. */
+function findFirstLayer(project: Project, id: string): Layer | undefined {
+  const n = findNode(project.root, id);
+  if (!n) return undefined;
+  if (n.kind === 'layer') return n;
+  for (const c of walk(n)) if (c.kind === 'layer' && c.visible) return c;
+  return undefined;
+}
+
 /** Ebene mit Tiefenkarte: die Ebene selbst oder (bei einer Gruppe) die erste Unterebene mit Tiefenkarte. */
 function findDepthLayer(project: Project, id: string): Layer | undefined {
   const n = findNode(project.root, id);
@@ -122,10 +131,23 @@ type Geometry = {
 
 const IDENTITY_AFFINE: Affine = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
 
-type Aux = { mask: GPUTexture; focus: GPUTexture; depth: GPUTexture; hasFocus: boolean };
+type Aux = {
+  mask: GPUTexture;
+  focus: GPUTexture;
+  depth: GPUTexture;
+  hasFocus: boolean;
+  luminance?: GPUTexture;
+  edges?: GPUTexture;
+};
 
-/** Lazy Zusatz-Eingänge einer Ebene: werden erst erzeugt, wenn ein Effekt wirklich rechnen muss. */
-type AuxProvider = { key: string; get: () => Aux; release: () => void };
+/** Karten, die als Effektmaske bzw. Effekt-Eingang aus einer Ebene entstehen. */
+type MapId = 'luminance' | 'edges' | 'depth';
+
+/**
+ * Lazy Zusatz-Eingänge einer Ebene: werden erst erzeugt, wenn ein Effekt wirklich rechnen muss.
+ * need: angeforderte Analysekarten des Effekts (manifest.requires).
+ */
+type AuxProvider = { key: string; get: (need: readonly string[]) => Aux; release: () => void };
 
 export class Compositor {
   /** Anzahl der in diesem Frame tatsächlich ausgeführten Effekte (für Tests/Statistik) */
@@ -153,15 +175,39 @@ export class Compositor {
     frame: Frame,
     layer: Layer,
     geo: Geometry,
-    map: 'luminance' | 'depth',
+    map: MapId,
   ): { tex: GPUTexture; key: string } | null {
     if (map === 'depth') return this.depthTexture(frame, layer, geo);
     const [lw, lh] = geo.local;
-    const key = `luma|${layer.originalId}@${lw}x${lh}`;
-    const tex = this.sources.derive(key, lw, lh, (out) => {
+    const lumaKey = `luma|${layer.originalId}@${lw}x${lh}`;
+    const luma = this.sources.derive(lumaKey, lw, lh, (out) => {
       this.core.luma(frame, this.sources.at(frame, layer.originalId, lw, lh), out);
     });
+    if (map === 'luminance') return { tex: luma, key: lumaKey };
+    const key = `edges|${layer.originalId}@${lw}x${lh}|ps${geo.pxScale.toFixed(5)}`;
+    const tex = this.sources.derive(key, lw, lh, (out) => {
+      this.core.edgeMap(frame, luma, geo.pxScale, out);
+    });
     return { tex, key };
+  }
+
+  /** Analysekarten aus einem Bild im Leinwand-Ausschnitt (Effekte auf Gruppen: Karten aus ihrem Eingang). */
+  private inputMaps(
+    frame: Frame,
+    src: GPUTexture,
+    opts: RenderOptions,
+    need: readonly string[],
+    owned: GPUTexture[],
+  ): { luminance?: GPUTexture; edges?: GPUTexture } {
+    if (!need.includes('luminance') && !need.includes('edges')) return {};
+    const luma = this.core.pool.acquire(src.width, src.height, 'input-luma');
+    owned.push(luma);
+    this.core.luma(frame, src, luma);
+    if (!need.includes('edges')) return { luminance: luma };
+    const edges = this.core.pool.acquire(src.width, src.height, 'input-edges');
+    owned.push(edges);
+    this.core.edgeMap(frame, luma, opts.scale, edges);
+    return { luminance: luma, edges };
   }
 
   /**
@@ -307,11 +353,16 @@ export class Compositor {
     frame: Frame,
     project: Project,
     layerId: string,
-    kind: 'mask' | 'focus' | 'depth',
+    kind: 'mask' | 'focus' | 'depth' | 'luminance' | 'edges',
     opts: RenderOptions,
   ): { tex: GPUTexture; owned: boolean } | null {
     this.use(project);
-    const layer = kind === 'depth' ? findDepthLayer(project, layerId) : findLayer(project, layerId);
+    const layer =
+      kind === 'depth'
+        ? findDepthLayer(project, layerId)
+        : kind === 'luminance' || kind === 'edges'
+          ? findFirstLayer(project, layerId)
+          : findLayer(project, layerId);
     if (!layer) return null;
     const geo = this.geometry(layer, opts);
     const slot = `${opts.variant}:${layer.id}:${kind}`;
@@ -324,6 +375,12 @@ export class Compositor {
       return { tex: r.tex, owned: false };
     };
     const regionKey = `[${opts.region.x},${opts.region.y},${opts.region.width},${opts.region.height}]`;
+    if (kind === 'luminance' || kind === 'edges') {
+      const map = this.layerMap(frame, layer, geo, kind);
+      return map
+        ? keep(`${map.key}${geo.key}${regionKey}`, () => this.place(frame, geo, map.tex, opts, 'map-view'))
+        : null;
+    }
     if (kind === 'depth') {
       const d = this.depthTexture(frame, layer, geo);
       return d
@@ -447,13 +504,27 @@ export class Compositor {
     const points = this.focusPoints(layer, geo);
     const owned: GPUTexture[] = [];
     let aux: Aux | null = null;
+    // Analysekarten der Ebene (aus dem Original, im Ebenenraum gecacht) bei Bedarf platzieren
+    const addMaps = (a: Aux, need: readonly string[]) => {
+      for (const id of ['luminance', 'edges'] as const) {
+        if (!need.includes(id) || a[id]) continue;
+        const map = this.layerMap(frame, layer, geo, id);
+        if (!map) continue;
+        const r = this.place(frame, geo, map.tex, opts, `map-${id}`);
+        if (r.owned) owned.push(r.tex);
+        a[id] = r.tex;
+      }
+    };
     return {
       key:
         (points.length ? `focus${JSON.stringify(points.map((p) => [p.x, p.y, p.radius]))}` : 'nofocus') +
         (depthTex ? `|depth${layer.depthMap?.id ?? ''}` : '') +
         geo.key,
-      get: () => {
-        if (aux) return aux;
+      get: (need) => {
+        if (aux) {
+          addMaps(aux, need);
+          return aux;
+        }
         let mask = this.core.white;
         if (maskTex) {
           const r = this.place(frame, geo, maskTex, opts, 'mask-region');
@@ -473,6 +544,7 @@ export class Compositor {
           depth = r.tex;
         }
         aux = { mask, focus, depth, hasFocus: points.length > 0 };
+        addMaps(aux, need);
         return aux;
       },
       release: () => {
@@ -653,11 +725,14 @@ export class Compositor {
         return;
       }
       this.effectRuns++;
-      const a = aux?.get() ?? {
+      const need = plugin.manifest?.requires ?? [];
+      const temps: GPUTexture[] = [];
+      const a = aux?.get(need) ?? {
         mask: this.core.white,
         focus: this.core.black,
         depth: this.core.black,
         hasFocus: false,
+        ...this.inputMaps(frame, cur.tex, opts, need, temps),
       };
       const m = emask?.get() ?? null;
       const out = this.runner.apply(
@@ -675,6 +750,7 @@ export class Compositor {
         m?.tex ?? null,
       );
       if (m?.owned) this.core.pool.release(m.tex);
+      for (const t of temps) this.core.pool.release(t);
       this.release(cur);
       if (opts.cache) {
         opts.cache.set(slot, key, out);

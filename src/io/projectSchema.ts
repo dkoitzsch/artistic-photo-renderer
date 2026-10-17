@@ -25,7 +25,7 @@ function checkEffects(v: unknown, where: string): void {
     if (!isObj(m)) fail(`${at}.mask ungültig`);
     if (m.kind === 'map') {
       if (
-        !['luminance', 'depth'].includes(m.map as string) ||
+        !['luminance', 'edges', 'depth'].includes(m.map as string) ||
         !isNum(m.from) ||
         !isNum(m.to) ||
         !isNum(m.feather) ||

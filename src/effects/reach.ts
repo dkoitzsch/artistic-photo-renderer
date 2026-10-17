@@ -3,6 +3,9 @@ import { compileExpr, type Scope } from './expr';
 import type { EffectManifest } from './manifest';
 import { getPlugin } from './pluginStore';
 
+/** Reichweite der Kantenkarte in px (volle Auflösung). */
+export const EDGE_MAP_REACH = 8;
+
 const cache = new Map<string, ReturnType<typeof compileExpr>>();
 
 /** Zahlenwerte der Parameter für Ausdrücke (px unskaliert, bool 0/1, enum Index). */
@@ -27,7 +30,10 @@ export function effectReach(
   canvas: { width: number; height: number } = { width: 0, height: 0 },
 ): number {
   const manifest = getPlugin(fx.effectId)?.manifest;
-  if (!manifest?.reach) return 0;
+  if (!manifest) return 0;
+  // Kantenkarte aus dem Effekt-Eingang (Gruppen) liest bis zu 8 px Umgebung (Sobel + Glättung 3σ, σ = 2 px)
+  const mapReach = manifest.requires.includes('edges') ? EDGE_MAP_REACH : 0;
+  if (!manifest.reach) return mapReach;
   let compiled = cache.get(manifest.reach);
   if (!compiled) {
     compiled = compileExpr(manifest.reach);
@@ -38,5 +44,5 @@ export function effectReach(
     canvasWidth: canvas.width,
     canvasHeight: canvas.height,
   });
-  return Number.isFinite(r) ? Math.max(0, r) : 0;
+  return (Number.isFinite(r) ? Math.max(0, r) : 0) + mapReach;
 }

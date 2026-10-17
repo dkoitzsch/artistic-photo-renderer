@@ -99,8 +99,16 @@ test('neuer Effekt-Ordner erscheint ohne Codeänderung; Fehler werden angezeigt'
 }
 `,
   );
-  await expect.poll(async () => (await canvasPixel(page))[1], { timeout: 15_000 }).toBeGreaterThan(150);
-  expectColor(await canvasPixel(page), [225, 160, 220]);
+  // auf die Zielfarbe warten (während der Neukompilierung wird der Effekt kurz übersprungen: Original 30,160,220)
+  await expect
+    .poll(
+      async () => {
+        const [r, g, b] = await canvasPixel(page);
+        return Math.max(Math.abs(r - 225), Math.abs(g - 160), Math.abs(b - 220));
+      },
+      { timeout: 15_000 },
+    )
+    .toBeLessThanOrEqual(2);
 
   // Projekt hat seinen Zustand über das Plugin-Neuladen behalten
   expect(await page.evaluate(() => window.__bls.getProject()?.root.children[0]?.effects.length)).toBe(1);

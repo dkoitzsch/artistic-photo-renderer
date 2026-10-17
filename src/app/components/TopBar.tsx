@@ -29,6 +29,7 @@ const VIEW_MODES = [
   { value: 'mask', label: 'Maske', key: '2' },
   { value: 'focus', label: 'Fokus', key: '3' },
   { value: 'depth', label: 'Tiefe', key: '4' },
+  { value: 'analysis', label: 'Karten', key: '5' },
 ] as const;
 
 const SAVE_LABEL = {

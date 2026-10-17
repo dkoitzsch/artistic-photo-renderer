@@ -11,6 +11,7 @@ import { usePluginStore } from '../../effects/pluginStore';
 import { FocusOverlay } from './FocusOverlay';
 import { TransformOverlay } from './TransformOverlay';
 import { ParallaxPanel, parallaxVector } from './ParallaxPanel';
+import { AnalysisPanel } from './AnalysisPanel';
 import { GpuStatus } from './GpuStatus';
 
 function cssColorLinear(style: CSSStyleDeclaration, name: string): [number, number, number] {
@@ -56,6 +57,7 @@ export function CanvasView({ theme }: { theme: 'light' | 'dark' }) {
   const plugins = usePluginStore((s) => s.plugins);
   const viewMode = useAppStore((s) => s.viewMode);
   const parallax = useAppStore((s) => s.parallax);
+  const analysisView = useAppStore((s) => s.analysisView);
   const selectedId = useAppStore((s) => s.selectedNodeId);
   const view = useAppStore((s) => s.view);
   const viewport = useAppStore((s) => s.viewport);
@@ -97,7 +99,12 @@ export function CanvasView({ theme }: { theme: 'light' | 'dark' }) {
     if (!gpuReady) return;
     const id = requestAnimationFrame(() => {
       const splitX = compareSplit === null ? null : compareSplit * viewport.width;
-      const overlay = viewMode !== 'result' && selectedId ? { layerId: selectedId, kind: viewMode } : null;
+      const overlay =
+        viewMode === 'result' || !selectedId
+          ? null
+          : viewMode === 'analysis'
+            ? { layerId: selectedId, kind: analysisView.map, opacity: analysisView.opacity }
+            : { layerId: selectedId, kind: viewMode };
       const px = project ? parallaxVector(parallax, project.canvas) : null;
       getEngine()?.present(
         project,
@@ -112,7 +119,19 @@ export function CanvasView({ theme }: { theme: 'light' | 'dark' }) {
     return () => {
       cancelAnimationFrame(id);
     };
-  }, [gpuReady, project, plugins, view, viewport, theme, compareSplit, viewMode, selectedId, parallax]);
+  }, [
+    gpuReady,
+    project,
+    plugins,
+    view,
+    viewport,
+    theme,
+    compareSplit,
+    viewMode,
+    selectedId,
+    parallax,
+    analysisView,
+  ]);
 
   // Mausrad/Trackpad: Pinch bzw. ⌘/Strg + Rad zoomt um den Cursor, sonst verschieben.
   useEffect(() => {
@@ -243,6 +262,7 @@ export function CanvasView({ theme }: { theme: 'light' | 'dark' }) {
       <TransformOverlay />
       <FocusOverlay />
       <ParallaxPanel />
+      <AnalysisPanel />
       <GpuStatus />
     </div>
   );

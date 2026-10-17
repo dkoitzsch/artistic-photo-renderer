@@ -26,7 +26,12 @@ export type ViewColors = {
 export type FrameStats = { cpuMs: number; gpuMs: number; effectRuns: number };
 
 /** Prüfansicht über dem Ergebnis: Maske (rot = ausgeblendet) oder Fokuskarte */
-export type Overlay = { layerId: string; kind: 'mask' | 'focus' | 'depth' };
+export type Overlay = {
+  layerId: string;
+  kind: 'mask' | 'focus' | 'depth' | 'luminance' | 'edges';
+  /** Deckkraft der Analysekarten-Ansicht (0..1) */
+  opacity?: number;
+};
 
 const VIEW_UNIFORM_FLOATS = 24;
 
@@ -56,6 +61,7 @@ export class Engine {
   private lastBefore: GPUTexture | null = null;
   private lastOverlay: GPUTexture | null = null;
   private overlayKind = 0;
+  private overlayOpacity = 1;
   private compiling = new Set<string>();
 
   lastStats: FrameStats = { cpuMs: 0, gpuMs: 0, effectRuns: 0 };
@@ -181,7 +187,8 @@ export class Engine {
         if (tex) {
           // mit Vorschau-Cache nie „owned“: der Cache hält die Textur bis zum nächsten Frame
           this.lastOverlay = tex.tex;
-          this.overlayKind = { mask: 1, focus: 2, depth: 3 }[overlay.kind];
+          this.overlayKind = { mask: 1, focus: 2, depth: 3, luminance: 4, edges: 5 }[overlay.kind];
+          this.overlayOpacity = overlay.opacity ?? 1;
         }
       }
       this.drawInto(frame, project, view, dpr, colors, splitX);
@@ -218,7 +225,7 @@ export class Engine {
     u.set([...colors.background, 1], 8);
     u.set([...colors.checkerA, 1], 12);
     u.set([...colors.checkerB, 1], 16);
-    u.set([splitX ?? -1, this.overlayKind], 20);
+    u.set([splitX ?? -1, this.overlayKind, this.overlayOpacity], 20);
 
     const after = this.lastAfter ?? this.core.black;
     const before = this.lastBefore ?? after;
@@ -336,33 +343,67 @@ export class Engine {
       cache: null,
       variant: 'stats',
     });
+    frame.submit();
+    this.sources.endFrame();
+    const data = await this.readFloat(res.tex);
+    if (res.owned) this.core.pool.release(res.tex);
+    let nonFinite = 0;
+    let min = Infinity;
+    let max = -Infinity;
+    for (const v of data) {
+      if (!Number.isFinite(v)) nonFinite++;
+      else {
+        if (v < min) min = v;
+        if (v > max) max = v;
+      }
+    }
+    return { nonFinite, min, max };
+  }
+
+  /** Liest eine Arbeitstextur (rgba16float) vollständig als Float32-Werte (RGBA je Pixel). */
+  async readFloat(tex: GPUTexture): Promise<Float32Array> {
+    const { width: W, height: H } = tex;
     const bytesPerRow = paddedBytesPerRow(W, 8);
     const buffer = this.device.createBuffer({
       size: bytesPerRow * H,
       usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
     });
-    frame.encoder.copyTextureToBuffer({ texture: res.tex }, { buffer, bytesPerRow }, [W, H]);
-    frame.submit();
-    this.sources.endFrame();
+    const enc = this.device.createCommandEncoder({ label: 'read-float' });
+    enc.copyTextureToBuffer({ texture: tex }, { buffer, bytesPerRow }, [W, H]);
+    this.device.queue.submit([enc.finish()]);
     await buffer.mapAsync(GPUMapMode.READ);
     const half = new Uint16Array(buffer.getMappedRange());
-    let nonFinite = 0;
-    let min = Infinity;
-    let max = -Infinity;
+    const out = new Float32Array(W * H * 4);
     const stride = bytesPerRow / 2;
     for (let y = 0; y < H; y++)
-      for (let x = 0; x < W * 4; x++) {
-        const v = halfToFloat(half[y * stride + x] ?? 0);
-        if (!Number.isFinite(v)) nonFinite++;
-        else {
-          if (v < min) min = v;
-          if (v > max) max = v;
-        }
-      }
+      for (let x = 0; x < W * 4; x++) out[y * W * 4 + x] = halfToFloat(half[y * stride + x] ?? 0);
     buffer.unmap();
     buffer.destroy();
+    return out;
+  }
+
+  /** Analysekarte einer Ebene in voller Leinwandauflösung (Tests, Fehlersuche). */
+  async readMap(
+    project: Project,
+    layerId: string,
+    kind: 'luminance' | 'edges',
+  ): Promise<Float32Array | null> {
+    const { width: W, height: H } = project.canvas;
+    const frame = new Frame(this.device, this.core.pool, 'read-map');
+    const res = this.compositor.overlay(frame, project, layerId, kind, {
+      scale: 1,
+      canvasSize: [W, H],
+      region: { x: 0, y: 0, width: W, height: H },
+      ignoreEffects: false,
+      cache: null,
+      variant: 'read-map',
+    });
+    frame.submit();
+    this.sources.endFrame();
+    if (!res) return null;
+    const data = await this.readFloat(res.tex);
     if (res.owned) this.core.pool.release(res.tex);
-    return { nonFinite, min, max };
+    return data;
   }
 
   /** Kodiert einen Ausschnitt einer Arbeitstextur zu 8-Bit-sRGB (gerades Alpha). */
@@ -428,6 +469,21 @@ export class Engine {
     const h = Math.max(1, Math.round(project.canvas.height * s));
     const frame = new Frame(this.device, this.core.pool, 'thumbnail');
     const src = this.sources.at(frame, layer.originalId, w, h);
+    // Analysekarten, falls der Effekt sie anfordert
+    const need = plugin.manifest.requires;
+    const temps: GPUTexture[] = [];
+    let luminance: GPUTexture | undefined;
+    let edges: GPUTexture | undefined;
+    if (need.includes('luminance') || need.includes('edges')) {
+      luminance = this.core.pool.acquire(w, h, 'thumb-luma');
+      temps.push(luminance);
+      this.core.luma(frame, src, luminance);
+      if (need.includes('edges')) {
+        edges = this.core.pool.acquire(w, h, 'thumb-edges');
+        temps.push(edges);
+        this.core.edgeMap(frame, luminance, s, edges);
+      }
+    }
     const out = this.runner.apply(
       frame,
       plugin,
@@ -441,10 +497,17 @@ export class Engine {
         region: 'whole',
       },
       src,
-      { mask: this.core.white, focus: this.core.black, depth: this.core.black },
+      {
+        mask: this.core.white,
+        focus: this.core.black,
+        depth: this.core.black,
+        ...(luminance ? { luminance } : {}),
+        ...(edges ? { edges } : {}),
+      },
       { scale: s, origin: [0, 0], canvasSize: [w, h] },
     );
     frame.submit();
+    for (const t of temps) this.core.pool.release(t);
     const pixels = await this.encode(out, [0, 0], w, h);
     this.core.pool.release(out);
     return new ImageData(pixels, w, h);

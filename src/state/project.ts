@@ -82,7 +82,7 @@ export type ShadowLayer = {
 export type EffectRegion = 'whole' | 'focus-weighted' | 'inverse-focus';
 
 /** Karten, deren Wertebereich als Effektmaske dient (0…1). */
-export type MaskMapId = 'luminance' | 'depth';
+export type MaskMapId = 'luminance' | 'edges' | 'depth';
 
 /**
  * Eigene Maske eines Effekts (zusätzlich zur Ebenenmaske):

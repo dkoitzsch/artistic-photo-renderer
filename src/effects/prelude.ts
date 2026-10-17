@@ -14,6 +14,8 @@ export const BINDINGS = {
   sampler: 6,
   dst: 7,
   srcB: 8,
+  luminance: 9,
+  edges: 10,
 } as const;
 
 const HELPERS = /* wgsl */ `
@@ -31,6 +33,8 @@ struct PassData {
 @group(0) @binding(6) var linear_sampler: sampler;     // linear, clamp-to-edge
 @group(0) @binding(7) var dst: texture_storage_2d<rgba16float, write>;
 @group(0) @binding(8) var src_b: texture_2d<f32>;      // zweiter Eingang (effect.ts: ctx.run(..., { srcB })), sonst = src
+@group(0) @binding(9) var map_luminance: texture_2d<f32>; // Analysekarte "luminance" (r, 0..1); nur mit requires
+@group(0) @binding(10) var map_edges: texture_2d<f32>;    // Analysekarte "edges" (r Stärke, gb Tangente, a Kohärenz)
 
 fn src_size() -> vec2i {
   return vec2i(textureDimensions(src));
@@ -67,6 +71,25 @@ fn focus_sharpness(p: vec2i, softness: f32) -> f32 {
 }
 fn load_focus(p: vec2i) -> f32 { return aux_load(focus_tex, p); }
 fn load_depth(p: vec2i) -> f32 { return aux_load(depth_tex, p); }
+
+/** Helligkeit (wahrgenommen, 0..1) aus der Analysekarte "luminance" ("requires": ["luminance"]). */
+fn load_luminance(p: vec2i) -> f32 { return aux_load(map_luminance, p); }
+
+fn edges_raw(p: vec2i) -> vec4f {
+  let s = vec2f(textureDimensions(map_edges));
+  let uv = (vec2f(p) + 0.5) / vec2f(src_size());
+  return textureLoad(map_edges, vec2i(clamp(uv * s, vec2f(0.0), s - 1.0)), 0);
+}
+/** Kantenstärke 0..1 ("requires": ["edges"]). */
+fn edge_strength(p: vec2i) -> f32 { return edges_raw(p).r; }
+/** Einheitsvektor entlang der Kante (Tangente des geglätteten Strukturtensors). */
+fn edge_tangent(p: vec2i) -> vec2f {
+  let t = edges_raw(p).gb * 2.0 - 1.0;
+  let l = length(t);
+  return select(vec2f(0.0, 1.0), t / l, l > 1e-4);
+}
+/** Kohärenz 0..1 (1 = klare Vorzugsrichtung). */
+fn edge_coherence(p: vec2i) -> f32 { return edges_raw(p).a; }
 
 /** Position eines Pixels auf der Leinwand in px bei voller Auflösung (für ortsfeste Muster wie Korn). */
 fn canvas_pos(p: vec2i) -> vec2f {

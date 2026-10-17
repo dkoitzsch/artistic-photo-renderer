@@ -15,8 +15,14 @@ type Compiled = {
   pipelines: Map<string, GPUComputePipeline>;
 };
 
-/** Zusatz-Eingänge eines Effekts (Phase 1: Standardtexturen). */
-export type AuxInputs = { mask: GPUTexture; focus: GPUTexture; depth: GPUTexture };
+/** Zusatz-Eingänge eines Effekts (fehlende: Standardtexturen). Analysekarten nur, wenn der Effekt sie anfordert. */
+export type AuxInputs = {
+  mask: GPUTexture;
+  focus: GPUTexture;
+  depth: GPUTexture;
+  luminance?: GPUTexture;
+  edges?: GPUTexture;
+};
 
 export type EffectPlacement = {
   scale: number;
@@ -65,6 +71,8 @@ export class EffectRunner {
           storageTexture: { access: 'write-only', format: WORK_FORMAT },
         },
         tex(BINDINGS.srcB),
+        tex(BINDINGS.luminance),
+        tex(BINDINGS.edges),
       ],
     });
     this.pipelineLayout = core.device.createPipelineLayout({ bindGroupLayouts: [this.bindGroupLayout] });
@@ -183,6 +191,8 @@ export class EffectRunner {
           { binding: BINDINGS.sampler, resource: this.core.linearSampler },
           { binding: BINDINGS.dst, resource: dst.createView() },
           { binding: BINDINGS.srcB, resource: (srcB ?? src).createView() },
+          { binding: BINDINGS.luminance, resource: (aux.luminance ?? this.core.black).createView() },
+          { binding: BINDINGS.edges, resource: (aux.edges ?? this.core.black).createView() },
         ],
       });
       dispatch2d(frame, pipeline, bindGroup, dst.width, dst.height, `${plugin.folder}:${entryPoint}`);

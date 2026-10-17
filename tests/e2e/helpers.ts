@@ -3,6 +3,13 @@ import { PNG } from 'pngjs';
 
 export const fixture = (name: string): string => new URL(`../fixtures/${name}`, import.meta.url).pathname;
 
+/** Lädt die Test-Effekte aus tests/effects/ (vor waitForApp aufrufen). */
+export async function enableTestEffects(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    localStorage.setItem('bls.testEffects', '1');
+  });
+}
+
 export async function waitForApp(page: Page): Promise<void> {
   await page.goto('/');
   await expect(page.locator('.statusbar-gpu')).toContainText('WebGPU ·');

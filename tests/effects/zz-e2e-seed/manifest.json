@@ -1,0 +1,10 @@
+{
+  "id": "zz-e2e-seed",
+  "name": "E2E Zufall",
+  "version": "1.0.0",
+  "category": "Test",
+  "inputs": ["source"],
+  "passes": 1,
+  "randomized": true,
+  "params": []
+}

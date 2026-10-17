@@ -132,6 +132,18 @@ Beispiele: `effects/gaussian-blur/` (Pyramide, Fokus-Stapel), `effects/lens-blur
 Mit `depth` in `inputs` liefert `load_depth(p)` die Tiefe der Ebene (0 = nah, 1 = fern; ohne Tiefenkarte 0).
 Beispiel: `effects/haze/` („Dunst“) mischt mit `byDepth` zusätzlich pro Pixel nach Entfernung.
 
+### Analysekarten nutzen
+
+Mit `"requires": ["luminance", "edges"]` erhält der Shader die Analysekarten der Ebene (berechnet aus ihrem Original,
+gecacht, mit der Ebene platziert; bei Effekten auf Gruppen aus dem Effekt-Eingang):
+
+- `load_luminance(p)` – wahrgenommene Helligkeit 0..1 (Bindung 9, `map_luminance`)
+- `edge_strength(p)` – Kantenstärke 0..1 (Sobel, je Original-px), `edge_tangent(p)` – Einheitsvektor entlang der Kante
+  (geglätteter Strukturtensor, σ = 2 px), `edge_coherence(p)` – 0..1 (Bindung 10, `map_edges`)
+
+Effekte mit `edges` bekommen automatisch 8 px zusätzliche Reichweite für den gekachelten Export. Die Karten sind auch in
+der Ansicht „Karten“ (Taste 5) sichtbar und als Effektmaske wählbar (Bereich der Helligkeit/Kantenstärke).
+
 ### Fokuskarte nutzen
 
 Effekte, die an Fokuspunkten schwächer wirken sollen, nehmen `focus` in `inputs` auf und Parameter wie
