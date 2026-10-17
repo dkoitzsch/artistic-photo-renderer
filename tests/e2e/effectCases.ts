@@ -114,4 +114,7 @@ export const EFFECT_CASES: EffectCase[] = [
     // ±1 an einzelnen Punktkanten: Fast-Math des Shader-Compilers stellt Ausdrücke mit dem Ursprung je Kachel um
     tileTolerance: 1,
   },
+  // ---- E1 Schritt 11 ----
+  { name: 'kuwahara-oil-portrait', fixture: 'portrait', effectId: 'kuwahara', preset: 'Ölbild' },
+  { name: 'kuwahara-pastos-landscape', fixture: 'landscape', effectId: 'kuwahara', preset: 'Pastos, grob' },
 ];

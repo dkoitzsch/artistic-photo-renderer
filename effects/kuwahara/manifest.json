@@ -1,0 +1,67 @@
+{
+  "id": "kuwahara",
+  "name": "Ölbild (Kuwahara)",
+  "version": "1.0.0",
+  "category": "Malerei",
+  "description": "Anisotroper Kuwahara-Filter: glättet Flächen zu Pinselstrichen entlang der Kanten, Kanten bleiben scharf.",
+  "inputs": ["source"],
+  "passes": 1,
+  "implementations": { "preview": "webgpu", "final": "webgpu" },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung nach Kyprianidis, Kang, Döllner (2009): Anisotropic Kuwahara Filtering (Verfahren, kein Fremdcode)."
+  },
+  "cost": "interactive",
+  "randomized": false,
+  "requires": ["edges"],
+  "params": [
+    {
+      "key": "radius",
+      "label": "Pinselgröße",
+      "type": "float",
+      "min": 1,
+      "max": 40,
+      "default": 6,
+      "step": 0.5,
+      "unit": "px",
+      "scale": "log"
+    },
+    {
+      "key": "sharpness",
+      "label": "Kantenschärfe",
+      "type": "float",
+      "min": 1,
+      "max": 16,
+      "default": 8,
+      "step": 0.5
+    },
+    {
+      "key": "anisotropy",
+      "label": "Strichrichtung",
+      "hint": "0 % = runde Tupfer, 100 % = lange Striche entlang der Kanten",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 60,
+      "unit": "%"
+    },
+    {
+      "key": "iterations",
+      "label": "Durchgänge",
+      "type": "int",
+      "min": 1,
+      "max": 3,
+      "default": 1,
+      "group": "Erweitert"
+    }
+  ],
+  "reach": "radius * 2.5 * iterations + 8",
+  "presets": [
+    { "name": "Ölbild", "values": { "radius": 6, "sharpness": 8, "anisotropy": 60, "iterations": 1 } },
+    {
+      "name": "Pastos, grob",
+      "values": { "radius": 12, "sharpness": 10, "anisotropy": 75, "iterations": 2 }
+    },
+    { "name": "Fein", "values": { "radius": 3, "sharpness": 8, "anisotropy": 40, "iterations": 1 } }
+  ]
+}
