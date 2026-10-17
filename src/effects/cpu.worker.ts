@@ -3,7 +3,7 @@
 
 import type { ParamValue } from './manifest';
 import type { CpuEffectModule } from './cpuApi';
-import { edges, luminance } from './cpuAnalysis';
+import { edges, flow, luminance } from './cpuAnalysis';
 import { float32ToHalf, halfToFloat32 } from './half';
 import { randCell } from './random';
 
@@ -49,6 +49,7 @@ async function run(req: CpuRequest): Promise<void> {
   const img = halfToFloat32(req.data);
   let lum: Float32Array | null = null;
   let edg: Float32Array | null = null;
+  let flw: Float32Array | null = null;
   let last = 0;
   const out = await mod.render(img, {
     width: w,
@@ -73,6 +74,7 @@ async function run(req: CpuRequest): Promise<void> {
       ),
     luminance: () => (lum ??= luminance(img, w, h)),
     edges: () => (edg ??= edges(img, w, h, req.scale)),
+    flow: () => (flw ??= flow(img, w, h, req.scale)),
   });
   if (out.length !== w * h * 4) throw new Error(`Ergebnis hat ${out.length} Werte, erwartet ${w * h * 4}.`);
   for (const v of out) if (!Number.isFinite(v)) throw new Error('Ergebnis enthält NaN/Inf.');

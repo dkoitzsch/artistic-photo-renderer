@@ -68,3 +68,44 @@ def edges(img: np.ndarray, px_scale: float = 1.0) -> np.ndarray:
     coh = np.where(l1 + l2 > 1e-12, (l1 - l2) / np.where(l1 + l2 > 1e-12, l1 + l2, 1), 0.0)
     strength = np.clip(np.hypot(gx, gy) * 8, 0, 1)
     return np.stack([strength, 0.5 + 0.5 * tx, 0.5 + 0.5 * ty, coh], axis=-1).astype(np.float32)
+
+
+# Richtungsfeld „flow“ – Konstanten wie src/effects/maps.ts
+FLOW_SIGMA_NEAR = 6.0
+FLOW_SIGMA_FAR = 24.0
+FLOW_FAR_WEIGHT = 0.25
+
+
+def _gaussian_fast(a: np.ndarray, sigma: float) -> np.ndarray:
+    """Gauß für große σ (Rand geklemmt, Radius ≈ 3σ) über SciPy – gleiches Ergebnis wie gaussian(), nur schneller."""
+    if sigma < 0.25:
+        return a.copy()
+    from scipy.ndimage import gaussian_filter
+
+    return gaussian_filter(a, sigma=sigma, mode="nearest", truncate=3.0)
+
+
+def flow(img: np.ndarray, px_scale: float = 1.0) -> np.ndarray:
+    """Richtungsfeld (H, W, 4): r Feldstärke (√λ1 · 8), gb Tangente (0.5 + 0.5·t), a Kohärenz.
+
+    Strukturtensor geglättet mit σ = 6 und σ = 24 Original-px, J = J6 + ¼·J24 – wie GpuCore.flowMap / analysis.wgsl.
+    """
+    lum = luminance(img)
+    gx, gy = sobel(lum, px_scale)
+    comps = [gx * gx, gx * gy, gy * gy]
+    s_near = max(1.5, FLOW_SIGMA_NEAR * 3 * px_scale) / 3
+    s_far = max(1.5, FLOW_SIGMA_FAR * 3 * px_scale) / 3
+    e, f, g = (
+        _gaussian_fast(c, s_near) + FLOW_FAR_WEIGHT * _gaussian_fast(c, s_far) for c in comps
+    )
+    d = np.sqrt(np.maximum((e - g) ** 2 + 4 * f * f, 0))
+    l1 = 0.5 * (e + g + d)
+    l2 = 0.5 * (e + g - d)
+    tx, ty = l1 - e, -f
+    tl = np.hypot(tx, ty)
+    ok = tl > 1e-12
+    tx = np.where(ok, tx / np.where(ok, tl, 1), 0.0)
+    ty = np.where(ok, ty / np.where(ok, tl, 1), 1.0)
+    coh = np.where(l1 + l2 > 1e-12, (l1 - l2) / np.where(l1 + l2 > 1e-12, l1 + l2, 1), 0.0)
+    strength = np.clip(np.sqrt(np.maximum(l1, 0)) * 8, 0, 1)
+    return np.stack([strength, 0.5 + 0.5 * tx, 0.5 + 0.5 * ty, coh], axis=-1).astype(np.float32)

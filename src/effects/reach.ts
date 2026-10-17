@@ -1,10 +1,10 @@
 import type { EffectInstance } from '../state/project';
 import { compileExpr, type Scope } from './expr';
 import type { EffectManifest } from './manifest';
+import { EDGE_MAP_REACH, FLOW_MAP_REACH } from './maps';
 import { getPlugin } from './pluginStore';
 
-/** Reichweite der Kantenkarte in px (volle Auflösung). */
-export const EDGE_MAP_REACH = 8;
+export { EDGE_MAP_REACH, FLOW_MAP_REACH };
 
 const cache = new Map<string, ReturnType<typeof compileExpr>>();
 
@@ -32,7 +32,11 @@ export function effectReach(
   const manifest = getPlugin(fx.effectId)?.manifest;
   if (!manifest) return 0;
   // Kantenkarte aus dem Effekt-Eingang (Gruppen) liest bis zu 8 px Umgebung (Sobel + Glättung 3σ, σ = 2 px)
-  const mapReach = manifest.requires.includes('edges') ? EDGE_MAP_REACH : 0;
+  // Richtungsfeld aus dem Effekt-Eingang (Gruppen): Glättung 3σ mit σ = 24 px
+  const mapReach = Math.max(
+    manifest.requires.includes('edges') ? EDGE_MAP_REACH : 0,
+    manifest.requires.includes('flow') ? FLOW_MAP_REACH : 0,
+  );
   if (!manifest.reach) return mapReach;
   let compiled = cache.get(manifest.reach);
   if (!compiled) {

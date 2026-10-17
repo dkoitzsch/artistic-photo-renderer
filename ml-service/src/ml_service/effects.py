@@ -10,7 +10,7 @@ Vertrag für ``effect.py``::
 ``image`` und Rückgabe: float32 (H, W, 4), linear, vormultipliziert (wie das Arbeitsformat der App).
 ``ctx.params`` enthält die Projektwerte (mit Standardwerten ergänzt), ``ctx.seed`` den Seed, ``ctx.scale`` Render-px pro
 Leinwand-px, ``ctx.origin``/``ctx.canvas_size`` die Lage auf der Leinwand. ``ctx.progress(p)`` meldet Fortschritt (0..1)
-und bricht bei einem Abbruch mit ``Cancelled`` ab. ``ctx.luminance()`` / ``ctx.edges()`` liefern die Analysekarten,
+und bricht bei einem Abbruch mit ``Cancelled`` ab. ``ctx.luminance()`` / ``ctx.edges()`` / ``ctx.flow()`` liefern die Analysekarten,
 ``ctx.rand_cell(x, y, k)`` denselben Zufall wie ``rand_cell`` im Shader.
 """
 
@@ -190,6 +190,11 @@ class RenderContext:
         if "edges" not in self._cache:
             self._cache["edges"] = analysis.edges(self.image, self.scale)
         return self._cache["edges"]
+
+    def flow(self) -> np.ndarray:
+        if "flow" not in self._cache:
+            self._cache["flow"] = analysis.flow(self.image, self.scale)
+        return self._cache["flow"]
 
     def canvas_cells(self) -> tuple[np.ndarray, np.ndarray]:
         """Ganzzahlige Leinwand-px (volle Auflösung) je Pixel – Grundlage für ortsfesten Zufall."""

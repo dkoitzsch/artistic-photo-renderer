@@ -38,7 +38,7 @@ Was die App kann:
   - Browser-CPU und Python-Dienst: Low-Poly.
   - Plugin `shadow` für Schatten-Ebenen.
   - Jeder Effekt hat Maske, Mischmodus, Seed und Presets.
-- **Analysekarten:** Helligkeit und Kanten.
+- **Analysekarten:** Helligkeit, Kanten und Richtungsfeld (`flow`, E2).
 - **Dienst-Effekte:** asynchron mit Job-Anzeige.
 - **Effekt-Browser** mit Lizenzsperre.
 - **Ausschnitt in voller Auflösung** beim Hineinzoomen.
@@ -72,6 +72,7 @@ Was die App kann:
 
 | Datum  | Commit                                  | Inhalt                                                                                                                                                                                                                                                                                         |
 | ------ | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 17.10. | „E2 Schritt 1: Analysekarte flow …“     | Richtungsfeld `flow` (GPU, Worker, Dienst; GPU gegen CPU Mittel 0,2°, p95 1°), Ansicht „Richtungsfeld“, globale Effekte im Export am Stück                                                                                                                                                     |
 | 17.10. | „E2 Schritt 0: Plan …“                  | E2 freigegeben: Plan `docs/plan-E2.md`, Grundsatzentscheidungen (Ausführungsorte, `flow`, Schrift, globale Effekte, Malplan, Beamer, PDF)                                                                                                                                                      |
 | 17.10. | `7c24005`                               | Vier vom Nutzer beobachtete Fehler behoben: Regler-Geste löst Browser-CPU/Dienst erst beim Loslassen aus (S19); Tiefenband-Überlappung nach Effekt-Reichweite gegen den weiß-grauen Saum (S20); Pixel-Sorting „Weichheit“ (S21); Kuwahara mit Deckkraft gewichtet gegen schwarze Flecken (S22) |
 | 17.10. | „Specs: PROGRESS.md nach jedem Schritt“ | Regel in Basis-Spec (Arbeitsweise 7) und Erweiterung (Abschnitt 0, Abschnitt 10) ergänzt                                                                                                                                                                                                       |

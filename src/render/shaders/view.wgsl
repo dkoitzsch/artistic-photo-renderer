@@ -13,7 +13,8 @@ struct View {
   checker_b: vec4f,   // linear
   split_x: f32,       // CSS-Pixel; < 0 = keine Teilung (links „vorher“)
   overlay: f32,       // 0 aus, 1 Maske (rot = ausgeblendet), 2 Fokuskarte, 3 Tiefe (Farbskala),
-                      // 4 Analysekarte grau (r), 5 Kantenkarte (Farbe = Richtung, Helligkeit = Stärke)
+                      // 4 Analysekarte grau (r), 5 Kantenkarte (Farbe = Richtung, Helligkeit = Stärke),
+                      // 6 Richtungsfeld (Farbe = Richtung, Helligkeit = Kohärenz)
   overlay_opacity: f32, // nur 4/5: Deckkraft der Karte über dem Bild
   _p2: f32,
   detail_origin: vec2f, // Ausschnitt in voller Auflösung: Ursprung der Textur in Leinwand-px
@@ -123,7 +124,9 @@ fn fs(@builtin(position) pos: vec4f) -> @location(0) vec4f {
         // Richtung (ohne Vorzeichen) als Farbton: Winkel 0..π → Farbkreis
         let h = atan2(t.y, t.x) * 2.0;
         let hue = 0.5 + 0.5 * vec3f(cos(h), cos(h - 2.094), cos(h + 2.094));
-        color = mix(color, srgb_to_linear(hue * e.r), view.overlay_opacity);
+        // Kanten: Helligkeit = Stärke; Richtungsfeld: überall definiert, Helligkeit = Kohärenz
+        let v = select(e.r, 0.35 + 0.65 * e.a, view.overlay > 5.5);
+        color = mix(color, srgb_to_linear(hue * v), view.overlay_opacity);
       }
     }
   }

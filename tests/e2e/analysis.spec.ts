@@ -4,6 +4,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import { PNG } from 'pngjs';
+import { flow as cpuFlow } from '../../src/effects/cpuAnalysis';
 import {
   canvasPixel,
   diffStats,
@@ -59,7 +60,7 @@ function sobelStrength(l: Float64Array, w: number, h: number): Float64Array {
   return out;
 }
 
-const readMap = (page: Page, kind: 'luminance' | 'edges') =>
+const readMap = (page: Page, kind: 'luminance' | 'edges' | 'flow') =>
   page.evaluate(async (k) => {
     const p = window.__bls.getProject();
     const e = window.__bls.getEngine();
@@ -173,9 +174,86 @@ test('Ansicht „Karten“ (Taste 5) mit Kartenwahl und Deckkraft', async ({ pag
   // Helligkeit grau: r = g = b
   expect(Math.max(...lumView) - Math.min(...lumView)).toBeLessThanOrEqual(2);
   expect(edges).not.toEqual(before);
+  await page.getByTestId('analysis-panel').getByRole('radio', { name: 'Richtungsfeld' }).click();
+  const flowView = await canvasPixel(page, 0.6, 0.5);
+  expect(flowView).not.toEqual(lumView);
   await page.getByTestId('analysis-opacity').getByLabel('Deckkraft Wert').fill('0');
   await page.keyboard.press('Enter');
   expect(await canvasPixel(page, 0.6, 0.5)).toEqual(before);
   await page.keyboard.press('1');
   await expect(page.getByTestId('analysis-panel')).toBeHidden();
+});
+
+test('Richtungsfeld (flow): GPU gleich CPU-Referenz, Effekt-Eingang auf Ebene und Gruppe, Kacheln nahtlos', async ({
+  page,
+}) => {
+  await openFixture(page, 'golden/architecture.png');
+  const img = PNG.sync.read(readFileSync(fixture('golden/architecture.png')));
+  const { width: w, height: h } = img;
+  const rgba = new Float32Array(w * h * 4);
+  for (let i = 0; i < w * h; i++) {
+    rgba[i * 4] = lin(img.data[i * 4] ?? 0);
+    rgba[i * 4 + 1] = lin(img.data[i * 4 + 1] ?? 0);
+    rgba[i * 4 + 2] = lin(img.data[i * 4 + 2] ?? 0);
+    rgba[i * 4 + 3] = 1;
+  }
+  const ref = cpuFlow(rgba, w, h);
+  const gf = await readMap(page, 'flow');
+  if (!gf) throw new Error('Karte fehlt');
+  // Winkel ohne Vorzeichen (Tangente ±t gleichwertig) dort, wo das Feld eindeutig ist
+  const diffs: number[] = [];
+  for (let i = 0; i < w * h; i++) {
+    if ((ref[i * 4 + 3] ?? 0) < 0.6) continue;
+    const a = Math.atan2((ref[i * 4 + 2] ?? 0) * 2 - 1, (ref[i * 4 + 1] ?? 0) * 2 - 1);
+    const b = Math.atan2((gf[i * 4 + 2] ?? 0) * 2 - 1, (gf[i * 4 + 1] ?? 0) * 2 - 1);
+    let d = Math.abs(a - b) % Math.PI;
+    d = Math.min(d, Math.PI - d);
+    diffs.push((d * 180) / Math.PI);
+  }
+  diffs.sort((x, y) => x - y);
+  const mean = diffs.reduce((s, v) => s + v, 0) / diffs.length;
+  const p95 = diffs[Math.floor(diffs.length * 0.95)] ?? 0;
+  console.log(
+    `Richtungsfeld GPU gegen CPU: ${diffs.length} Pixel, Mittel ${mean.toFixed(2)}°, p95 ${p95.toFixed(2)}°`,
+  );
+  expect(diffs.length).toBeGreaterThan(w * h * 0.2);
+  expect(mean).toBeLessThan(3);
+  expect(p95).toBeLessThan(10);
+
+  // Effekt-Eingang: Ebene und Gruppe zeigen dieselbe Karte, Kacheln nahtlos
+  await expect
+    .poll(() => page.evaluate(() => window.__bls.plugins.getState().plugins['zz-e2e-maps']?.status))
+    .toBe('ok');
+  const { layerId, fxId } = await page.evaluate(() => {
+    const layer = window.__bls.getProject()?.root.children[0];
+    if (!layer) throw new Error('keine Ebene');
+    const fxId = window.__bls.commands.addEffectCommand('zz-e2e-maps', layer.id);
+    if (!fxId) throw new Error('Effekt fehlt');
+    window.__bls.commands.setParamCommand(layer.id, fxId, 'show', 'flow', false);
+    return { layerId: layer.id, fxId };
+  });
+  const check = (out: PNG) => {
+    let worst = 0;
+    for (let i = 0; i < w * h; i++)
+      for (let c = 0; c < 3; c++)
+        worst = Math.max(worst, Math.abs((out.data[i * 4 + c] ?? 0) - 255 * (gf[i * 4 + c] ?? 0)));
+    return worst;
+  };
+  const onLayer = await renderExport(page);
+  expect(check(onLayer)).toBeLessThanOrEqual(1.5);
+  await page.evaluate(
+    ({ layerId, fxId }) => {
+      const root = window.__bls.getProject()?.root;
+      if (!root) throw new Error('kein Projekt');
+      window.__bls.commands.removeEffectCommand(layerId, fxId);
+      const id = window.__bls.commands.addEffectCommand('zz-e2e-maps', root.id);
+      if (!id) throw new Error('Effekt fehlt');
+      window.__bls.commands.setParamCommand(root.id, id, 'show', 'flow', false);
+    },
+    { layerId, fxId },
+  );
+  const onGroup = await renderExport(page);
+  expect(check(onGroup)).toBeLessThanOrEqual(1.5);
+  // Reichweite des Richtungsfelds (74 px) deckt die Glättung: gekachelt = am Stück
+  expect(diffStats(onGroup, await renderExport(page, 64)).max).toBe(0);
 });

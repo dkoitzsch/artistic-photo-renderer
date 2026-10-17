@@ -4,8 +4,8 @@ Grundlage: [spec-effekte-und-malvorlagen.md](spec-effekte-und-malvorlagen.md) Ab
 Entscheidungen in [DECISIONS.md](../DECISIONS.md) („E2: Grundsatzentscheidungen“). Freigabe durch den Nutzer am 17.10.2026.
 Jeder Schritt endet lauffähig, mit grünen Tests, aktueller `PROGRESS.md`, Commit und Push auf `main`.
 
-- [ ] 0. Plan, Entscheidungen, PROGRESS.md
-- [ ] 1. Analysekarte `flow` (GPU, Browser-CPU, Dienst, Abgleich-Tests), Ansicht „Fluss“; Kern: globale Effekte
+- [x] 0. Plan, Entscheidungen, PROGRESS.md
+- [x] 1. Analysekarte `flow` (GPU, Browser-CPU, Dienst, Abgleich-Tests), Ansicht „Fluss“; Kern: globale Effekte
       (Reichweite ≥ halbe Leinwand) im Export am Stück, Ausschnitt in voller Auflösung bei zu großer Fläche aus
 - [ ] 2. Digital & Glitch: `scanlines-crt`, `datamosh`, `displace`, `ascii` (neuer Parametertyp `text`, Glyphen-Atlas)
 - [ ] 3. Zeichnung & Grafik: `hatching`, `charcoal`, `blueprint`, `stipple` (Browser-CPU)

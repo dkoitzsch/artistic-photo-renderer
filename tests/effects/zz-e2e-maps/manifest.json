@@ -3,9 +3,15 @@
   "name": "E2E Karten",
   "version": "1.0.0",
   "category": "Test",
-  "inputs": ["source"],
+  "inputs": [
+    "source"
+  ],
   "passes": 1,
-  "requires": ["luminance", "edges"],
+  "requires": [
+    "luminance",
+    "edges",
+    "flow"
+  ],
   "params": [
     {
       "key": "show",
@@ -19,6 +25,10 @@
         {
           "value": "luminance",
           "label": "Helligkeit"
+        },
+        {
+          "value": "flow",
+          "label": "Richtungsfeld"
         }
       ],
       "default": "edges"

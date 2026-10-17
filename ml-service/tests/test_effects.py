@@ -189,6 +189,29 @@ def test_analysis_maps():
     assert e[10, 2, 0] == 0  # keine Kante in der Fläche
 
 
+def test_flow_map():
+    """Richtungsfeld: an einer senkrechten Kante senkrecht; in der Fläche daneben setzt sich die Richtung fort."""
+    img = np.zeros((96, 96, 4), dtype=np.float32)
+    img[:, 48:, :3] = 1
+    img[..., 3] = 1
+    f = analysis.flow(img)
+    assert f.shape == (96, 96, 4) and np.isfinite(f).all()
+    for x in (47, 30, 70):  # an der Kante und 18–22 px daneben (nur das ferne Feld reicht so weit)
+        ty = f[48, x, 2] * 2 - 1
+        assert abs(abs(ty) - 1) < 1e-3, (x, ty)
+        assert f[48, x, 3] > 0.95
+    # Kreis: Tangente steht senkrecht auf dem Radius
+    yy, xx = np.mgrid[0:96, 0:96]
+    disk = ((xx - 48) ** 2 + (yy - 48) ** 2 < 30**2).astype(np.float32)
+    img2 = np.repeat(disk[..., None], 4, axis=-1)
+    img2[..., 3] = 1
+    g = analysis.flow(img2)
+    for y, x in ((48, 18), (18, 48), (27, 27)):
+        t = g[y, x, 1:3] * 2 - 1
+        r = np.array([x - 48, y - 48], dtype=np.float32)
+        assert abs(float(t @ r)) / np.linalg.norm(r) < 0.1, (y, x, t)
+
+
 def test_low_poly_random_matches_browser():
     """Zufall der Punktauswahl bitgleich zu mulberry32 in src/effects/random.ts (Referenzwerte wie random.test.ts)."""
     import importlib.util

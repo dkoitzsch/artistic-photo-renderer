@@ -1,6 +1,7 @@
 // Kern-Pipelines (unabhängig von Plugins) und gemeinsam genutzte Hilfsobjekte.
 
 import type { BlendMode, MaskEdge } from '../state/project';
+import { FLOW_SIGMA_FAR, FLOW_SIGMA_NEAR } from '../effects/maps';
 import analysisWgsl from './shaders/analysis.wgsl?raw';
 import blendWgsl from './shaders/blend.wgsl?raw';
 import blendModesWgsl from './shaders/blendmodes.wgsl?raw';
@@ -156,7 +157,7 @@ export class GpuCore {
       'analysis',
       analysisWgsl,
       ['uniform', 'tex', 'tex', 'storage'],
-      ['tensor', 'edges'],
+      ['tensor', 'edges', 'flow'],
     );
     this.warpPipelines = new ModulePipelines(
       device,
@@ -504,6 +505,35 @@ export class GpuCore {
     run('edges', ts, luma, dst);
     this.pool.release(t);
     this.pool.release(ts);
+  }
+
+  /**
+   * Richtungsfeld (Analysekarte „flow“) aus einer Helligkeitskarte: r = Feldstärke, gb = Tangente (0.5 + 0.5·t),
+   * a = Kohärenz. Strukturtensor geglättet mit σ = 6 und σ = 24 Original-px, J = J6 + ¼·J24 (analysis.wgsl `flow`).
+   */
+  flowMap(frame: Frame, luma: GPUTexture, pxScale: number, dst: GPUTexture): void {
+    const { width, height } = dst;
+    const u = frame.uniform(new Float32Array([pxScale, 0, 0, 0]));
+    const run = (entry: string, a: GPUTexture, b: GPUTexture, out: GPUTexture) => {
+      this.analysis.run(
+        frame,
+        entry,
+        [{ buffer: u }, a.createView(), b.createView(), out.createView()],
+        width,
+        height,
+      );
+    };
+    const t = this.pool.acquire(width, height, 'tensor');
+    const near = this.pool.acquire(width, height, 'tensor-6');
+    const far = this.pool.acquire(width, height, 'tensor-24');
+    run('tensor', luma, luma, t);
+    // Radius = 3σ
+    this.gaussian(frame, t, near, Math.max(1.5, FLOW_SIGMA_NEAR * 3 * pxScale), 'clamp');
+    this.gaussian(frame, t, far, Math.max(1.5, FLOW_SIGMA_FAR * 3 * pxScale), 'clamp');
+    run('flow', near, far, dst);
+    this.pool.release(t);
+    this.pool.release(near);
+    this.pool.release(far);
   }
 
   /** Helligkeit (wahrgenommen, 0…1) eines Bildes; dst gleich groß wie src. */

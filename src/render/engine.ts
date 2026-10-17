@@ -39,7 +39,7 @@ export type FrameStats = { cpuMs: number; gpuMs: number; effectRuns: number };
 /** Prüfansicht über dem Ergebnis: Maske (rot = ausgeblendet) oder Fokuskarte */
 export type Overlay = {
   layerId: string;
-  kind: 'mask' | 'focus' | 'depth' | 'luminance' | 'edges';
+  kind: 'mask' | 'focus' | 'depth' | 'luminance' | 'edges' | 'flow';
   /** Deckkraft der Analysekarten-Ansicht (0..1) */
   opacity?: number;
 };
@@ -232,7 +232,7 @@ export class Engine {
         if (tex) {
           // mit Vorschau-Cache nie „owned“: der Cache hält die Textur bis zum nächsten Frame
           this.lastOverlay = tex.tex;
-          this.overlayKind = { mask: 1, focus: 2, depth: 3, luminance: 4, edges: 5 }[overlay.kind];
+          this.overlayKind = { mask: 1, focus: 2, depth: 3, luminance: 4, edges: 5, flow: 6 }[overlay.kind];
           this.overlayOpacity = overlay.opacity ?? 1;
         }
       }
@@ -392,6 +392,8 @@ export class Engine {
       width: Math.min(W, rect.x + rect.width + pad) - x0,
       height: Math.min(H, rect.y + rect.height + pad) - y0,
     };
+    // Globale Effekte (Kaleidoskop, Polarkoordinaten …) reichen über die ganze Leinwand: dann kein Ausschnitt
+    if (region.width * region.height > DETAIL_MAX_PIXELS * 2) return;
     const frame = new Frame(this.device, this.core.pool, 'detail');
     const opts = { scale: 1, canvasSize: [W, H] as [number, number], region, cache: null };
     const own = (res: { tex: GPUTexture; owned: boolean }): GPUTexture => {
@@ -453,6 +455,8 @@ export class Engine {
     // Ausrichtung auf 64 px, damit Pyramiden (Downsampling ×2) in allen Kacheln gleich liegen.
     const ALIGN = 64;
     const pad = Math.ceil((overlap + 8) / ALIGN) * ALIGN;
+    // Globale Effekte lesen fast die ganze Leinwand: jede Kachel wäre so groß wie das Bild – dann am Stück
+    if (2 * pad >= Math.max(W, H)) tileSize = Math.max(W, H);
     const tilesX = Math.ceil(W / tileSize);
     const tilesY = Math.ceil(H / tileSize);
     let done = 0;
@@ -549,7 +553,7 @@ export class Engine {
   async readMap(
     project: Project,
     layerId: string,
-    kind: 'luminance' | 'edges',
+    kind: 'luminance' | 'edges' | 'flow',
   ): Promise<Float32Array | null> {
     const { width: W, height: H } = project.canvas;
     const frame = new Frame(this.device, this.core.pool, 'read-map');
@@ -691,7 +695,8 @@ export class Engine {
     const temps: GPUTexture[] = [];
     let luminance: GPUTexture | undefined;
     let edges: GPUTexture | undefined;
-    if (need.includes('luminance') || need.includes('edges')) {
+    let flow: GPUTexture | undefined;
+    if (need.includes('luminance') || need.includes('edges') || need.includes('flow')) {
       luminance = this.core.pool.acquire(w, h, 'thumb-luma');
       temps.push(luminance);
       this.core.luma(frame, src, luminance);
@@ -699,6 +704,11 @@ export class Engine {
         edges = this.core.pool.acquire(w, h, 'thumb-edges');
         temps.push(edges);
         this.core.edgeMap(frame, luminance, s, edges);
+      }
+      if (need.includes('flow')) {
+        flow = this.core.pool.acquire(w, h, 'thumb-flow');
+        temps.push(flow);
+        this.core.flowMap(frame, luminance, s, flow);
       }
     }
     const out = this.runner.apply(
@@ -720,6 +730,7 @@ export class Engine {
         depth: this.core.black,
         ...(luminance ? { luminance } : {}),
         ...(edges ? { edges } : {}),
+        ...(flow ? { flow } : {}),
       },
       {
         scale: s,

@@ -57,7 +57,7 @@ export type MlTask = { id: number; label: string; detail: string; progress: numb
 export type ViewMode = 'result' | 'mask' | 'focus' | 'depth' | 'analysis';
 
 /** Ansicht „Analysekarte“: welche Karte, mit welcher Deckkraft (0..1) */
-export type AnalysisView = { map: 'luminance' | 'edges'; opacity: number };
+export type AnalysisView = { map: 'luminance' | 'edges' | 'flow'; opacity: number };
 
 /** Parallax-Vorschau (verändert das Projekt nicht) */
 export type ParallaxState = {

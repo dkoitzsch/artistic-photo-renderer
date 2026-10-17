@@ -16,6 +16,7 @@ export const BINDINGS = {
   srcB: 8,
   luminance: 9,
   edges: 10,
+  flow: 11,
 } as const;
 
 const HELPERS = /* wgsl */ `
@@ -35,6 +36,7 @@ struct PassData {
 @group(0) @binding(8) var src_b: texture_2d<f32>;      // zweiter Eingang (effect.ts: ctx.run(..., { srcB })), sonst = src
 @group(0) @binding(9) var map_luminance: texture_2d<f32>; // Analysekarte "luminance" (r, 0..1); nur mit requires
 @group(0) @binding(10) var map_edges: texture_2d<f32>;    // Analysekarte "edges" (r Stärke, gb Tangente, a Kohärenz)
+@group(0) @binding(11) var map_flow: texture_2d<f32>;     // Analysekarte "flow" (r Feldstärke, gb Tangente, a Kohärenz)
 
 fn src_size() -> vec2i {
   return vec2i(textureDimensions(src));
@@ -111,6 +113,31 @@ fn edge_tangent(p: vec2i) -> vec2f {
 }
 /** Kohärenz 0..1 (1 = klare Vorzugsrichtung). */
 fn edge_coherence(p: vec2i) -> f32 { return edges_raw(p).a; }
+
+fn flow_raw(p: vec2i) -> vec4f {
+  let s = vec2f(textureDimensions(map_flow));
+  let uv = (vec2f(p) + 0.5) / vec2f(src_size());
+  return textureLoad(map_flow, vec2i(clamp(uv * s, vec2f(0.0), s - 1.0)), 0);
+}
+/** Bilinear gelesenes Richtungsfeld an einer Position in Ausgabe-px (für Stromlinien, gleitende Positionen). */
+fn flow_raw_at(q: vec2f) -> vec4f {
+  let uv = q / vec2f(src_size());
+  return textureSampleLevel(map_flow, linear_sampler, uv, 0.0);
+}
+/** Einheitsvektor des Richtungsfelds ("requires": ["flow"]): entlang von Kanten, in Flächen großräumig fortgesetzt. */
+fn flow_tangent(p: vec2i) -> vec2f {
+  let t = flow_raw(p).gb * 2.0 - 1.0;
+  let l = length(t);
+  return select(vec2f(0.0, 1.0), t / l, l > 1e-4);
+}
+/** Richtungsfeld an einer gleitenden Position q (Ausgabe-px, Pixelmitte bei +0.5). */
+fn flow_tangent_at(q: vec2f) -> vec2f {
+  let t = flow_raw_at(q).gb * 2.0 - 1.0;
+  let l = length(t);
+  return select(vec2f(0.0, 1.0), t / l, l > 1e-4);
+}
+/** Kohärenz des Richtungsfelds 0..1. */
+fn flow_coherence(p: vec2i) -> f32 { return flow_raw(p).a; }
 
 /** Position eines Pixels auf der Leinwand in px bei voller Auflösung (für ortsfeste Muster wie Korn). */
 fn canvas_pos(p: vec2i) -> vec2f {

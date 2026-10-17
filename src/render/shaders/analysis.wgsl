@@ -69,3 +69,31 @@ fn edges(@builtin(global_invocation_id) id: vec3u) {
   let strength = clamp(length(sobel(src_b, p)) * 8.0, 0.0, 1.0);
   textureStore(dst, id.xy, vec4f(strength, 0.5 + 0.5 * t.x, 0.5 + 0.5 * t.y, coherence));
 }
+
+// flow: Richtungsfeld für Striche (Spec „Effekte“ 4, Edge Tangent Flow über geglättete Strukturtensoren).
+//   src = Tensor geglättet mit σ = 6, src_b = Tensor geglättet mit σ = 24 (Original-px); J = J6 + ¼·J24:
+//   nah an Kanten folgt die Richtung der Kante, in ruhigen Flächen setzt sich die großräumige Richtung fort.
+//   r = Feldstärke (√λ1 · 8, begrenzt), gb = Tangente (0.5 + 0.5·t), a = Kohärenz
+@compute @workgroup_size(8, 8)
+fn flow(@builtin(global_invocation_id) id: vec3u) {
+  let size = textureDimensions(dst);
+  if (id.x >= size.x || id.y >= size.y) { return; }
+  let p = vec2i(id.xy);
+  let j = textureLoad(src, p, 0).rgb + 0.25 * textureLoad(src_b, p, 0).rgb;
+  let e = j.r;
+  let f = j.g;
+  let g = j.b;
+  let d = sqrt(max((e - g) * (e - g) + 4.0 * f * f, 0.0));
+  let l1 = 0.5 * (e + g + d);
+  let l2 = 0.5 * (e + g - d);
+  var t = vec2f(l1 - e, -f);
+  let tl = length(t);
+  if (tl > 1e-12) {
+    t = t / tl;
+  } else {
+    t = vec2f(0.0, 1.0);
+  }
+  let coherence = select(0.0, (l1 - l2) / (l1 + l2), l1 + l2 > 1e-12);
+  let strength = clamp(sqrt(max(l1, 0.0)) * 8.0, 0.0, 1.0);
+  textureStore(dst, id.xy, vec4f(strength, 0.5 + 0.5 * t.x, 0.5 + 0.5 * t.y, coherence));
+}

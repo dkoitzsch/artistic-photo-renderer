@@ -22,6 +22,7 @@ export type AuxInputs = {
   depth: GPUTexture;
   luminance?: GPUTexture;
   edges?: GPUTexture;
+  flow?: GPUTexture;
 };
 
 export type EffectPlacement = {
@@ -73,6 +74,7 @@ export class EffectRunner {
         tex(BINDINGS.srcB),
         tex(BINDINGS.luminance),
         tex(BINDINGS.edges),
+        tex(BINDINGS.flow),
       ],
     });
     this.pipelineLayout = core.device.createPipelineLayout({ bindGroupLayouts: [this.bindGroupLayout] });
@@ -195,6 +197,7 @@ export class EffectRunner {
           { binding: BINDINGS.srcB, resource: (srcB ?? src).createView() },
           { binding: BINDINGS.luminance, resource: (aux.luminance ?? this.core.black).createView() },
           { binding: BINDINGS.edges, resource: (aux.edges ?? this.core.black).createView() },
+          { binding: BINDINGS.flow, resource: (aux.flow ?? this.core.black).createView() },
         ],
       });
       dispatch2d(frame, pipeline, bindGroup, dst.width, dst.height, `${plugin.folder}:${entryPoint}`);

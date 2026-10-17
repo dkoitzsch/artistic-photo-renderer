@@ -147,10 +147,11 @@ type Aux = {
   hasFocus: boolean;
   luminance?: GPUTexture;
   edges?: GPUTexture;
+  flow?: GPUTexture;
 };
 
 /** Karten, die als Effektmaske bzw. Effekt-Eingang aus einer Ebene entstehen. */
-type MapId = 'luminance' | 'edges' | 'depth';
+type MapId = 'luminance' | 'edges' | 'flow' | 'depth';
 
 /**
  * Lazy Zusatz-Eingänge einer Ebene: werden erst erzeugt, wenn ein Effekt wirklich rechnen muss.
@@ -197,9 +198,10 @@ export class Compositor {
       this.core.luma(frame, this.sources.at(frame, layer.originalId, lw, lh), out);
     });
     if (map === 'luminance') return { tex: luma, key: lumaKey };
-    const key = `edges|${layer.originalId}@${lw}x${lh}|ps${geo.pxScale.toFixed(5)}`;
+    const key = `${map}|${layer.originalId}@${lw}x${lh}|ps${geo.pxScale.toFixed(5)}`;
     const tex = this.sources.derive(key, lw, lh, (out) => {
-      this.core.edgeMap(frame, luma, geo.pxScale, out);
+      if (map === 'flow') this.core.flowMap(frame, luma, geo.pxScale, out);
+      else this.core.edgeMap(frame, luma, geo.pxScale, out);
     });
     return { tex, key };
   }
@@ -211,16 +213,25 @@ export class Compositor {
     opts: RenderOptions,
     need: readonly string[],
     owned: GPUTexture[],
-  ): { luminance?: GPUTexture; edges?: GPUTexture } {
-    if (!need.includes('luminance') && !need.includes('edges')) return {};
+  ): { luminance?: GPUTexture; edges?: GPUTexture; flow?: GPUTexture } {
+    if (!need.includes('luminance') && !need.includes('edges') && !need.includes('flow')) return {};
     const luma = this.core.pool.acquire(src.width, src.height, 'input-luma');
     owned.push(luma);
     this.core.luma(frame, src, luma);
-    if (!need.includes('edges')) return { luminance: luma };
-    const edges = this.core.pool.acquire(src.width, src.height, 'input-edges');
-    owned.push(edges);
-    this.core.edgeMap(frame, luma, opts.scale, edges);
-    return { luminance: luma, edges };
+    const out: { luminance?: GPUTexture; edges?: GPUTexture; flow?: GPUTexture } = { luminance: luma };
+    if (need.includes('edges')) {
+      const edges = this.core.pool.acquire(src.width, src.height, 'input-edges');
+      owned.push(edges);
+      this.core.edgeMap(frame, luma, opts.scale, edges);
+      out.edges = edges;
+    }
+    if (need.includes('flow')) {
+      const flow = this.core.pool.acquire(src.width, src.height, 'input-flow');
+      owned.push(flow);
+      this.core.flowMap(frame, luma, opts.scale, flow);
+      out.flow = flow;
+    }
+    return out;
   }
 
   /**
@@ -445,14 +456,14 @@ export class Compositor {
     frame: Frame,
     project: Project,
     layerId: string,
-    kind: 'mask' | 'focus' | 'depth' | 'luminance' | 'edges',
+    kind: 'mask' | 'focus' | 'depth' | 'luminance' | 'edges' | 'flow',
     opts: RenderOptions,
   ): { tex: GPUTexture; owned: boolean } | null {
     this.use(project);
     const layer =
       kind === 'depth'
         ? findDepthLayer(project, layerId)
-        : kind === 'luminance' || kind === 'edges'
+        : kind === 'luminance' || kind === 'edges' || kind === 'flow'
           ? findFirstLayer(project, layerId)
           : findLayer(project, layerId);
     if (!layer) return null;
@@ -467,7 +478,7 @@ export class Compositor {
       return { tex: r.tex, owned: false };
     };
     const regionKey = `[${opts.region.x},${opts.region.y},${opts.region.width},${opts.region.height}]`;
-    if (kind === 'luminance' || kind === 'edges') {
+    if (kind === 'luminance' || kind === 'edges' || kind === 'flow') {
       const map = this.layerMap(frame, layer, geo, kind);
       return map
         ? keep(`${map.key}${geo.key}${regionKey}`, () => this.place(frame, geo, map.tex, opts, 'map-view'))
@@ -615,7 +626,7 @@ export class Compositor {
     let aux: Aux | null = null;
     // Analysekarten der Ebene (aus dem Original, im Ebenenraum gecacht) bei Bedarf platzieren
     const addMaps = (a: Aux, need: readonly string[]) => {
-      for (const id of ['luminance', 'edges'] as const) {
+      for (const id of ['luminance', 'edges', 'flow'] as const) {
         if (!need.includes(id) || a[id]) continue;
         const map = this.layerMap(frame, layer, geo, id);
         if (!map) continue;

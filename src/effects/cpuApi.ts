@@ -24,6 +24,8 @@ export interface CpuEffectContext {
   /** Analysekarten wie im Browser/Dienst: Helligkeit (w·h) und Kanten (w·h·4: Stärke, Tangente, Kohärenz) */
   luminance(): Float32Array;
   edges(): Float32Array;
+  /** Richtungsfeld (w·h·4: Feldstärke, Tangente, Kohärenz) */
+  flow(): Float32Array;
 }
 
 export type CpuEffectModule = {

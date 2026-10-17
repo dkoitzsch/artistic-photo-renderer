@@ -18,9 +18,10 @@ export function AnalysisPanel() {
         options={[
           { value: 'luminance', label: 'Helligkeit' },
           { value: 'edges', label: 'Kanten' },
+          { value: 'flow', label: 'Richtungsfeld' },
         ]}
         onChange={(v) => {
-          set({ map: v as 'luminance' | 'edges' });
+          set({ map: v as 'luminance' | 'edges' | 'flow' });
         }}
       />
       <Slider
@@ -39,7 +40,9 @@ export function AnalysisPanel() {
       <p className="section-note">
         {view.map === 'edges'
           ? 'Helligkeit = Kantenstärke, Farbe = Kantenrichtung.'
-          : 'Wahrgenommene Helligkeit des Originals der Ebene.'}
+          : view.map === 'flow'
+            ? 'Farbe = Strichrichtung (folgt Kanten, in Flächen großräumig), Helligkeit = Eindeutigkeit.'
+            : 'Wahrgenommene Helligkeit des Originals der Ebene.'}
       </p>
     </div>
   );
