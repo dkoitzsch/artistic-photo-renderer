@@ -7,6 +7,7 @@ import { EFFECT_DRAG_TYPE, EffectCard } from './EffectCard';
 import { PlusIcon } from './Icons';
 import { FocusSection, MaskSection, NodeSection, ShadowParams, ShadowSection } from './LayerSections';
 import { TransformSection } from './TransformSection';
+import { StackPresetMenu } from './PresetMenus';
 
 function EffectStack({
   hostId,
@@ -123,9 +124,12 @@ export function Inspector() {
       {host.kind === 'group' && host.id !== project.root.id && (
         <GroupEditSection key={`group-${host.id}`} group={host} />
       )}
-      <h3 className="section-title">
-        {host.kind === 'group' ? 'Effekte auf das Gruppenergebnis' : 'Effekte'}
-      </h3>
+      <div className="section-title-row">
+        <h3 className="section-title">
+          {host.kind === 'group' ? 'Effekte auf das Gruppenergebnis' : 'Effekte'}
+        </h3>
+        <StackPresetMenu hostId={hostId} effects={host.effects} />
+      </div>
       <EffectStack hostId={hostId} effects={host.effects} groupMode={inGroupMode} />
     </div>
   );

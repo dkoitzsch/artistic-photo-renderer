@@ -2,7 +2,6 @@ import { useRef, useState, type DragEvent } from 'react';
 import { parseCondition } from '../../effects/expr';
 import { usePluginStore } from '../../effects/pluginStore';
 import {
-  applyPresetCommand,
   endGesture,
   removeEffectCommand,
   resetEffectCommand,
@@ -14,6 +13,7 @@ import {
 import type { EffectInstance } from '../../state/project';
 import { ParamControl } from '../controls/ParamControl';
 import { EffectMixSection } from './EffectMixSection';
+import { EffectPresetMenu } from './PresetMenus';
 import { Slider } from '../controls/Slider';
 import {
   ChevronDownIcon,
@@ -137,29 +137,10 @@ export function EffectCard({
 
       {open && manifest && (
         <div className="effect-card-body">
-          {manifest.presets && manifest.presets.length > 0 && (
-            <div className="control-row">
-              <span className="control-label">Preset</span>
-              <select
-                className="select"
-                aria-label="Preset"
-                value=""
-                onChange={(e) => {
-                  const preset = manifest.presets?.find((p) => p.name === e.target.value);
-                  if (preset) applyPresetCommand(nodeId, effect.instanceId, preset.name, preset.values);
-                }}
-              >
-                <option value="" disabled>
-                  Auswählen …
-                </option>
-                {manifest.presets.map((p) => (
-                  <option key={p.name} value={p.name}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+          <div className="control-row">
+            <span className="control-label">Preset</span>
+            <EffectPresetMenu nodeId={nodeId} effect={effect} manifest={manifest} />
+          </div>
           {manifest.params
             .filter((p) => visible(p.key))
             .map((spec) => {

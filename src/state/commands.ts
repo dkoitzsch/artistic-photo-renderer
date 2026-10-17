@@ -41,6 +41,7 @@ import {
   type Project,
 } from './project';
 import { getProject, newHistory, useAppStore } from './store';
+import { instancesFrom, type StackPreset } from '../presets/model';
 
 /** Wendet eine Änderung an. Gleicher coalesceKey innerhalb einer Geste → ein History-Eintrag. */
 export function commit(label: string, fn: (p: Project) => Project, coalesceKey?: string): void {
@@ -502,4 +503,20 @@ export function stepNodeCommand(dir: 1 | -1): void {
 export function edgeNodeCommand(dir: 1 | -1): void {
   const id = useAppStore.getState().selectedNodeId;
   if (id) commit(dir === 1 ? 'Ganz nach vorn' : 'Ganz nach hinten', (p) => moveToEdge(p, id, dir));
+}
+
+// ---------- Presets ----------
+
+/** Stapel-Preset auf einen Effekt-Träger anwenden: ersetzen oder anhängen (ein Undo-Schritt). */
+export function applyStackPresetCommand(
+  nodeId: string,
+  preset: StackPreset,
+  mode: 'replace' | 'append',
+): void {
+  commit(`Stapel-Preset „${preset.name}“ ${mode === 'replace' ? 'angewendet' : 'angehängt'}`, (p) =>
+    updateHost(p, nodeId, (h) => {
+      const added = instancesFrom(preset.effects, newId);
+      return { ...h, effects: mode === 'replace' ? added : [...h.effects, ...added] };
+    }),
+  );
 }

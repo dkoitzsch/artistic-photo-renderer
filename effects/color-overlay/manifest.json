@@ -100,5 +100,24 @@
     "color": "!duotone",
     "shadowColor": "duotone",
     "highlightColor": "duotone"
-  }
+  },
+  "presets": [
+    {
+      "name": "Warmer Abend",
+      "values": {
+        "color": [0.95, 0.6, 0.3],
+        "opacity": 30,
+        "mode": "soft-light",
+        "duotone": false
+      }
+    },
+    {
+      "name": "Nachtblau (Duoton)",
+      "values": {
+        "duotone": true,
+        "shadowColor": [0.05, 0.07, 0.2],
+        "highlightColor": [0.7, 0.85, 1.0]
+      }
+    }
+  ]
 }

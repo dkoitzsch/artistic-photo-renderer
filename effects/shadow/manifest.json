@@ -107,5 +107,21 @@
   "visibleIf": {
     "groundLine": "shadowScale!=100"
   },
-  "reach": "distance * 2.5 + softness + 24 + abs(shadowScale - 100) / 100 * canvasHeight + abs(tilt) / 60 * canvasHeight + 4"
+  "reach": "distance * 2.5 + softness + 24 + abs(shadowScale - 100) / 100 * canvasHeight + abs(tilt) / 60 * canvasHeight + 4",
+  "presets": [
+    {
+      "name": "Weich",
+      "values": {
+        "softness": 60,
+        "distance": 30
+      }
+    },
+    {
+      "name": "Hart",
+      "values": {
+        "softness": 5,
+        "distance": 20
+      }
+    }
+  ]
 }

@@ -1,6 +1,6 @@
 // Zentrale Render-Engine: Originale, Plugins, Compositor, Vorschau (mit Cache), Anzeige und Export.
 
-import { defaultParams } from '../effects/manifest';
+import { defaultParams, type ParamValue } from '../effects/manifest';
 import { usePluginStore, type Plugin } from '../effects/pluginStore';
 import { findNode, firstLayer, type Group, type Project, type SceneNode } from '../state/project';
 import type { View } from '../state/viewMath';
@@ -413,8 +413,13 @@ export class Engine {
     return { pixels: await this.encode(t, [0, 0], t.width, t.height), width: t.width, height: t.height };
   }
 
-  /** Live-Miniatur: ein Effekt mit Standardwerten auf der ersten Ebene des Projekts. */
-  async effectThumbnail(project: Project, plugin: Plugin, edge = 160): Promise<ImageData | null> {
+  /** Live-Miniatur: ein Effekt mit Standardwerten (oder values) auf der ersten Ebene des Projekts. */
+  async effectThumbnail(
+    project: Project,
+    plugin: Plugin,
+    edge = 160,
+    values: Record<string, ParamValue> = {},
+  ): Promise<ImageData | null> {
     const layer = firstLayer(project);
     if (!layer || !plugin.manifest || plugin.status !== 'ok' || !this.runner.isCompiled(plugin)) return null;
     if (!this.sources.has(layer.originalId)) return null;
@@ -432,7 +437,7 @@ export class Engine {
         effectVersion: plugin.manifest.version,
         enabled: true,
         strength: 1,
-        params: defaultParams(plugin.manifest),
+        params: { ...defaultParams(plugin.manifest), ...values },
         region: 'whole',
       },
       src,

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { startAutosave } from '../io/autosave';
+import { loadPresets } from '../presets/store';
 import { startServiceMonitor } from '../ml/backend';
 import { browserDownload } from '../ml/browserBackend';
 import { openStoredProject } from '../io/import';
@@ -52,6 +53,9 @@ export function App() {
 
   useEffect(() => {
     void startup();
+    void loadPresets().then((err) => {
+      if (err) useAppStore.getState().notify('error', err);
+    });
     const stopSession = startSessionMemory();
     const stopMonitor = startServiceMonitor();
     const stopAutosave = startAutosave();

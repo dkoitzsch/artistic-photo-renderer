@@ -58,5 +58,23 @@
       "type": "bool",
       "default": false
     }
+  ],
+  "presets": [
+    {
+      "name": "Morgendunst",
+      "values": {
+        "amount": 30,
+        "desaturate": 40,
+        "lift": 20
+      }
+    },
+    {
+      "name": "Dichter Nebel",
+      "values": {
+        "amount": 75,
+        "desaturate": 80,
+        "lift": 50
+      }
+    }
   ]
 }

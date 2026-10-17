@@ -71,5 +71,27 @@
       "default": "mirror"
     }
   ],
-  "reach": "radius"
+  "reach": "radius",
+  "presets": [
+    {
+      "name": "Weich",
+      "values": {
+        "radius": 8
+      }
+    },
+    {
+      "name": "Stark",
+      "values": {
+        "radius": 60
+      }
+    },
+    {
+      "name": "Fokus scharf, Rest weich",
+      "values": {
+        "radius": 40,
+        "focusBlur": 0,
+        "focusSoftness": 70
+      }
+    }
+  ]
 }

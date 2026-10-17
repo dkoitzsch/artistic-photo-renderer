@@ -9,6 +9,7 @@ import { browserDepth } from './ml/browserBackend';
 import { modelById } from './ml/registry';
 import * as split from './ml/split';
 import { getEngine } from './render/runtime';
+import { presetsSaved, usePresetStore } from './presets/store';
 import * as commands from './state/commands';
 import { findNode, newId, replaceNode } from './state/project';
 import { getProject, useAppStore } from './state/store';
@@ -47,5 +48,6 @@ export function installDebugApi(): void {
     exportSettings,
     renderPng,
     ml: { detectLandmarks, split, splitWithMask, browserDepth, modelById },
+    presets: { store: usePresetStore, saved: presetsSaved },
   };
 }

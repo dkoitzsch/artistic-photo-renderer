@@ -9,7 +9,7 @@ Grundlage: [spec-effekte-und-malvorlagen.md](spec-effekte-und-malvorlagen.md), E
       `palette`, `image`; Bestandseffekte migriert
 - [x] 3. Maske und Mischmodus je Effekt (Projektformat 5, Migration)
 - [x] 4. Seed: Würfel-Knopf, Zufall nach Leinwandposition (kachel- und vorschaustabil)
-- [ ] 5. Presets: eigene Presets mit Vorschaubild, Stapel-Presets (OPFS, Export/Import), ≥ 2 Presets je Effekt
+- [x] 5. Presets: eigene Presets mit Vorschaubild, Stapel-Presets (OPFS, Export/Import), ≥ 2 Presets je Effekt
 - [ ] 6. Analysekarten `luminance`, `edges` im Browser; Effekt-Eingang über `requires`; Ansicht „Analysekarte“; Karte als
       Effektmaske
 - [ ] 7. Dienst: Effekt-Registry (gleiche Manifeste + `effect.py`), `PUT /images/{sha}`, `POST /effects/{id}/render`,

@@ -4,6 +4,7 @@
 //   thumbs/<id>.webp        Miniatur für die Projektübersicht
 //   masks/<id>.png          16-Bit-Masken (unveränderlich, jede Änderung = neue ID)
 //   depth/<id>.png          16-Bit-Tiefenkarten (0 = nah … 1 = fern)
+//   presets/presets.json    eigene Effekt- und Stapel-Presets (projektübergreifend)
 
 import { depthIds, maskIds, type Project } from '../state/project';
 import { parseProject } from './projectSchema';
@@ -68,6 +69,15 @@ export async function saveMask(id: string, png: Uint8Array<ArrayBuffer>): Promis
 export async function loadMask(id: string): Promise<Uint8Array | null> {
   const f = await readFile(await dir('masks'), `${id}.png`);
   return f ? new Uint8Array(await f.arrayBuffer()) : null;
+}
+
+export async function savePresetsFile(json: string): Promise<void> {
+  await writeFile(await dir('presets'), 'presets.json', json);
+}
+
+export async function loadPresetsFile(): Promise<string | null> {
+  const f = await readFile(await dir('presets'), 'presets.json');
+  return f ? f.text() : null;
 }
 
 export async function saveProject(project: Project): Promise<void> {

@@ -55,5 +55,21 @@
       "unit": "%"
     }
   ],
-  "reach": "length / 2 + 2"
+  "reach": "length / 2 + 2",
+  "presets": [
+    {
+      "name": "Wisch waagerecht",
+      "values": {
+        "length": 60,
+        "angle": 0
+      }
+    },
+    {
+      "name": "Fall diagonal",
+      "values": {
+        "length": 90,
+        "angle": 60
+      }
+    }
+  ]
 }

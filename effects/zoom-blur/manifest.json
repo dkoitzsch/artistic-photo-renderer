@@ -65,5 +65,19 @@
       "unit": "%"
     }
   ],
-  "reach": "amount / 100 * max(canvasWidth, canvasHeight) + 2"
+  "reach": "amount / 100 * max(canvasWidth, canvasHeight) + 2",
+  "presets": [
+    {
+      "name": "Sanft",
+      "values": {
+        "amount": 8
+      }
+    },
+    {
+      "name": "Sog",
+      "values": {
+        "amount": 35
+      }
+    }
+  ]
 }

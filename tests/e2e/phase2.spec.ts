@@ -388,6 +388,8 @@ test('Vorschau 2048 px mit Fokus-Unschärfe, Linse und Schatten: ≥ 30 fps beim
   page,
   context,
 }, testInfo) => {
+  // Messung selbst ist kurz; im langen Gesamtlauf braucht das Aufwärmen der Pipelines unter Last mehr Zeit
+  test.setTimeout(90_000);
   await setup(context);
   await waitForApp(page);
   const W = 2048;

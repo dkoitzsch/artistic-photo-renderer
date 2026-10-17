@@ -95,5 +95,24 @@
     "rotation": "shape=hexagon",
     "threshold": "highlights!=0"
   },
-  "reach": "radius"
+  "reach": "radius",
+  "presets": [
+    {
+      "name": "Porträt",
+      "values": {
+        "radius": 25,
+        "shape": "disc",
+        "highlights": 30
+      }
+    },
+    {
+      "name": "Lichter-Bokeh",
+      "values": {
+        "radius": 45,
+        "shape": "hexagon",
+        "highlights": 80,
+        "threshold": 60
+      }
+    }
+  ]
 }
