@@ -18,7 +18,8 @@ function checkEffects(v: unknown, where: string): void {
     if (!isObj(e) || !isStr(e.instanceId) || !isStr(e.effectId) || !isObj(e.params) || !isNum(e.strength))
       fail(`${where}.effects[${i}] unvollständig`);
     const at = `${where}.effects[${i}]`;
-    if (e.blendMode !== undefined && !BLEND_MODES.includes(e.blendMode as never)) fail(`${at}.blendMode unbekannt`);
+    if (e.blendMode !== undefined && !BLEND_MODES.includes(e.blendMode as never))
+      fail(`${at}.blendMode unbekannt`);
     const m = e.mask;
     if (m === undefined) return;
     if (!isObj(m)) fail(`${at}.mask ungültig`);
@@ -37,7 +38,16 @@ function checkEffects(v: unknown, where: string): void {
   });
 }
 
-const BLEND_MODES = ['normal', 'multiply', 'screen', 'overlay', 'soft-light', 'lighten', 'darken', 'difference'];
+const BLEND_MODES = [
+  'normal',
+  'multiply',
+  'screen',
+  'overlay',
+  'soft-light',
+  'lighten',
+  'darken',
+  'difference',
+];
 
 function checkProvenance(v: unknown, where: string): void {
   if (!isObj(v) || !isStr(v.modelId) || typeof v.commercialUse !== 'boolean')
