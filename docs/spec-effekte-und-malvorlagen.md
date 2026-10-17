@@ -45,6 +45,13 @@ Jeder Effekt ist ein eigenständiges Modul mit einheitlicher Schnittstelle (sieh
 - Effekte sind **stapelbar** und in der Reihenfolge änderbar.
 - Ziel: Kombinationen wie „Halbton nur im Hintergrund, Tusche-Linien im Vordergrund, Ölmalerei auf der Person“.
 
+### 2.2a Gruppen (Ergänzung vom 17.10.2026, gilt ab Phase E1)
+- Ebenen lassen sich zu **Gruppen** zusammenfassen, auch **verschachtelt**.
+- **Effekte, Masken, Deckkraft und Blend-Modes** sind auch auf Gruppen anwendbar: Die Gruppe wird **zuerst zusammengeführt**, dann wirken ihre Effekte auf das Ergebnis, danach Maske, Deckkraft und Blend-Mode der Gruppe.
+- Effekte auf Gruppen haben wie alle Effekte eine eigene Maske (auch aus Analysekarten des zusammengeführten Ergebnisses) und einen eigenen Blend-Mode.
+- Im **PSD-Export** werden Gruppen als **Ebenengruppen** ausgegeben (siehe Abschnitt 9).
+- Hinweis zum Bestand: Gruppen, Verschachtelung, Gruppeneffekte, Deckkraft und Blend-Mode von Gruppen existieren bereits (ursprüngliche Spec, Phase 3). Ergänzt werden die Maske der Gruppe, Kartenmasken für Effekte auf Gruppen und die PSD-Ausgabe von Gruppen mit Effekten als Ebenengruppe.
+
 ### 2.3 Zwei Ausführungsorte
 | Ort | Wofür | Beispiele |
 |---|---|---|
@@ -356,6 +363,7 @@ Aus dem aktuellen Ergebnis (beliebiger Effekt-Stapel oder Originalbild) eine pra
 
 ### Export & Kompatibilität
 - Effekt-Ebenen werden im **PSD-Export** als gerasterte Ebenen mit Ebenennamen = Effektname ausgegeben, Masken als Ebenenmasken.
+- **Gruppen** werden als **PSD-Ebenengruppen** ausgegeben – auch Gruppen mit Effekten: Die Gruppe enthält ihre Kinder und darüber je Effekt eine gerasterte Ebene (Name = Effektname, Effektmaske als Ebenenmaske, Blend-Mode übernommen). Maske, Deckkraft und Blend-Mode der Gruppe werden zur Maske, Deckkraft und zum Blend-Mode der PSD-Gruppe.
 - Die **Parallax-Vorschau** soll mit Effekt-Ebenen weiter funktionieren; tiefenbasierte Effekte nutzen nach Möglichkeit dieselbe Tiefenkarte.
 - Projektdateien enthalten eine Versionsnummer; alte Projekte müssen nach Updates ladbar bleiben (Migration über `EffectDefinition.version`).
 
@@ -377,6 +385,7 @@ Jede Phase endet mit: lauffähigem Stand, grünen Tests, kurzer Änderungsnotiz 
 - Analysekarten `luminance`, `edges`
 - Effekte: `pixel-sort`, `rgb-split`, `dither`, `pixelate`, `ink-lines`, `comic`, `kuwahara`, `halftone-cmyk`, `film-grain`, `low-poly`, `posterize-palette`, `bloom`, `tilt-shift`, `double-exposure`
 - PSD-Export der Effekt-Ebenen
+- Gruppen (Ergänzung 2.2a): Maske auf Gruppen, Effekte mit Masken und Blend-Modes auf Gruppen, PSD-Ausgabe als Ebenengruppen
 - Golden-Image-Testinfrastruktur
 **Abnahme:** Mindestens drei Effekte gleichzeitig auf unterschiedlichen, maskierten Ebenen kombinierbar; Export als PSD und PNG in voller Auflösung.
 

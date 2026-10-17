@@ -12,6 +12,8 @@ Grundlage: [spec-effekte-und-malvorlagen.md](spec-effekte-und-malvorlagen.md), E
 - [x] 5. Presets: eigene Presets mit Vorschaubild, Stapel-Presets (OPFS, Export/Import), ≥ 2 Presets je Effekt
 - [x] 6. Analysekarten `luminance`, `edges` im Browser; Effekt-Eingang über `requires`; Ansicht „Analysekarte“; Karte als
       Effektmaske
+- [ ] 6a. Gruppen (Spec-Ergänzung 2.2a): eigene Maske auf Gruppen (Ebenenmaske oder Kartenbereich des
+      Gruppenergebnisses), Kartenmasken für Effekte auf Gruppen, Oberfläche, Tests
 - [ ] 7. Dienst: Effekt-Registry (gleiche Manifeste + `effect.py`), `PUT /images/{sha}`, `POST /effects/{id}/render`,
       `GET`/`DELETE /jobs/{id}`, Hash-Cache, Lizenzprüfung
 - [ ] 8. Asynchrone Effekte im Browser (Ausführungsorte „python“ und „browser-cpu“), Job-Anzeige mit Abbruch,
@@ -21,7 +23,7 @@ Grundlage: [spec-effekte-und-malvorlagen.md](spec-effekte-und-malvorlagen.md), E
 - [ ] 11. Effekt: `kuwahara` (anisotrop)
 - [ ] 12. Effekte: `dither`, `pixel-sort`, `low-poly`
 - [ ] 13. Effekt: `double-exposure`
-- [ ] 14. PSD: Option „Effekte als eigene Ebenen“
+- [ ] 14. PSD: Option „Effekte als eigene Ebenen“; Gruppen (auch mit Effekten) als Ebenengruppen mit Gruppenmaske
 - [ ] 15. Effekt-Browser: Kennzeichen (Kosten, Lizenz, Karten), Ausschnitt-Vorschau, Sperre im kommerziellen Modus,
       Gruppe „Erweitert“
 - [ ] 16. Ausschnitt in voller Auflösung beim Hineinzoomen

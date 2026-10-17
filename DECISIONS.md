@@ -10,6 +10,17 @@ Abweichungen von der Spec und Festlegungen bei unklaren Anforderungen. Neueste o
 - **Betrifft:** (Spec-Abschnitt / Phase)
 -->
 
+## 2026-10-17 – Spec-Ergänzung Gruppen (2.2a): Abgleich mit dem Bestand
+
+- **Vorhanden:** Gruppen inkl. Verschachtelung, Gruppieren/Auflösen/Ziehen (Phase 3), Effekte auf Gruppen (wirken auf das
+  zusammengeführte Ergebnis), Deckkraft und Mischmodus von Gruppen (Gruppen werden isoliert zusammengeführt).
+- **Ergänzt in E1:** `Group.mask` (gleiche Maskenarten wie Effektmasken: Maske einer Ebene oder Bereich von Helligkeit/
+  Kantenstärke/Tiefe – bei Gruppen aus dem zusammengeführten Ergebnis vor den Gruppeneffekten), Kartenmasken für Effekte
+  auf Gruppen (aus dem Eingang des Effekts), PSD: Gruppen mit Effekten bleiben Ebenengruppen (Kinder + je Effekt eine
+  gerasterte Ebene), Gruppenmaske als Maske der PSD-Gruppe.
+- **Reihenfolge in der Gruppe:** zusammenführen → Gruppeneffekte → Gruppenmaske → Deckkraft/Mischmodus in die Elterngruppe.
+- **Begriff:** Der „Gruppenmodus“ (Gruppe/Einzeln, Parameter an alle Kinder) bleibt davon unabhängig.
+
 ## 2026-10-17 – Erweiterung „Effekte & Malvorlagen“ (E1–E5): Grundsatzentscheidungen
 
 Vom Nutzer freigegeben (alle Vorschläge aus der Analyse übernommen); Spec: `docs/spec-effekte-und-malvorlagen.md`.
