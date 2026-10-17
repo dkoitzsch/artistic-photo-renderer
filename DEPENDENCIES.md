@@ -1,7 +1,8 @@
 # Bibliotheken und Lizenzen
 
 Geprüft an der Quelle (npm-Metadaten und LICENSE-Datei im Quell-Repository). Modelle und ML-Bibliotheken stehen
-gesondert in `models/registry.json` und `MODELS.md` (ab Phase 2).
+gesondert in `models/registry.json` und `MODELS.md` (ab Phase 2). Gesamtübersicht inkl. Python-Dienst:
+[LICENSES-THIRD-PARTY.md](LICENSES-THIRD-PARTY.md).
 
 ## Laufzeit (im ausgelieferten Bundle)
 
@@ -11,6 +12,7 @@ gesondert in `models/registry.json` und `MODELS.md` (ab Phase 2).
 | zustand                    | 5.0.15  | MIT                     | github.com/pmndrs/zustand                | 2026-10-14 |
 | @radix-ui/react-dialog     | 1.3.1   | MIT                     | github.com/radix-ui/primitives (LICENSE) | 2026-10-14 |
 | fflate                     | 0.8.3   | MIT                     | github.com/101arrowz/fflate (LICENSE)    | 2026-10-14 |
+| fast-png                   | 8.0.0   | MIT                     | github.com/image-js/fast-png (LICENSE)   | 2026-10-17 |
 | @fontsource-variable/inter | 5.3.0   | OFL-1.1 (Schrift Inter) | github.com/fontsource/fontsource         | 2026-10-14 |
 | ag-psd                     | 31.0.3  | MIT                     | github.com/Agamnentzar/ag-psd (LICENSE)  | 2026-10-14 |
 

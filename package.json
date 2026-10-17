@@ -20,7 +20,8 @@
     "dev:web": "vite",
     "service": "uv run --project ml-service ml-service",
     "test:service": "uv run --project ml-service pytest -q",
-    "models:fetch": "node scripts/fetch-models.mjs"
+    "models:fetch": "node scripts/fetch-models.mjs",
+    "test:effects": "playwright test tests/e2e/effects.spec.ts"
   },
   "dependencies": {
     "@fontsource-variable/inter": "5.3.0",

@@ -3,7 +3,7 @@
 Grundlage: [spec-effekte-und-malvorlagen.md](spec-effekte-und-malvorlagen.md), Entscheidungen vom 17.10.2026 in
 [DECISIONS.md](../DECISIONS.md). Jeder Schritt endet lauffähig, mit grünen Tests, Commit und Push auf `main`.
 
-- [ ] 1. Testgrundlage: Architektur-Testbild (CC0), Golden-Helfer für Effekte (Parameter, Seed, Toleranz, NaN/Rand-Prüfung),
+- [x] 1. Testgrundlage: Architektur-Testbild (CC0), Golden-Helfer für Effekte (Parameter, Seed, Toleranz, NaN/Rand-Prüfung),
       `LICENSES-THIRD-PARTY.md`
 - [ ] 2. Manifest v2: `implementations`, `license`, `cost`, `randomized`, `requires`, Parameter-`group`, Typen `seed`,
       `palette`, `image`; Bestandseffekte migriert

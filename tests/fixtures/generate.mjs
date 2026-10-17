@@ -54,3 +54,14 @@ console.log('geschrieben:', out.pathname);
   writeFileSync(out2, PNG.sync.write(img));
   console.log('geschrieben:', out2.pathname);
 }
+
+// Gleichmäßig graue Fläche: Randprüfung der Effekte (eine Fläche muss bis zum Rand gleichmäßig bleiben)
+{
+  const W3 = 160;
+  const H3 = 120;
+  const img = new PNG({ width: W3, height: H3 });
+  for (let i = 0; i < W3 * H3; i++) img.data.set([128, 128, 128, 255], i * 4);
+  const out3 = new URL('./golden/flat-gray.png', import.meta.url);
+  writeFileSync(out3, PNG.sync.write(img));
+  console.log('geschrieben:', out3.pathname);
+}

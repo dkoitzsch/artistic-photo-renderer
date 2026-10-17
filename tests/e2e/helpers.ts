@@ -20,9 +20,15 @@ export async function waitForApp(page: Page): Promise<void> {
 
 export async function openFixture(page: Page, name = 'synthetic-400x300.png'): Promise<void> {
   if (await page.getByTestId('project-overview').count()) await page.getByText('Zur Arbeitsfläche').click();
+  const before = await page.evaluate(() => (window as Partial<Window>).__bls?.getProject()?.id ?? null);
   const chooser = page.waitForEvent('filechooser');
-  await page.getByTestId('open-button').click();
+  // ohne Projekt: Knopf im leeren Zustand; mit offenem Projekt: ⌘O (neues Projekt)
+  if (await page.getByTestId('open-button').count()) await page.getByTestId('open-button').click();
+  else await page.keyboard.press('Meta+o');
   await (await chooser).setFiles(fixture(name));
+  await expect
+    .poll(() => page.evaluate(() => window.__bls.getProject()?.id ?? null), { timeout: 15_000 })
+    .not.toBe(before);
   await waitForProject(page);
 }
 

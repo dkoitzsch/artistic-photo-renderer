@@ -318,6 +318,50 @@ export class Engine {
     return out;
   }
 
+  /**
+   * Prüfwerte des Ergebnisses in voller Auflösung (für Tests): Anzahl nicht endlicher Werte (NaN/Inf) und Wertebereich
+   * im linearen, vormultiplizierten Arbeitsformat. Ohne Kacheln; nur für kleine Testbilder gedacht.
+   */
+  async floatStats(project: Project): Promise<{ nonFinite: number; min: number; max: number }> {
+    const { width: W, height: H } = project.canvas;
+    const frame = new Frame(this.device, this.core.pool, 'stats');
+    const res = this.compositor.render(frame, project, {
+      scale: 1,
+      canvasSize: [W, H],
+      region: { x: 0, y: 0, width: W, height: H },
+      ignoreEffects: false,
+      cache: null,
+      variant: 'stats',
+    });
+    const bytesPerRow = paddedBytesPerRow(W, 8);
+    const buffer = this.device.createBuffer({
+      size: bytesPerRow * H,
+      usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+    });
+    frame.encoder.copyTextureToBuffer({ texture: res.tex }, { buffer, bytesPerRow }, [W, H]);
+    frame.submit();
+    this.sources.endFrame();
+    await buffer.mapAsync(GPUMapMode.READ);
+    const half = new Uint16Array(buffer.getMappedRange());
+    let nonFinite = 0;
+    let min = Infinity;
+    let max = -Infinity;
+    const stride = bytesPerRow / 2;
+    for (let y = 0; y < H; y++)
+      for (let x = 0; x < W * 4; x++) {
+        const v = halfToFloat(half[y * stride + x] ?? 0);
+        if (!Number.isFinite(v)) nonFinite++;
+        else {
+          if (v < min) min = v;
+          if (v > max) max = v;
+        }
+      }
+    buffer.unmap();
+    buffer.destroy();
+    if (res.owned) this.core.pool.release(res.tex);
+    return { nonFinite, min, max };
+  }
+
   /** Kodiert einen Ausschnitt einer Arbeitstextur zu 8-Bit-sRGB (gerades Alpha). */
   async encode(
     texture: GPUTexture,

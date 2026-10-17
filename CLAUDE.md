@@ -76,6 +76,7 @@ Node ≥ 22.12 (`.nvmrc`). Dev-Server auf **Port 5317** (5173 ist auf diesem Rec
 | `npm test`                         | Unit-Tests (Vitest, `tests/unit/`)                                     |
 | `npm run test:e2e`                 | E2E- und Golden-Tests (Playwright, echtes Chrome mit WebGPU, headless) |
 | `npm run fixtures`                 | synthetische Testbilder neu erzeugen                                   |
+| `npm run test:effects`             | Golden-Tests aller Effekte (`tests/e2e/effectCases.ts`)                |
 | `UPDATE_GOLDEN=1 npm run test:e2e` | Golden-Referenzbilder neu schreiben (danach ansehen!)                  |
 
 Phasen-Abschluss: `npm run lint && npm run typecheck && npm test && npm run test:service && npm run build && npm run test:e2e`
