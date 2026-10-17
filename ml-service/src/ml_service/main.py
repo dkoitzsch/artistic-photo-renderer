@@ -1,21 +1,24 @@
-"""FastAPI-Dienst: /health, /segment/foreground (+ Jobs). Bindet nur an 127.0.0.1."""
+"""FastAPI-Dienst: /health, Segmentierung, Tiefe, Effekte (+ Jobs mit Abbruch). Bindet nur an 127.0.0.1."""
 
 from __future__ import annotations
 
+import json
 import os
 import threading
 from pathlib import Path
 from typing import Callable
 
 import numpy as np
-from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import Body, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
 from . import __version__
 from .downloads import Downloader
+from .effects import EffectDef, is_effect_allowed, load_effects, run_effect
 from .imageio import decode_image, encode_mask_png16
 from .jobs import JobRunner
+from .store import BlobStore, decode_f16, encode_f16, sha256
 from .registry import ServiceModel, is_allowed, load_registry
 
 HOST = "127.0.0.1"
@@ -32,10 +35,18 @@ class State:
         factory: SegmenterFactory | None = None,
         prefetch: bool = True,
         downloader: Downloader | None = None,
+        cache_dir: Path | None = None,
+        effects: dict[str, EffectDef] | None = None,
     ):
         from . import models
 
         self.models = load_registry()
+        # Effekt-Registry (gleiche Manifeste wie die Web-App) und Speicher für Bilder/Ergebnisse
+        self.effects = effects if effects is not None else load_effects()
+        cache = cache_dir or models.CACHE_DIR
+        budget = int(float(os.environ.get("BLS_EFFECT_CACHE_GB", "4")) * 1024**3)
+        self.images = BlobStore(cache / "images", budget)
+        self.results = BlobStore(cache / "results", budget)
         self.loaded: dict[str, Callable] = {}
         self.lock = threading.Lock()
         self.jobs = JobRunner()
@@ -94,8 +105,9 @@ def create_app(state: State | None = None) -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=ALLOWED_ORIGINS,
-        allow_methods=["GET", "POST", "DELETE"],
+        allow_methods=["GET", "POST", "PUT", "HEAD", "DELETE"],
         allow_headers=["*"],
+        expose_headers=["X-Width", "X-Height", "X-Cached"],
     )
     app.state.st = st
 
@@ -116,7 +128,19 @@ def create_app(state: State | None = None) -> FastAPI:
                     "download": st.download_info(m),
                 }
             )
-        return {"device": st.device, "version": __version__, "models": models}
+        effects = [
+            {
+                "id": e.id,
+                "version": e.version,
+                "commercialUse": e.commercial_use,
+                "available": e.render is not None and is_effect_allowed(e, license_mode),
+                "note": e.error
+                or (None if is_effect_allowed(e, license_mode) else "im Lizenzmodus „Kommerziell“ gesperrt"),
+            }
+            for e in st.effects.values()
+            if e.uses_python
+        ]
+        return {"device": st.device, "version": __version__, "models": models, "effects": effects}
 
     @app.post("/segment/foreground")
     async def segment_foreground(
@@ -206,19 +230,114 @@ def create_app(state: State | None = None) -> FastAPI:
         job = st.jobs.submit(run)
         return {"id": job.id, "status": job.status, "progress": job.progress}
 
+    # ---------- Effekte (Spec „Effekte“ 3.2) ----------
+
+    @app.put("/images/{digest}")
+    async def put_image(digest: str, request: Request, width: int, height: int) -> dict:
+        data = await request.body()
+        if sha256(data) != digest:
+            raise HTTPException(400, "Prüfsumme der Bilddaten stimmt nicht.")
+        try:
+            decode_f16(data, width, height)
+        except ValueError as e:
+            raise HTTPException(400, str(e)) from e
+        st.images.put(digest, data, width, height)
+        return {"image": digest, "width": width, "height": height}
+
+    @app.head("/images/{digest}")
+    def has_image(digest: str) -> Response:
+        try:
+            ok = st.images.has(digest)
+        except ValueError as e:
+            raise HTTPException(400, str(e)) from e
+        return Response(status_code=200 if ok else 404)
+
+    @app.post("/effects/{effect_id}/render")
+    def render_effect(effect_id: str, body: dict = Body(...)) -> dict:
+        eff = st.effects.get(effect_id)
+        if eff is None or not eff.uses_python:
+            raise HTTPException(404, f"Effekt {effect_id} hat keine Python-Implementierung.")
+        if not is_effect_allowed(eff, str(body.get("licenseMode", "commercial"))):
+            raise HTTPException(403, f"{eff.name} ist nur nicht-kommerziell nutzbar (Lizenzmodus „Kommerziell“).")
+        if eff.render is None:
+            raise HTTPException(503, eff.error or "Effekt nicht verfügbar")
+        digest = str(body.get("image", ""))
+        params = dict(body.get("params") or {})
+        scale = float(body.get("scale", 1.0))
+        origin = tuple(float(v) for v in body.get("origin", (0, 0)))
+        canvas = tuple(float(v) for v in body.get("canvasSize", (0, 0)))
+        try:
+            if not st.images.has(digest):
+                raise HTTPException(409, "Bild fehlt im Dienst – bitte zuerst hochladen (PUT /images/{sha256}).")
+        except ValueError as e:
+            raise HTTPException(400, str(e)) from e
+        # Ergebnis-Cache: Hash aus Bild, Effekt, Version, Parametern (inkl. Seed) und Lage
+        key = sha256(
+            json.dumps([digest, eff.id, eff.version, params, scale, origin, canvas], sort_keys=True).encode()
+        )
+        hit = st.results.get(key)
+        if hit is not None:
+            data, w, h = hit
+            job = st.jobs.done(data, "application/octet-stream", {"width": w, "height": h})
+            return {"id": job.id, "status": job.status, "progress": 1.0, "cached": True}
+
+        def run(progress: Callable[[float], None]) -> bytes:
+            got = st.images.get(digest)
+            if got is None:
+                raise RuntimeError("Bild ist nicht mehr im Speicher – bitte erneut hochladen.")
+            data, w, h = got
+            img = decode_f16(data, w, h)
+            progress(0.01)
+            out = run_effect(eff, img, params, scale, origin, canvas, progress)
+            result = encode_f16(out)
+            st.results.put(key, result, w, h)
+            return result
+
+        meta = {}
+        got = st.images.get(digest)
+        if got is not None:
+            meta = {"width": got[1], "height": got[2]}
+        job = st.jobs.submit(run, "application/octet-stream", meta)
+        return {"id": job.id, "status": job.status, "progress": job.progress, "cached": False}
+
+    # ---------- Jobs ----------
+
+    def job_json(job) -> dict:
+        out = {
+            "id": job.id,
+            "status": job.status,
+            "progress": job.progress,
+            "message": job.message,
+            "cached": job.cached,
+        }
+        if job.status == "done":
+            out["resultUrl"] = f"/jobs/{job.id}/result"
+        return out
+
     @app.get("/jobs/{job_id}")
     def job_status(job_id: str) -> dict:
         job = st.jobs.jobs.get(job_id)
         if job is None:
             raise HTTPException(404, "Unbekannter Job")
-        return {"id": job.id, "status": job.status, "progress": job.progress, "message": job.message}
+        return job_json(job)
+
+    @app.delete("/jobs/{job_id}")
+    def job_cancel(job_id: str) -> dict:
+        job = st.jobs.cancel(job_id)
+        if job is None:
+            raise HTTPException(404, "Unbekannter Job")
+        return job_json(job)
 
     @app.get("/jobs/{job_id}/result")
     def job_result(job_id: str, request: Request) -> Response:
         job = st.jobs.jobs.get(job_id)
         if job is None or job.status != "done" or job.result is None:
             raise HTTPException(404, "Kein Ergebnis")
-        return Response(job.result, media_type="image/png")
+        headers = {}
+        if "width" in job.meta:
+            headers = {"X-Width": str(job.meta["width"]), "X-Height": str(job.meta["height"])}
+        headers["X-Cached"] = "1" if job.cached else "0"
+        return Response(job.result, media_type=job.media_type, headers=headers)
 
     return app
 

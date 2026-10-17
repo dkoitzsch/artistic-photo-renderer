@@ -1,0 +1,46 @@
+{
+  "version": "1.0.0",
+  "category": "Test",
+  "inputs": ["source"],
+  "passes": 1,
+  "implementations": {
+    "preview": "python",
+    "final": "python"
+  },
+  "randomized": true,
+  "cost": "slow",
+  "params": [
+    {
+      "key": "amount",
+      "label": "Stärke",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 100,
+      "unit": "%"
+    },
+    {
+      "key": "noise",
+      "label": "Rauschen",
+      "type": "float",
+      "min": 0,
+      "max": 1,
+      "default": 0
+    },
+    {
+      "key": "delay",
+      "label": "Verzögerung",
+      "type": "float",
+      "min": 0,
+      "max": 10,
+      "default": 0,
+      "unit": "s"
+    }
+  ],
+  "id": "zz-e2e-py-nc",
+  "name": "E2E Python NC",
+  "license": {
+    "commercialUse": false,
+    "notes": "Test-Effekt (nur nicht-kommerziell)"
+  }
+}

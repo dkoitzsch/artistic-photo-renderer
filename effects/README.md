@@ -150,6 +150,22 @@ Effekte, die an Fokuspunkten schwächer wirken sollen, nehmen `focus` in `inputs
 `focusBlur` (Wirkung an den Punkten in % der Stärke) und `focusSoftness` (0…100 %). Pro Pixel:
 `radius = mix(stärke, stärke · focusBlur / 100, focus_sharpness(p, focusSoftness / 100))`.
 
+## Ausführung im Python-Dienst (effect.py)
+
+Mit `"implementations": { "preview": "webgpu", "final": "python" }` (oder `python` für beide) rechnet der lokale Dienst.
+`effect.py` im selben Ordner definiert:
+
+```python
+def render(image, ctx):  # image: float32 (H, W, 4), linear, vormultipliziert → gleiches Format zurück
+    ctx.progress(0.5)             # Fortschritt 0..1; bricht bei Abbruch ab
+    lum = ctx.luminance()         # Analysekarten wie im Browser: ctx.luminance(), ctx.edges()
+    noise = ctx.rand_cell(0)      # gleicher Zufall wie rand_cell im Shader (Seed: ctx.seed)
+    return image
+```
+
+`ctx.params` (Projektwerte mit Standardwerten), `ctx.scale` (Render-px pro Leinwand-px), `ctx.origin`, `ctx.canvas_size`.
+Ergebnisse werden über einen Hash aus Bild, Effekt, Version, Parametern und Lage gecacht.
+
 ## Prüfung
 
 Beim Laden prüft der Kern Manifest (Pflichtfelder, Typen, Wertebereiche, `reach`, `visibleIf`, Presets) und kompiliert den Shader.

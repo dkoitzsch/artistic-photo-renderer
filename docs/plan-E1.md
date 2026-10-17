@@ -14,7 +14,7 @@ Grundlage: [spec-effekte-und-malvorlagen.md](spec-effekte-und-malvorlagen.md), E
       Effektmaske
 - [x] 6a. Gruppen (Spec-Ergänzung 2.2a): eigene Maske auf Gruppen (Ebenenmaske oder Kartenbereich des
       Gruppenergebnisses), Kartenmasken für Effekte auf Gruppen, Oberfläche, Tests
-- [ ] 7. Dienst: Effekt-Registry (gleiche Manifeste + `effect.py`), `PUT /images/{sha}`, `POST /effects/{id}/render`,
+- [x] 7. Dienst: Effekt-Registry (gleiche Manifeste + `effect.py`), `PUT /images/{sha}`, `POST /effects/{id}/render`,
       `GET`/`DELETE /jobs/{id}`, Hash-Cache, Lizenzprüfung
 - [ ] 8. Asynchrone Effekte im Browser (Ausführungsorte „python“ und „browser-cpu“), Job-Anzeige mit Abbruch,
       „Vollauflösung rendern“, Export wartet

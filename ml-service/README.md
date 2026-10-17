@@ -17,10 +17,19 @@ npm run test:service   # pytest
 - NC-Modelle (z. B. RMBG-2.0) nur, wenn die App den Lizenzmodus „Alle“ meldet; RMBG-2.0 braucht zusätzlich einen
   Hugging-Face-Zugang (`HF_TOKEN`).
 
-| Endpunkt                     | Eingang                                     | Ausgang                                            |
-| ---------------------------- | ------------------------------------------- | -------------------------------------------------- |
-| `GET /health?license_mode=…` | –                                           | Gerät, Version, je Modell Lizenz/geladen/verfügbar |
-| `POST /segment/foreground`   | multipart: `image`, `model`, `license_mode` | Job `{ id, status, progress }`                     |
-| `POST /depth`                | multipart: `image`, `model`, `license_mode` | Job; Ergebnis: Tiefe als 16-Bit-PNG (0 = nah)      |
-| `GET /jobs/{id}`             | –                                           | Status und Fortschritt                             |
-| `GET /jobs/{id}/result`      | –                                           | Maske als 16-Bit-PNG in Originalgröße              |
+| Endpunkt                              | Eingang                                                          | Ausgang                                                                                       |
+| ------------------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `GET /health?license_mode=…`          | –                                                                | Gerät, Version, je Modell Lizenz/geladen/verfügbar                                            |
+| `POST /segment/foreground`            | multipart: `image`, `model`, `license_mode`                      | Job `{ id, status, progress }`                                                                |
+| `POST /depth`                         | multipart: `image`, `model`, `license_mode`                      | Job; Ergebnis: Tiefe als 16-Bit-PNG (0 = nah)                                                 |
+| `GET /effects` → in `/health`         | –                                                                | Effekte mit Python-Implementierung, Lizenz, verfügbar                                         |
+| `PUT /images/{sha256}?width=&height=` | rohes RGBA float16 (linear, vormultipliziert)                    | speichert das Bild (Prüfsumme wird geprüft)                                                   |
+| `HEAD /images/{sha256}`               | –                                                                | 200 = schon vorhanden, 404 = hochladen                                                        |
+| `POST /effects/{id}/render`           | JSON `{ image, params, scale, origin, canvasSize, licenseMode }` | Job; Ergebnis-Cache über Hash aus Bild, Effekt, Version, Parametern, Lage                     |
+| `GET /jobs/{id}`                      | –                                                                | Status (`queued`, `running`, `done`, `error`, `cancelled`), Fortschritt, `resultUrl`          |
+| `DELETE /jobs/{id}`                   | –                                                                | Abbruch (wartend sofort, laufend beim nächsten Fortschrittsschritt)                           |
+| `GET /jobs/{id}/result`               | –                                                                | Maske als 16-Bit-PNG bzw. Effektergebnis als RGBA float16 (`X-Width`, `X-Height`, `X-Cached`) |
+
+**Effekte im Dienst:** Der Dienst liest dieselben `effects/*/manifest.json` wie die App und lädt `effects/<id>/effect.py`
+(Vertrag siehe `src/ml_service/effects.py`). Bilder und Ergebnisse liegen unter `~/.cache/blur-layer-studio/images|results`
+(Budget je 4 GB, änderbar mit `BLS_EFFECT_CACHE_GB`). Test-Effekte aus `tests/effects/` nur mit `BLS_TEST_EFFECTS=1`.

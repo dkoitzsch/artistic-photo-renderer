@@ -29,4 +29,11 @@ describe('Zufall (Seed)', () => {
     expect(Array.from({ length: 5 }, () => b())).toEqual(xs);
     expect(mulberry32(6)()).not.toBe(xs[0]);
   });
+
+  it('Referenzwerte (gleich in Shader, Browser-CPU und Python-Dienst: ml-service/tests/test_effects.py)', () => {
+    expect(randCell(10, -3, 42, 0)).toBe(0.547438383102417);
+    expect(randCell(0, 0, 7, 0)).toBe(0.9950028657913208);
+    expect(randCell(123, 456, 1, 2)).toBe(0.21902084350585938);
+    expect(randCell(-5, 9, 4000000000, 1)).toBe(0.2546077370643616);
+  });
 });
