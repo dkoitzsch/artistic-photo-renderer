@@ -14,6 +14,16 @@ Status: Erweiterung des bestehenden Programms. Ergänzt die vorhandene Spec, ers
 - Um Verwechslungen mit den Phasen der ursprünglichen Spec zu vermeiden, heißen die Phasen hier **E1 bis E5**.
 - Jede Phase endet mit einem lauffähigen, getesteten Stand. Keine Phase wird begonnen, bevor die vorherige abgenommen ist.
 - Entscheidungen aus Abschnitt 13 („Offene Entscheidungen“) werden **nicht** eigenmächtig getroffen, sondern vorgelegt.
+- **Projektgedächtnis `PROGRESS.md`:** nach **jedem** Arbeitsschritt aktualisieren (spätestens vor jedem Commit), nicht erst am Phasenende. Inhalt:
+  - aktueller Stand
+  - offene Punkte mit Priorität
+  - Logbuch mit Commit-Bezug
+  - Stolpersteine (Symptom, Ursache, Lösung, betroffene Dateien)
+  - gravierende Änderungen mit Grund und verworfenen Alternativen
+  - Abweichungen von der Spec
+  - Performance-Messungen
+
+  Ein Schritt gilt erst als abgeschlossen, wenn `PROGRESS.md` seinen Stand wiedergibt.
 
 ---
 
@@ -376,7 +386,7 @@ Aus dem aktuellen Ergebnis (beliebiger Effekt-Stapel oder Originalbild) eine pra
 
 ## 10. Phasenplan
 
-Jede Phase endet mit: lauffähigem Stand, grünen Tests, kurzer Änderungsnotiz und einer Demo-Liste („so kann man es ausprobieren“).
+Jede Phase endet mit: lauffähigem Stand, grünen Tests, kurzer Änderungsnotiz, einer Demo-Liste („so kann man es ausprobieren“) und aktueller `PROGRESS.md` (siehe Abschnitt 0).
 
 ### Phase E1 – Fundament & erste Effekte
 - [x] Effekt-Registry (Browser + Python), Schnittstelle nach Abschnitt 3, Integration ins bestehende Ebenen-/Maskenmodell

@@ -10,7 +10,8 @@ Laufend gepflegtes Gedächtnis des Projekts: Stand, offene Punkte, Logbuch, Stol
 | [docs/abnahme-E1.md](docs/abnahme-E1.md)                                   | Abnahme und Demo-Liste E1        |
 | [docs/optimierungen-und-varianten.md](docs/optimierungen-und-varianten.md) | Ideenspeicher                    |
 
-Neueste Einträge stehen jeweils oben. Zuletzt aktualisiert: **17.10.2026**.
+Pflicht laut beiden Specs (Basis-Spec „Arbeitsweise“ Punkt 7, Erweiterung Abschnitt 0): Diese Datei wird nach **jedem**
+Arbeitsschritt aktualisiert, spätestens vor jedem Commit. Neueste Einträge stehen jeweils oben. Zuletzt aktualisiert: **17.10.2026**.
 
 ---
 
@@ -69,38 +70,39 @@ Was die App kann:
 
 ## 3. Logbuch (mit Commit-Bezug)
 
-| Datum  | Commit    | Inhalt                                                                                                                                            |
-| ------ | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 17.10. | `d73cdd4` | E1 Schritt 17: Abnahme 24 MP (`acceptanceE1.spec.ts`), Messwerte, Demo-Liste, Optimierungsdokument, PROGRESS.md                                   |
-| 17.10. | `f0993a0` | E1 Schritt 16: Ausschnitt in voller Auflösung beim Hineinzoomen (pixelgleich zum Export)                                                          |
-| 17.10. | `9063a4a` | E1 Schritt 15: Effekt-Browser (Kennzeichen, Live-Vorschau 1:1, NC-Sperre), Gruppe „Erweitert“, Fehlergrenzen                                      |
-| 17.10. | `08c6279` | E1 Schritt 14: PSD – Gruppen als Ebenengruppen, Option „Effekte als eigene Ebenen“                                                                |
-| 17.10. | `73a61ec` | E1 Schritt 13: Doppelbelichtung (Parametertyp `image`)                                                                                            |
-| 17.10. | `2c5f853` | E1 Schritt 12: Dithering, Pixel-Sorting (Browser-CPU), Low-Poly (CPU / Dienst, pixelgleich)                                                       |
-| 17.10. | `26dda4a` | E1 Schritt 11: Ölbild (anisotroper Kuwahara)                                                                                                      |
-| 17.10. | `ee133af` | E1 Schritt 10: Tusche-Linien, Comic, Halbton; kachelgenaue Abtastung `sample_src_canvas`                                                          |
-| 17.10. | `9356b79` | E1 Schritt 9: RGB-Versatz, Pixel, Filmkorn, Bloom, Tilt-Shift, Posterisierung (k-Means in Oklab)                                                  |
-| 17.10. | `635a36c` | E1 Schritt 8: Asynchrone Effekte (Web Worker und Dienst), Job-Anzeige, „Vollauflösung rendern“                                                    |
-| 17.10. | `e1cf583` | E1 Schritt 7: Dienst – Effekt-Registry, Bild-Upload, Render-Jobs mit Cache und Abbruch                                                            |
-| 17.10. | `f2b84ba` | E1 Schritt 6a: Gruppenmaske, Effektmasken aus dem Gruppenergebnis, Mehrfachauswahl zum Gruppieren                                                 |
-| 17.10. | `20276fd` | Spec-Ergänzung Gruppen (2.2a) eingearbeitet. Dabei wurde versehentlich `docs/spec-ml-fotobearbeitung.md` mit eingecheckt, inhaltlich unverändert. |
-| 17.10. | `878e71f` | E1 Schritt 6: Analysekarten `luminance`, `edges`                                                                                                  |
-| 17.10. | `1765291` | E1 Schritt 5: Presets (eigene, Stapel, Export/Import)                                                                                             |
-| 17.10. | `745b1f9` | E1 Schritt 4: Seed, bitgleich in Shader, TypeScript und Python                                                                                    |
-| 17.10. | `4529f06` | E1 Schritt 3: Mischmodus und Maske je Effekt (Projektformat 5)                                                                                    |
-| 17.10. | `71759e2` | E1 Schritt 2: Manifest v2                                                                                                                         |
-| 17.10. | `f56ea54` | E1 Schritt 1: Golden-Testinfrastruktur, Architektur-Testbild, `LICENSES-THIRD-PARTY.md`                                                           |
-| 17.10. | `437c9d0` | Spec der Erweiterung von Prettier ausgenommen                                                                                                     |
-| 17.10. | `8d75c66` | E1 Schritt 0: Grundsatzentscheidungen, Plan E1                                                                                                    |
-| 17.10. | `d950c3e` | Neue Spec „Effekte & Malvorlagen“ (vom Nutzer)                                                                                                    |
-| 15.10. | `96c1a23` | Phase 4: weitere Bilder als Ebenen, Transform, Reihenfolge                                                                                        |
-| 14.10. | `285621c` | Phase 3: Tiefenebenen, Gruppenmodus, Parallax, PSD-Export                                                                                         |
-| 14.10. | `0f1bb61` | Dialoge liegen über Fokuspunkten und Vorher/Nachher-Teiler                                                                                        |
-| 14.10. | `5046a47` | Fokuspunkte entfernen, Vorher/Nachher mit Vorrang, Modell-Downloads steuerbar                                                                     |
-| 14.10. | `d822c4f` | Phase 2: Vordergrund/Hintergrund, Fokuspunkte, Schatten, Lizenzmodus, Python-Dienst                                                               |
-| 14.10. | `d74dbe7` | Phase 1: Plugin-System, Gauß/Farb-Overlay/Schwarz-Weiß, Undo, Autosave, Projektdatei                                                              |
-| 14.10. | `d84c668` | Phase 0: Gerüst (WebGPU, Import, Zoom/Pan, PNG-Export, Design-Tokens)                                                                             |
-| 14.10. | `6661ab9` | Spec hochgeladen                                                                                                                                  |
+| Datum  | Commit                                  | Inhalt                                                                                                                                            |
+| ------ | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 17.10. | „Specs: PROGRESS.md nach jedem Schritt“ | Regel in Basis-Spec (Arbeitsweise 7) und Erweiterung (Abschnitt 0, Abschnitt 10) ergänzt                                                          |
+| 17.10. | `d73cdd4`                               | E1 Schritt 17: Abnahme 24 MP (`acceptanceE1.spec.ts`), Messwerte, Demo-Liste, Optimierungsdokument, PROGRESS.md                                   |
+| 17.10. | `f0993a0`                               | E1 Schritt 16: Ausschnitt in voller Auflösung beim Hineinzoomen (pixelgleich zum Export)                                                          |
+| 17.10. | `9063a4a`                               | E1 Schritt 15: Effekt-Browser (Kennzeichen, Live-Vorschau 1:1, NC-Sperre), Gruppe „Erweitert“, Fehlergrenzen                                      |
+| 17.10. | `08c6279`                               | E1 Schritt 14: PSD – Gruppen als Ebenengruppen, Option „Effekte als eigene Ebenen“                                                                |
+| 17.10. | `73a61ec`                               | E1 Schritt 13: Doppelbelichtung (Parametertyp `image`)                                                                                            |
+| 17.10. | `2c5f853`                               | E1 Schritt 12: Dithering, Pixel-Sorting (Browser-CPU), Low-Poly (CPU / Dienst, pixelgleich)                                                       |
+| 17.10. | `26dda4a`                               | E1 Schritt 11: Ölbild (anisotroper Kuwahara)                                                                                                      |
+| 17.10. | `ee133af`                               | E1 Schritt 10: Tusche-Linien, Comic, Halbton; kachelgenaue Abtastung `sample_src_canvas`                                                          |
+| 17.10. | `9356b79`                               | E1 Schritt 9: RGB-Versatz, Pixel, Filmkorn, Bloom, Tilt-Shift, Posterisierung (k-Means in Oklab)                                                  |
+| 17.10. | `635a36c`                               | E1 Schritt 8: Asynchrone Effekte (Web Worker und Dienst), Job-Anzeige, „Vollauflösung rendern“                                                    |
+| 17.10. | `e1cf583`                               | E1 Schritt 7: Dienst – Effekt-Registry, Bild-Upload, Render-Jobs mit Cache und Abbruch                                                            |
+| 17.10. | `f2b84ba`                               | E1 Schritt 6a: Gruppenmaske, Effektmasken aus dem Gruppenergebnis, Mehrfachauswahl zum Gruppieren                                                 |
+| 17.10. | `20276fd`                               | Spec-Ergänzung Gruppen (2.2a) eingearbeitet. Dabei wurde versehentlich `docs/spec-ml-fotobearbeitung.md` mit eingecheckt, inhaltlich unverändert. |
+| 17.10. | `878e71f`                               | E1 Schritt 6: Analysekarten `luminance`, `edges`                                                                                                  |
+| 17.10. | `1765291`                               | E1 Schritt 5: Presets (eigene, Stapel, Export/Import)                                                                                             |
+| 17.10. | `745b1f9`                               | E1 Schritt 4: Seed, bitgleich in Shader, TypeScript und Python                                                                                    |
+| 17.10. | `4529f06`                               | E1 Schritt 3: Mischmodus und Maske je Effekt (Projektformat 5)                                                                                    |
+| 17.10. | `71759e2`                               | E1 Schritt 2: Manifest v2                                                                                                                         |
+| 17.10. | `f56ea54`                               | E1 Schritt 1: Golden-Testinfrastruktur, Architektur-Testbild, `LICENSES-THIRD-PARTY.md`                                                           |
+| 17.10. | `437c9d0`                               | Spec der Erweiterung von Prettier ausgenommen                                                                                                     |
+| 17.10. | `8d75c66`                               | E1 Schritt 0: Grundsatzentscheidungen, Plan E1                                                                                                    |
+| 17.10. | `d950c3e`                               | Neue Spec „Effekte & Malvorlagen“ (vom Nutzer)                                                                                                    |
+| 15.10. | `96c1a23`                               | Phase 4: weitere Bilder als Ebenen, Transform, Reihenfolge                                                                                        |
+| 14.10. | `285621c`                               | Phase 3: Tiefenebenen, Gruppenmodus, Parallax, PSD-Export                                                                                         |
+| 14.10. | `0f1bb61`                               | Dialoge liegen über Fokuspunkten und Vorher/Nachher-Teiler                                                                                        |
+| 14.10. | `5046a47`                               | Fokuspunkte entfernen, Vorher/Nachher mit Vorrang, Modell-Downloads steuerbar                                                                     |
+| 14.10. | `d822c4f`                               | Phase 2: Vordergrund/Hintergrund, Fokuspunkte, Schatten, Lizenzmodus, Python-Dienst                                                               |
+| 14.10. | `d74dbe7`                               | Phase 1: Plugin-System, Gauß/Farb-Overlay/Schwarz-Weiß, Undo, Autosave, Projektdatei                                                              |
+| 14.10. | `d84c668`                               | Phase 0: Gerüst (WebGPU, Import, Zoom/Pan, PNG-Export, Design-Tokens)                                                                             |
+| 14.10. | `6661ab9`                               | Spec hochgeladen                                                                                                                                  |
 
 ---
 

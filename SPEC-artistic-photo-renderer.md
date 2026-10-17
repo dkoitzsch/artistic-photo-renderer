@@ -426,6 +426,17 @@ Sieben Phasen (0–6); jede endet mit einer lauffähigen App. Das Plugin-System 
 4. Für Shader Golden-Image-Tests mit kleinen Testbildern (Portrait, Landschaft, Objekt auf Tisch) und Toleranz.
 5. Keine Netzwerkanfragen außer dem einmaligen Laden der Modelle; keine Telemetrie.
 6. Bei unklaren Anforderungen: sinnvolle Standardwerte wählen, in `DECISIONS.md` notieren, weiterarbeiten.
+7. Führe `PROGRESS.md` als Projektgedächtnis und aktualisiere es nach **jedem** Arbeitsschritt (spätestens vor jedem Commit),
+   nicht erst am Phasenende. Inhalt:
+   - aktueller Stand
+   - offene Punkte mit Priorität
+   - Logbuch mit Commit-Bezug
+   - Stolpersteine (Symptom, Ursache, Lösung, betroffene Dateien)
+   - gravierende Änderungen mit Grund und verworfenen Alternativen
+   - Abweichungen von der Spec
+   - Performance-Messungen
+
+   Ein Schritt gilt erst als abgeschlossen, wenn `PROGRESS.md` seinen Stand wiedergibt.
 
 **Vorgeschlagene Ordnerstruktur**
 
