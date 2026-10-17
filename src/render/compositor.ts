@@ -376,6 +376,23 @@ export class Compositor {
     return { tex: out, owned: true };
   }
 
+  /**
+   * Original als Zweitbild eines Effekts, so fein wie nötig: Es füllt die Leinwand („cover“); die Auflösung folgt der
+   * Render-Skalierung (Viertel-Oktaven-Stufen wie bei Ebenen).
+   */
+  private imageTexture(frame: Frame, id: string, opts: RenderOptions): GPUTexture | null {
+    const o = this.originals[id];
+    if (!o || !this.sources.has(id)) return null;
+    const cover = Math.max(this.canvas.width / o.width, this.canvas.height / o.height);
+    const f = Math.min(1, 2 ** (Math.ceil(4 * Math.log2(Math.max(1e-4, opts.scale * cover))) / 4));
+    return this.sources.at(
+      frame,
+      id,
+      Math.max(1, Math.round(o.width * f)),
+      Math.max(1, Math.round(o.height * f)),
+    );
+  }
+
   /** Fokuspunkte einer Ebene in Leinwand-px. */
   private focusPoints(layer: Layer, geo: Geometry) {
     const points = (layer.focusMap?.points ?? []).filter((p) => p.enabled && p.radius > 0);
@@ -854,10 +871,15 @@ export class Compositor {
         ...this.inputMaps(frame, cur.tex, opts, need, temps),
       };
       const m = emask?.get() ?? null;
+      // Zweitbild (Parameter vom Typ "image"): Original in passender Auflösung; fehlt es, meldet der Shader „kein Bild“
+      const imgSpec = manifest.params.find((ps) => ps.type === 'image');
+      const imgId = imgSpec ? fx.params[imgSpec.key] : undefined;
+      const image = typeof imgId === 'string' && imgId ? this.imageTexture(frame, imgId, opts) : null;
+      const fxRun = imgSpec && imgId && !image ? { ...fx, params: { ...fx.params, [imgSpec.key]: '' } } : fx;
       const out = this.runner.apply(
         frame,
         plugin,
-        fx,
+        fxRun,
         cur.tex,
         a,
         {
@@ -867,6 +889,7 @@ export class Compositor {
           hasFocus: a.hasFocus,
         },
         m?.tex ?? null,
+        image,
       );
       if (m?.owned) this.core.pool.release(m.tex);
       for (const t of temps) this.core.pool.release(t);

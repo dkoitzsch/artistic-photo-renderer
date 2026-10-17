@@ -460,6 +460,13 @@ export function ungroupCommand(groupId: string): void {
 
 // ---------- Phase 4: weitere Bilder, Transform, Reihenfolge ----------
 
+/** Nimmt ein Original ins Projekt auf, ohne eine Ebene anzulegen (z. B. Zweitbild eines Effekts). */
+export function addOriginalCommand(original: OriginalRef): void {
+  commit(`Bild „${original.fileName}“ hinzugefügt`, (p) =>
+    p.originals[original.id] ? p : { ...p, originals: { ...p.originals, [original.id]: original } },
+  );
+}
+
 /** Fügt eine Ebene (mit neuem Original) über der Auswahl ein und wählt sie aus. */
 export function addLayerCommand(original: OriginalRef, layer: Layer): void {
   const selected = useAppStore.getState().selectedNodeId;

@@ -810,6 +810,7 @@ button:disabled {
 }
 
 .seed-control,
+.image-control,
 .palette-control {
   display: inline-flex;
   align-items: center;

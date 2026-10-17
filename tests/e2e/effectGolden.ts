@@ -67,7 +67,12 @@ export async function applyEffect(page: Page, c: EffectCase, fixtureFile: string
   );
 }
 
-function compareGolden(name: string, got: PNG, testInfo: TestInfo, tol: { max: number; mean: number }): void {
+export function compareGolden(
+  name: string,
+  got: PNG,
+  testInfo: TestInfo,
+  tol: { max: number; mean: number },
+): void {
   const path = `${GOLDEN_DIR}${name}.png`;
   if (process.env.UPDATE_GOLDEN || !existsSync(path)) {
     mkdirSync(GOLDEN_DIR, { recursive: true });

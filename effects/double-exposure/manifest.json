@@ -1,0 +1,105 @@
+{
+  "id": "double-exposure",
+  "name": "Doppelbelichtung",
+  "version": "1.0.0",
+  "category": "Licht & Atmosphäre",
+  "description": "Zweites Bild in die Ebene belichten – klassisch: Landschaft in der dunklen Silhouette, gesteuert über Helligkeit oder Maske.",
+  "inputs": ["source", "mask"],
+  "passes": 1,
+  "implementations": { "preview": "webgpu", "final": "webgpu" },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung. Das Zweitbild ist Nutzerinhalt – für verkaufte Werke nur eigene oder lizenzfreie Bilder verwenden."
+  },
+  "cost": "realtime",
+  "randomized": false,
+  "requires": [],
+  "params": [
+    { "key": "image", "label": "Zweitbild", "type": "image", "default": "" },
+    {
+      "key": "mask",
+      "label": "Wo belichten",
+      "type": "enum",
+      "options": [
+        { "value": "dark", "label": "in dunklen Bereichen" },
+        { "value": "light", "label": "in hellen Bereichen" },
+        { "value": "layer", "label": "in der Ebenenmaske" },
+        { "value": "all", "label": "überall" }
+      ],
+      "default": "dark"
+    },
+    {
+      "key": "blend",
+      "label": "Mischung",
+      "type": "enum",
+      "options": [
+        { "value": "screen", "label": "Negativ multiplizieren" },
+        { "value": "multiply", "label": "Multiplizieren" },
+        { "value": "lighten", "label": "Aufhellen" },
+        { "value": "overlay", "label": "Ineinanderkopieren" },
+        { "value": "normal", "label": "Normal" }
+      ],
+      "default": "screen"
+    },
+    {
+      "key": "amount",
+      "label": "Stärke",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 100,
+      "unit": "%"
+    },
+    {
+      "key": "contrast",
+      "label": "Maskenkontrast",
+      "hint": "Wie hart der Übergang zwischen den Bildern ist",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 40,
+      "unit": "%"
+    },
+    {
+      "key": "zoom",
+      "label": "Zoom Zweitbild",
+      "type": "float",
+      "min": 50,
+      "max": 300,
+      "default": 100,
+      "unit": "%"
+    },
+    {
+      "key": "offsetX",
+      "label": "Versatz X",
+      "type": "float",
+      "min": -50,
+      "max": 50,
+      "default": 0,
+      "unit": "%",
+      "group": "Erweitert"
+    },
+    {
+      "key": "offsetY",
+      "label": "Versatz Y",
+      "type": "float",
+      "min": -50,
+      "max": 50,
+      "default": 0,
+      "unit": "%",
+      "group": "Erweitert"
+    }
+  ],
+  "visibleIf": { "contrast": "mask!=all" },
+  "presets": [
+    {
+      "name": "Silhouette (klassisch)",
+      "values": { "mask": "dark", "blend": "screen", "amount": 100, "contrast": 45 }
+    },
+    { "name": "Geisterbild", "values": { "mask": "all", "blend": "lighten", "amount": 55 } },
+    {
+      "name": "In den Lichtern",
+      "values": { "mask": "light", "blend": "multiply", "amount": 90, "contrast": 30 }
+    }
+  ]
+}

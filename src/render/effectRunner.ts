@@ -149,6 +149,8 @@ export class EffectRunner {
     placement: EffectPlacement,
     /** eigene Maske des Effekts (Leinwand-Ausschnitt, r) oder null */
     effectMask: GPUTexture | null = null,
+    /** Zweitbild (Parameter vom Typ "image") oder null – einstufige Effekte erhalten es als src_b */
+    image: GPUTexture | null = null,
   ): GPUTexture {
     const compiled = this.compiled.get(plugin.folder);
     const manifest = plugin.manifest;
@@ -200,7 +202,7 @@ export class EffectRunner {
 
     const output = pool.acquire(width, height, plugin.folder);
     if (!plugin.hasScript) {
-      runPass('main', { src: input, dst: output });
+      runPass('main', { src: input, dst: output, ...(image ? { srcB: image } : {}) });
     } else {
       if (!plugin.module) throw new Error(`effect.ts von ${plugin.folder} ist nicht geladen.`);
       const temps: GPUTexture[] = [];
@@ -215,6 +217,7 @@ export class EffectRunner {
         source: input,
         output,
         hasFocus: placement.hasFocus ?? false,
+        image,
         gaussian: (src, dst, radius, edge) => {
           this.core.gaussian(frame, src, dst, radius, edge);
         },

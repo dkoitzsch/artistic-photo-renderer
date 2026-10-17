@@ -34,6 +34,8 @@ export interface EffectContext {
   readonly output: GPUTexture;
   /** true, wenn die Ebene eine Fokuskarte hat (im Shader: has_focus()) */
   readonly hasFocus: boolean;
+  /** Zweitbild eines Parameters vom Typ "image" (Original in passender Auflösung) oder null */
+  readonly image: GPUTexture | null;
   /** Temporäre Textur (rgba16float); wird nach dem Effekt automatisch freigegeben. */
   texture(width: number, height: number): GPUTexture;
   /** Kern-Gauß (σ = radius / 3, Pyramide für große Radien); dst gleich groß wie src. */

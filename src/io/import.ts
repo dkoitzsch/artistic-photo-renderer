@@ -1,7 +1,7 @@
 // Öffnen von Bildern (neues Projekt), Projektdateien und gespeicherten Projekten.
 
 import { getEngine } from '../render/runtime';
-import { addLayerCommand, openProject } from '../state/commands';
+import { addLayerCommand, addOriginalCommand, openProject } from '../state/commands';
 import {
   createProjectFromImage,
   depthIds,
@@ -167,6 +167,24 @@ async function hasTransparency(blob: Blob): Promise<boolean> {
   const data = ctx.getImageData(0, 0, 96, 96).data;
   for (let i = 3; i < data.length; i += 4) if ((data[i] ?? 255) < 250) return true;
   return false;
+}
+
+/** Lädt eine Bilddatei als Original ins offene Projekt (ohne Ebene) – z. B. als Zweitbild eines Effekts. */
+export async function importOriginal(file: File): Promise<OriginalRef | null> {
+  const { notify, setBusy } = useAppStore.getState();
+  if (!guard() || !getProject()) return null;
+  setBusy(`${file.name} wird geladen …`);
+  try {
+    const loaded = await loadImageFile(file);
+    if (!loaded) return null;
+    addOriginalCommand(loaded.original);
+    return loaded.original;
+  } catch (e) {
+    notify('error', `${file.name}: ${errorText(e)}`);
+    return null;
+  } finally {
+    setBusy(null);
+  }
 }
 
 /**
