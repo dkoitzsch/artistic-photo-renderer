@@ -56,7 +56,8 @@ test('Seed: reproduzierbar, abhängig vom Seed, kachelgleich und gleich der CPU-
   const b = await renderExport(page);
   expect(diffStats(a, b).mean).toBeGreaterThan(20);
 
-  // Würfel in der Effektkarte setzt einen neuen Seed (ein Undo-Schritt)
+  // Würfel in der Effektkarte (Gruppe „Erweitert“) setzt einen neuen Seed (ein Undo-Schritt)
+  await page.getByTestId('param-group-Erweitert').locator('summary').click();
   await page.getByTestId('param-seed-roll').click();
   const rolled = await page.evaluate(
     () => window.__bls.getProject()?.root.children[0]?.effects[0]?.params.seed,

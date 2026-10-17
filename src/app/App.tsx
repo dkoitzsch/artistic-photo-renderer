@@ -10,6 +10,7 @@ import { initRuntime } from '../render/runtime';
 import { useAppStore } from '../state/store';
 import { BottomPanel } from './components/BottomPanel';
 import { CanvasView } from './components/CanvasView';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { ExportDialog, ExportWarningDialog, SettingsDialog, SplitDialog } from './components/Dialogs';
 import { EffectBrowser } from './components/EffectBrowser';
 import { ModelsDialog } from './components/ModelsDialog';
@@ -68,20 +69,34 @@ export function App() {
 
   return (
     <div className="app">
-      <TopBar theme={theme} />
+      <ErrorBoundary name="Obere Leiste">
+        <TopBar theme={theme} />
+      </ErrorBoundary>
       <div className="workspace">
         <ToolBar />
-        <CanvasView theme={theme} />
-        <SidePanel />
-        {screen === 'overview' && <ProjectOverview />}
+        <ErrorBoundary name="Leinwand">
+          <CanvasView theme={theme} />
+        </ErrorBoundary>
+        <ErrorBoundary name="Seitenleiste">
+          <SidePanel />
+        </ErrorBoundary>
+        {screen === 'overview' && (
+          <ErrorBoundary name="Projektübersicht">
+            <ProjectOverview />
+          </ErrorBoundary>
+        )}
       </div>
-      <BottomPanel />
-      <EffectBrowser />
-      <SplitDialog />
-      <SettingsDialog />
-      <ExportWarningDialog />
-      <ExportDialog />
-      <ModelsDialog />
+      <ErrorBoundary name="Untere Leiste">
+        <BottomPanel />
+      </ErrorBoundary>
+      <ErrorBoundary name="Dialoge">
+        <EffectBrowser />
+        <SplitDialog />
+        <SettingsDialog />
+        <ExportWarningDialog />
+        <ExportDialog />
+        <ModelsDialog />
+      </ErrorBoundary>
     </div>
   );
 }

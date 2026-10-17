@@ -106,6 +106,15 @@ export function renameProject(name: string): void {
 export function addEffectCommand(effectId: string, nodeId = targetNodeId()): string | null {
   const plugin = getPlugin(effectId);
   if (!plugin?.manifest || !nodeId) return null;
+  if (!plugin.manifest.license.commercialUse && useAppStore.getState().licenseMode === 'commercial') {
+    useAppStore
+      .getState()
+      .notify(
+        'error',
+        `${plugin.manifest.name} ist nur nicht-kommerziell nutzbar – im Lizenzmodus „Alle“ verfügbar.`,
+      );
+    return null;
+  }
   const instance: EffectInstance = {
     instanceId: newId(),
     effectId,

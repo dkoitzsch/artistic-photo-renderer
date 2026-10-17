@@ -2109,3 +2109,55 @@ button:disabled {
   border-color: var(--border-strong);
   outline: none;
 }
+
+/* ---------- Effekt-Browser: Kennzeichen ---------- */
+
+.effect-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  justify-content: center;
+}
+
+.effect-badge {
+  font-size: 10px;
+  line-height: 1.4;
+  padding: 0 5px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-active);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.effect-badge.cost-slow,
+.effect-badge.cost-very-slow {
+  color: var(--text);
+}
+
+.effect-badge.service {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.effect-tile.locked {
+  opacity: 0.5;
+}
+
+.param-group {
+  margin: var(--space-1) 0;
+}
+
+.param-group > summary {
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  padding: 2px 0;
+}
+
+.error-boundary {
+  padding: var(--space-3);
+  margin: var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  font-size: var(--font-size-sm);
+}

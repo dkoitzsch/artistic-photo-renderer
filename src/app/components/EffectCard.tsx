@@ -11,7 +11,7 @@ import {
   toggleDecoupledCommand,
 } from '../../state/commands';
 import { extractPalette as kmeansPalette } from '../../effects/palette';
-import type { Rgb } from '../../effects/manifest';
+import type { ParamSpec, Rgb } from '../../effects/manifest';
 import { getEngine } from '../../render/runtime';
 import { findHost, walkLayers, type EffectInstance } from '../../state/project';
 import { getProject } from '../../state/store';
@@ -93,6 +93,42 @@ export function EffectCard({
   else if (manifest && manifest.version !== effect.effectVersion)
     problem = `Gespeichert mit Version ${effect.effectVersion}, installiert ist ${manifest.version}.`;
 
+  const renderParams = (specs: ParamSpec[]) =>
+    specs.map((spec) => {
+      const locked = effect.decoupled?.includes(spec.key) ?? false;
+      return (
+        <div key={spec.key} className={`param-row${groupMode ? ' with-lock' : ''}`}>
+          <ParamControl
+            spec={spec}
+            extractPalette={extractPalette}
+            value={effect.params[spec.key]}
+            onChange={(v, gesture) => {
+              setParamCommand(nodeId, effect.instanceId, spec.key, v, gesture);
+            }}
+            onGestureEnd={endGesture}
+          />
+          {groupMode && (
+            <button
+              className={`icon-button small lock${locked ? ' active' : ''}`}
+              title={
+                locked
+                  ? 'Entkoppelt: Gruppenbearbeitung ändert diesen Wert nicht (klicken zum Koppeln)'
+                  : 'Gekoppelt an die Gruppe (klicken zum Entkoppeln)'
+              }
+              aria-label={`${spec.label} ${locked ? 'koppeln' : 'entkoppeln'}`}
+              aria-pressed={locked}
+              data-testid={`lock-${spec.key}`}
+              onClick={() => {
+                toggleDecoupledCommand(nodeId, effect.instanceId, spec.key);
+              }}
+            >
+              {locked ? <LockIcon /> : <UnlockIcon />}
+            </button>
+          )}
+        </div>
+      );
+    });
+
   return (
     <div
       ref={cardRef}
@@ -165,42 +201,15 @@ export function EffectCard({
             <span className="control-label">Preset</span>
             <EffectPresetMenu nodeId={nodeId} effect={effect} manifest={manifest} />
           </div>
-          {manifest.params
-            .filter((p) => visible(p.key))
-            .map((spec) => {
-              const locked = effect.decoupled?.includes(spec.key) ?? false;
-              return (
-                <div key={spec.key} className={`param-row${groupMode ? ' with-lock' : ''}`}>
-                  <ParamControl
-                    spec={spec}
-                    extractPalette={extractPalette}
-                    value={effect.params[spec.key]}
-                    onChange={(v, gesture) => {
-                      setParamCommand(nodeId, effect.instanceId, spec.key, v, gesture);
-                    }}
-                    onGestureEnd={endGesture}
-                  />
-                  {groupMode && (
-                    <button
-                      className={`icon-button small lock${locked ? ' active' : ''}`}
-                      title={
-                        locked
-                          ? 'Entkoppelt: Gruppenbearbeitung ändert diesen Wert nicht (klicken zum Koppeln)'
-                          : 'Gekoppelt an die Gruppe (klicken zum Entkoppeln)'
-                      }
-                      aria-label={`${spec.label} ${locked ? 'koppeln' : 'entkoppeln'}`}
-                      aria-pressed={locked}
-                      data-testid={`lock-${spec.key}`}
-                      onClick={() => {
-                        toggleDecoupledCommand(nodeId, effect.instanceId, spec.key);
-                      }}
-                    >
-                      {locked ? <LockIcon /> : <UnlockIcon />}
-                    </button>
-                  )}
-                </div>
-              );
-            })}
+          {renderParams(manifest.params.filter((p) => visible(p.key) && !p.group))}
+          {[
+            ...new Set(manifest.params.filter((p) => p.group && visible(p.key)).map((p) => p.group ?? '')),
+          ].map((group) => (
+            <details key={group} className="param-group" data-testid={`param-group-${group}`}>
+              <summary>{group}</summary>
+              {renderParams(manifest.params.filter((p) => p.group === group && visible(p.key)))}
+            </details>
+          ))}
           <div className="effect-card-sep" />
           <Slider
             label="Mischung"

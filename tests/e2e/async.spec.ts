@@ -130,8 +130,16 @@ test('Python-Dienst: Vorschau und Export, Ergebnis-Cache, Lizenzsperre im Modus 
     })
     .not.toBe(-1);
 
-  // NC-Effekt im Modus „Kommerziell“: Fehler in der Job-Liste, Export bricht verständlich ab
+  // NC-Effekt (im Modus „Alle“ angelegt) im Modus „Kommerziell“: der Dienst lehnt ab → Fehler in der Job-Liste,
+  // Export bricht verständlich ab
+  await page.evaluate(() => {
+    window.__bls.store.getState().setLicenseMode('all');
+  });
   await addEffect(page, 'zz-e2e-py-nc');
+  await page.evaluate(() => {
+    window.__bls.store.getState().setLicenseMode('commercial');
+    window.__bls.getEngine()?.async.clear();
+  });
   await expect(page.getByTestId('effect-job').filter({ hasText: 'E2E Python NC' })).toContainText(
     'nur nicht-kommerziell',
   );

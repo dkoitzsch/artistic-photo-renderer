@@ -11,6 +11,7 @@ import {
   findNode,
   newId,
   replaceNode,
+  walk,
   walkLayers,
   type EffectInstance,
   type FocusMapSpec,
@@ -297,6 +298,15 @@ export function ncLayers(project: Project): { id: string; name: string; modelId:
       out.push({ id: l.id, name: l.name, modelId: l.focusMap.provenance.modelId });
     else if (l.depthMap && !l.depthMap.provenance.commercialUse)
       out.push({ id: l.id, name: l.name, modelId: l.depthMap.provenance.modelId });
+  }
+  // Effekte, deren Verfahren/Modelle nur nicht-kommerziell nutzbar sind (Manifest license.commercialUse = false)
+  for (const n of walk(project.root)) {
+    if (!n.visible) continue;
+    for (const fx of n.effects) {
+      const m = getPlugin(fx.effectId)?.manifest;
+      if (fx.enabled && m && !m.license.commercialUse)
+        out.push({ id: n.id, name: `${n.name} – ${m.name}`, modelId: `Effekt ${fx.effectId}` });
+    }
   }
   return out;
 }

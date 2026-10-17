@@ -523,11 +523,20 @@ export class Engine {
     const layer = firstLayer(project);
     if (!layer || !plugin.manifest || plugin.status !== 'ok' || !this.runner.isCompiled(plugin)) return null;
     if (!this.sources.has(layer.originalId)) return null;
-    const s = Math.min(1, edge / Math.max(project.canvas.width, project.canvas.height));
-    const w = Math.max(1, Math.round(project.canvas.width * s));
-    const h = Math.max(1, Math.round(project.canvas.height * s));
+    // Ausschnitt aus der Bildmitte in Originalauflösung (Spec „Effekte“ 3.3): feine Effekte wirken wie im Export
+    const full = this.sources.original(layer.originalId);
+    const cw = Math.min(full.width, Math.round(edge * 1.5));
+    const ch = Math.min(full.height, Math.round(cw * 0.75));
+    const cx = Math.floor((full.width - cw) / 2);
+    const cy = Math.floor((full.height - ch) / 2);
+    const s = edge / Math.max(cw, ch * (4 / 3));
+    const w = Math.max(1, Math.round(cw * s));
+    const h = Math.max(1, Math.round(ch * s));
     const frame = new Frame(this.device, this.core.pool, 'thumbnail');
-    const src = this.sources.at(frame, layer.originalId, w, h);
+    const crop = this.core.pool.acquire(cw, ch, 'thumb-crop');
+    frame.encoder.copyTextureToTexture({ texture: full, origin: [cx, cy] }, { texture: crop }, [cw, ch]);
+    const src = this.core.pool.acquire(w, h, 'thumb-src');
+    this.core.resample(frame, crop, src);
     // Analysekarten, falls der Effekt sie anfordert
     const need = plugin.manifest.requires;
     const temps: GPUTexture[] = [];
@@ -563,10 +572,16 @@ export class Engine {
         ...(luminance ? { luminance } : {}),
         ...(edges ? { edges } : {}),
       },
-      { scale: s, origin: [0, 0], canvasSize: [w, h] },
+      {
+        scale: s,
+        origin: [cx * s, cy * s],
+        canvasSize: [project.canvas.width * s, project.canvas.height * s],
+      },
     );
     frame.submit();
     for (const t of temps) this.core.pool.release(t);
+    this.core.pool.release(crop);
+    this.core.pool.release(src);
     const pixels = await this.encode(out, [0, 0], w, h);
     this.core.pool.release(out);
     return new ImageData(pixels, w, h);
