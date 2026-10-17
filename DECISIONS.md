@@ -10,6 +10,33 @@ Abweichungen von der Spec und Festlegungen bei unklaren Anforderungen. Neueste o
 - **Betrifft:** (Spec-Abschnitt / Phase)
 -->
 
+## 2026-10-17 – Erweiterung „Effekte & Malvorlagen“ (E1–E5): Grundsatzentscheidungen
+
+Vom Nutzer freigegeben (alle Vorschläge aus der Analyse übernommen); Spec: `docs/spec-effekte-und-malvorlagen.md`.
+
+- **Effekte als Filter (13.1):** Effekte bleiben ein nicht-destruktiver Filterstapel auf Ebenen und Gruppen; jeder Effekt
+  erhält zusätzlich eigene Maske und eigenen Mischmodus. Einstellungsebenen („wirkt auf alles darunter“) erst bei Bedarf.
+- **WebGPU (13.2):** keine WebGL2-Implementierungen.
+- **Dritter Ausführungsort „Browser-CPU“:** globale/sequenzielle Effekte (Fehlerdiffusion, Pixel-Sort, Delaunay) laufen in
+  einem Web Worker auf der ganzen Ebene statt in Kacheln; gemeinsamer asynchroner Ablauf mit Python-Effekten.
+- **Analysekarten:** `luminance`, `edges` (später `flow`, `normals`) im Browser auf der GPU, im Ebenenraum gecacht wie die
+  Tiefenkarte; ML-Karten im Dienst mit Browser-Rückfall. Python-Effekte berechnen dieselben Karten selbst (gleiches
+  Verfahren, durch Tests abgeglichen).
+- **Ein Manifest, zwei Implementierungen:** Der Dienst liest dieselben `effects/*/manifest.json` und lädt `effect.py`.
+- **Vorschau:** bleibt 2048 px (einstellbar); Parameter bleiben in Leinwand-px gespeichert (Vorschau skaliert); zusätzlich
+  Ausschnitt in voller Auflösung beim Hineinzoomen (E1).
+- **PSD:** Option „Effekte als eigene Ebenen“ (Basis + je Effekt eine gerasterte Ebene mit Effektmaske/Mischmodus).
+- **Lizenzen:** `license.commercialUse` je Effekt, Behandlung wie NC-Masken; Gesamtübersicht `LICENSES-THIRD-PARTY.md`.
+- **Reihenfolge:** alte Spec-Phase 5 (Pinsel, SAM) wird vor E3 umgesetzt; Korn/Halation/Doppelbelichtung der alten Phase 6
+  gehen in `film-grain`/`double-exposure` auf.
+- **Modelle (13.3):** Depth Anything V2 Small/Large (vorhanden), SAM 2.1, U²-Net, MediaPipe Face; AdaIN nur nach geklärter
+  VGG-Gewichtslizenz, sonst nur im Modus „Alle“ – jeweils vor E3 an der Quelle prüfen.
+- **GPU im Dienst (13.4):** PyTorch/MPS für ML; Simulationen bevorzugt WebGPU im Browser, sequenzielle Verfahren mit
+  NumPy/SciPy im Dienst.
+- **Pigmente (13.5):** eigene Näherungsdaten (Reflexionsrekonstruktion aus Pigmentfarben, Kubelka-Munk mit zwei Konstanten);
+  Mixbox ausgeschlossen.
+- **Ablauf:** nach jedem Schritt Tests, Commit und Push; Plan in `docs/plan-E1.md`.
+
 ## 2026-10-15 – Phase 4: Transform und weitere Bilder
 
 - **Frage:** In welchem Raum wirken Maske, Lochfüllung und Effekte einer transformierten Ebene?

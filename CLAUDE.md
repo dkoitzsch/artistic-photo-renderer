@@ -10,7 +10,11 @@ Abweichungen nur mit Eintrag in [DECISIONS.md](DECISIONS.md) und Hinweis an den 
 ## Status
 
 Abgeschlossen: **Phase 0 – Gerüst**, **Phase 1 – Ganzes Bild**, **Phase 2 – Vordergrund, Fokus, Schatten**,
-**Phase 3 – Tiefenebenen und Gruppen**, **Phase 4 – Weitere Bilder**. Nächste: Phase 5 (wartet auf Freigabe). Erledigte Punkte werden in der Spec abgehakt.
+**Phase 3 – Tiefenebenen und Gruppen**, **Phase 4 – Weitere Bilder**. Erledigte Punkte werden in der Spec abgehakt.
+
+**In Arbeit: Erweiterung „Effekte & Malvorlagen“** ([docs/spec-effekte-und-malvorlagen.md](docs/spec-effekte-und-malvorlagen.md)),
+Phase **E1** nach [docs/plan-E1.md](docs/plan-E1.md). Danach: alte Phase 5 (Pinsel, SAM), dann E2 … E5.
+Nach jedem Schritt: Tests, Commit, Push.
 
 ## Ordnerstruktur (✓ = existiert)
 
