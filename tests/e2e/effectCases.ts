@@ -117,4 +117,39 @@ export const EFFECT_CASES: EffectCase[] = [
   // ---- E1 Schritt 11 ----
   { name: 'kuwahara-oil-portrait', fixture: 'portrait', effectId: 'kuwahara', preset: 'Ölbild' },
   { name: 'kuwahara-pastos-landscape', fixture: 'landscape', effectId: 'kuwahara', preset: 'Pastos, grob' },
+  // ---- E1 Schritt 12 (Browser-CPU bzw. Dienst) ----
+  {
+    name: 'dither-atkinson-portrait',
+    fixture: 'portrait',
+    effectId: 'dither',
+    preset: 'Mac-Klassik (1 Bit)',
+    flatBorder: false,
+  },
+  {
+    name: 'dither-gameboy-landscape',
+    fixture: 'landscape',
+    effectId: 'dither',
+    preset: 'Game Boy',
+    flatBorder: false,
+  },
+  {
+    name: 'dither-bluenoise-architecture',
+    fixture: 'architecture',
+    effectId: 'dither',
+    preset: 'Zeitung (Blue Noise)',
+    flatBorder: false,
+  },
+  {
+    name: 'pixel-sort-landscape',
+    fixture: 'landscape',
+    effectId: 'pixel-sort',
+    preset: 'Klassisch (Lichter fließen)',
+  },
+  {
+    name: 'pixel-sort-hue-architecture',
+    fixture: 'architecture',
+    effectId: 'pixel-sort',
+    preset: 'Waagerechte Streifen',
+  },
+  { name: 'low-poly-still-life', fixture: 'still-life', effectId: 'low-poly', preset: 'Kristall' },
 ];

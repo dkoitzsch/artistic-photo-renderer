@@ -36,4 +36,11 @@ describe('Zufall (Seed)', () => {
     expect(randCell(123, 456, 1, 2)).toBe(0.21902084350585938);
     expect(randCell(-5, 9, 4000000000, 1)).toBe(0.2546077370643616);
   });
+
+  it('mulberry32-Referenzwerte (gleich in effects/low-poly/effect.py)', () => {
+    const a = mulberry32(5);
+    expect([a(), a(), a()]).toEqual([0.6897749109193683, 0.7727432732935995, 0.21976301027461886]);
+    const b = mulberry32(4000000000);
+    expect([b(), b()]).toEqual([0.6919068221468478, 0.5511944761965424]);
+  });
 });

@@ -1,0 +1,90 @@
+{
+  "id": "dither",
+  "name": "Dithering",
+  "version": "1.0.0",
+  "category": "Digital & Glitch",
+  "description": "Wenige Farben, feines Punktmuster: Fehlerdiffusion (Floyd-Steinberg, Atkinson) oder geordnet (Bayer, Blue Noise).",
+  "inputs": ["source"],
+  "passes": 1,
+  "implementations": { "preview": "browser-cpu", "final": "browser-cpu" },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung (Floyd-Steinberg 1976, Atkinson, Bayer 1973, Blue Noise per void-and-cluster nach Ulichney 1993; Matrizen selbst erzeugt)."
+  },
+  "cost": "interactive",
+  "randomized": false,
+  "requires": [],
+  "params": [
+    {
+      "key": "method",
+      "label": "Verfahren",
+      "type": "enum",
+      "options": [
+        { "value": "floyd-steinberg", "label": "Floyd-Steinberg" },
+        { "value": "atkinson", "label": "Atkinson" },
+        { "value": "bayer-2", "label": "Bayer 2 × 2" },
+        { "value": "bayer-4", "label": "Bayer 4 × 4" },
+        { "value": "bayer-8", "label": "Bayer 8 × 8" },
+        { "value": "blue-noise", "label": "Blue Noise" }
+      ],
+      "default": "floyd-steinberg"
+    },
+    {
+      "key": "colors",
+      "label": "Farben",
+      "type": "enum",
+      "options": [
+        { "value": "levels", "label": "Stufen je Kanal" },
+        { "value": "mono", "label": "Graustufen" },
+        { "value": "palette", "label": "Palette" }
+      ],
+      "default": "mono"
+    },
+    { "key": "levels", "label": "Stufen", "type": "int", "min": 2, "max": 8, "default": 2 },
+    {
+      "key": "palette",
+      "label": "Palette",
+      "type": "palette",
+      "default": [
+        [0.06, 0.22, 0.06],
+        [0.19, 0.38, 0.19],
+        [0.55, 0.67, 0.06],
+        [0.61, 0.74, 0.06]
+      ]
+    },
+    {
+      "key": "pixelSize",
+      "label": "Pixelgröße",
+      "type": "float",
+      "min": 1,
+      "max": 16,
+      "default": 2,
+      "step": 1,
+      "unit": "px"
+    },
+    {
+      "key": "serpentine",
+      "label": "Schlangenlinie",
+      "hint": "Fehlerdiffusion abwechselnd links/rechts – weniger Streifen",
+      "type": "bool",
+      "default": true,
+      "group": "Erweitert"
+    }
+  ],
+  "visibleIf": { "levels": "colors!=palette", "palette": "colors=palette" },
+  "presets": [
+    {
+      "name": "Mac-Klassik (1 Bit)",
+      "values": { "method": "atkinson", "colors": "mono", "levels": 2, "pixelSize": 2 }
+    },
+    { "name": "Game Boy", "values": { "method": "bayer-4", "colors": "palette", "pixelSize": 3 } },
+    {
+      "name": "Zeitung (Blue Noise)",
+      "values": { "method": "blue-noise", "colors": "mono", "levels": 2, "pixelSize": 1 }
+    },
+    {
+      "name": "8 Farben",
+      "values": { "method": "floyd-steinberg", "colors": "levels", "levels": 2, "pixelSize": 2 }
+    }
+  ]
+}

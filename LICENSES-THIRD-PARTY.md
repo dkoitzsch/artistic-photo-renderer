@@ -9,17 +9,19 @@ Zentrale Liste aller Fremdkomponenten (Spec „Effekte & Malvorlagen“, Abschni
 
 ## Web-App (im Bundle)
 
-| Komponente                 | Version | Lizenz     | Kommerziell | Zweck                      |
-| -------------------------- | ------- | ---------- | ----------- | -------------------------- |
-| react, react-dom           | 19.3.0  | MIT        | ja          | Oberfläche                 |
-| zustand                    | 5.0.15  | MIT        | ja          | Zustand                    |
-| @radix-ui/react-dialog     | 1.3.1   | MIT        | ja          | Dialoge                    |
-| fflate                     | 0.8.3   | MIT        | ja          | Projektdatei (ZIP)         |
-| fast-png                   | 8.0.0   | MIT        | ja          | 16-Bit-PNG (Masken, Tiefe) |
-| ag-psd                     | 31.0.3  | MIT        | ja          | PSD-Export                 |
-| onnxruntime-web            | 1.30.0  | MIT        | ja          | ML im Browser              |
-| @mediapipe/tasks-vision    | 1.1.0   | Apache-2.0 | ja          | Landmarken (Fokuspunkte)   |
-| @fontsource-variable/inter | 5.3.0   | OFL-1.1    | ja          | Schrift Inter              |
+| Komponente                 | Version | Lizenz     | Kommerziell | Zweck                         |
+| -------------------------- | ------- | ---------- | ----------- | ----------------------------- |
+| react, react-dom           | 19.3.0  | MIT        | ja          | Oberfläche                    |
+| zustand                    | 5.0.15  | MIT        | ja          | Zustand                       |
+| @radix-ui/react-dialog     | 1.3.1   | MIT        | ja          | Dialoge                       |
+| fflate                     | 0.8.3   | MIT        | ja          | Projektdatei (ZIP)            |
+| fast-png                   | 8.0.0   | MIT        | ja          | 16-Bit-PNG (Masken, Tiefe)    |
+| ag-psd                     | 31.0.3  | MIT        | ja          | PSD-Export                    |
+| delaunator                 | 5.1.0   | ISC        | ja          | Delaunay (Low-Poly, Vorschau) |
+| robust-predicates          | 3.0.3   | Unlicense  | ja          | Abhängigkeit von delaunator   |
+| onnxruntime-web            | 1.30.0  | MIT        | ja          | ML im Browser                 |
+| @mediapipe/tasks-vision    | 1.1.0   | Apache-2.0 | ja          | Landmarken (Fokuspunkte)      |
+| @fontsource-variable/inter | 5.3.0   | OFL-1.1    | ja          | Schrift Inter                 |
 
 ## Python-Dienst
 
@@ -36,6 +38,7 @@ Zentrale Liste aller Fremdkomponenten (Spec „Effekte & Malvorlagen“, Abschni
 | huggingface-hub  | 2.2.0          | Apache-2.0                                                                           | ja          |
 | timm / kornia    | 1.0.30 / 0.8.3 | Apache-2.0                                                                           | ja          |
 | einops           | 0.8.2          | MIT                                                                                  | ja          |
+| scipy            | 1.18.1         | BSD-3-Clause                                                                         | ja          |
 | pytest, httpx    | 9.1.1, 0.28.1  | MIT, BSD-3-Clause (nur Tests)                                                        | ja          |
 
 ## Modelle

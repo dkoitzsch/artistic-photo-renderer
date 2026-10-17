@@ -1,0 +1,53 @@
+{
+  "id": "low-poly",
+  "name": "Low-Poly",
+  "version": "1.0.0",
+  "category": "Geometrisch & Abstrakt",
+  "description": "Bild aus Dreiecken (Delaunay-Triangulierung), Punkte bevorzugt an Kanten; Vorschau im Browser, Endrender im Dienst.",
+  "inputs": ["source"],
+  "passes": 1,
+  "implementations": { "preview": "browser-cpu", "final": "python" },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung; Delaunay im Browser mit delaunator (ISC, Mapbox), im Dienst mit SciPy (BSD-3-Clause)."
+  },
+  "cost": "slow",
+  "randomized": true,
+  "requires": ["edges"],
+  "params": [
+    {
+      "key": "points",
+      "label": "Punktanzahl",
+      "type": "int",
+      "min": 50,
+      "max": 20000,
+      "default": 1200,
+      "scale": "log"
+    },
+    {
+      "key": "edgeWeight",
+      "label": "Kantenbezug",
+      "hint": "Wie stark sich die Punkte an Kanten sammeln",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 70,
+      "unit": "%"
+    },
+    {
+      "key": "color",
+      "label": "Flächenfarbe",
+      "type": "enum",
+      "options": [
+        { "value": "mean", "label": "Mittelwert" },
+        { "value": "center", "label": "Schwerpunkt" }
+      ],
+      "default": "mean"
+    }
+  ],
+  "presets": [
+    { "name": "Grob", "values": { "points": 300, "edgeWeight": 60, "color": "mean" } },
+    { "name": "Detailreich", "values": { "points": 4000, "edgeWeight": 80, "color": "mean" } },
+    { "name": "Kristall", "values": { "points": 900, "edgeWeight": 90, "color": "center" } }
+  ]
+}

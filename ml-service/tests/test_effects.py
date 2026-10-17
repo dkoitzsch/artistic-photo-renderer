@@ -187,3 +187,33 @@ def test_analysis_maps():
     assert abs(abs(ty * 2 - 1) - 1) < 1e-3  # Tangente senkrecht
     assert coh > 0.95
     assert e[10, 2, 0] == 0  # keine Kante in der Fläche
+
+
+def test_low_poly_random_matches_browser():
+    """Zufall der Punktauswahl bitgleich zu mulberry32 in src/effects/random.ts (Referenzwerte wie random.test.ts)."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("lowpoly", EFFECTS_DIR / "low-poly" / "effect.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    a = mod._mulberry32(5)
+    assert [a(), a(), a()] == [0.6897749109193683, 0.7727432732935995, 0.21976301027461886]
+    b = mod._mulberry32(4000000000)
+    assert [b(), b()] == [0.6919068221468478, 0.5511944761965424]
+
+
+def test_low_poly_renders_in_service(tmp_path):
+    client, _ = make_client(tmp_path)
+    img = image(48, 32)
+    digest = upload(client, img)
+    r = client.post(
+        "/effects/low-poly/render",
+        json={"image": digest, "params": {"points": 60}, "scale": 1, "origin": [0, 0], "canvasSize": [48, 32]},
+    )
+    assert wait(client, r.json()["id"])["status"] == "done"
+    out, _ = result(client, r.json()["id"])
+    assert out.shape == img.shape and np.isfinite(out).all()
+    # einfarbige Dreiecksflächen: die meisten Nachbarpixel sind gleich, im Verlaufsbild keiner
+    same = np.all(out[:, 1:] == out[:, :-1], axis=-1).mean()
+    assert same > 0.5
+    assert np.all(img[:, 1:] == img[:, :-1], axis=-1).mean() == 0

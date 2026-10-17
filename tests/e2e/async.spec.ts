@@ -147,3 +147,32 @@ test('Python-Dienst: Vorschau und Export, Ergebnis-Cache, Lizenzsperre im Modus 
   });
   expect(err).toContain('nur nicht-kommerziell');
 });
+
+test('Low-Poly: Vorschau (Browser-CPU) und Endrender (Dienst) stimmen überein', async ({ page }) => {
+  await addEffect(page, 'low-poly', { points: 400, seed: 4 });
+  // Vorschau fertig (keine laufenden Effekt-Jobs) und Vorschau-Pixel holen (Testbild klein → Vorschau = volle Auflösung)
+  await expect
+    .poll(() => page.evaluate(() => window.__bls.store.getState().asyncJobs.length), { timeout: 30_000 })
+    .toBe(0);
+  const preview = await page.evaluate(async () => {
+    const p = await window.__bls.getEngine()?.readPreview();
+    return p ? { w: p.width, h: p.height, data: Array.from(p.pixels) } : null;
+  });
+  if (!preview) throw new Error('keine Vorschau');
+  const exported = await renderExport(page);
+  expect([preview.w, preview.h]).toEqual([exported.width, exported.height]);
+  let sum = 0;
+  let same = 0;
+  for (let i = 0; i < exported.data.length; i += 4) {
+    const d = Math.max(
+      ...[0, 1, 2].map((c) => Math.abs((exported.data[i + c] ?? 0) - (preview.data[i + c] ?? 0))),
+    );
+    sum += d;
+    if (d <= 2) same++;
+  }
+  const n = exported.data.length / 4;
+  console.log(
+    `Low-Poly Vorschau ↔ Endrender: Mittel ${(sum / n).toFixed(2)}, gleich ${((100 * same) / n).toFixed(1)} %`,
+  );
+  expect(same / n).toBeGreaterThan(0.95);
+});

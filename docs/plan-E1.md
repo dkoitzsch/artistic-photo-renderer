@@ -21,7 +21,7 @@ Grundlage: [spec-effekte-und-malvorlagen.md](spec-effekte-und-malvorlagen.md), E
 - [x] 9. Effekte: `rgb-split`, `pixelate`, `film-grain`, `bloom`, `tilt-shift`, `posterize-palette`
 - [x] 10. Effekte: `ink-lines`, `comic`, `halftone-cmyk`
 - [x] 11. Effekt: `kuwahara` (anisotrop)
-- [ ] 12. Effekte: `dither`, `pixel-sort`, `low-poly`
+- [x] 12. Effekte: `dither`, `pixel-sort`, `low-poly`
 - [ ] 13. Effekt: `double-exposure`
 - [ ] 14. PSD: Option „Effekte als eigene Ebenen“; Gruppen (auch mit Effekten) als Ebenengruppen mit Gruppenmaske
 - [ ] 15. Effekt-Browser: Kennzeichen (Kosten, Lizenz, Karten), Ausschnitt-Vorschau, Sperre im kommerziellen Modus,

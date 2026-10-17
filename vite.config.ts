@@ -69,6 +69,9 @@ function testModelMirror(): Plugin {
 export default defineConfig({
   plugins: [react(), vendorAssets(), testModelMirror()],
   worker: { format: 'es' },
+  // Abhängigkeiten, die erst in Workern/Plugins importiert werden, vorab bündeln (sonst lädt der Dev-Server beim
+  // ersten Gebrauch die Seite neu)
+  optimizeDeps: { include: ['delaunator'] },
   server: { port: 5317, strictPort: true },
   preview: { port: 4317, strictPort: true },
   build: { target: 'es2023' },

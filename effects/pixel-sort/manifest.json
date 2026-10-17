@@ -1,0 +1,85 @@
+{
+  "id": "pixel-sort",
+  "name": "Pixel-Sorting",
+  "version": "1.0.0",
+  "category": "Digital & Glitch",
+  "description": "Sortiert Pixel in Streifen nach Helligkeit, Farbton oder Sättigung – nur in einem wählbaren Helligkeitsbereich.",
+  "inputs": ["source"],
+  "passes": 1,
+  "implementations": { "preview": "browser-cpu", "final": "browser-cpu" },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung (Pixel-Sorting nach Asendorf, Verfahren)."
+  },
+  "cost": "interactive",
+  "randomized": false,
+  "requires": [],
+  "params": [
+    {
+      "key": "direction",
+      "label": "Richtung",
+      "type": "enum",
+      "options": [
+        { "value": "right", "label": "nach rechts" },
+        { "value": "left", "label": "nach links" },
+        { "value": "down", "label": "nach unten" },
+        { "value": "up", "label": "nach oben" }
+      ],
+      "default": "down"
+    },
+    {
+      "key": "criterion",
+      "label": "Sortieren nach",
+      "type": "enum",
+      "options": [
+        { "value": "luminance", "label": "Helligkeit" },
+        { "value": "hue", "label": "Farbton" },
+        { "value": "saturation", "label": "Sättigung" }
+      ],
+      "default": "luminance"
+    },
+    {
+      "key": "lower",
+      "label": "Bereich ab",
+      "hint": "Nur Pixel mit Helligkeit in diesem Bereich werden sortiert",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 30,
+      "unit": "%"
+    },
+    {
+      "key": "upper",
+      "label": "Bereich bis",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 85,
+      "unit": "%"
+    },
+    {
+      "key": "minLength",
+      "label": "Mindestlänge",
+      "type": "float",
+      "min": 1,
+      "max": 200,
+      "default": 6,
+      "unit": "px",
+      "group": "Erweitert"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Klassisch (Lichter fließen)",
+      "values": { "direction": "down", "criterion": "luminance", "lower": 30, "upper": 85 }
+    },
+    {
+      "name": "Waagerechte Streifen",
+      "values": { "direction": "right", "criterion": "hue", "lower": 15, "upper": 95 }
+    },
+    {
+      "name": "Nur Himmel",
+      "values": { "direction": "up", "criterion": "luminance", "lower": 60, "upper": 100 }
+    }
+  ]
+}
