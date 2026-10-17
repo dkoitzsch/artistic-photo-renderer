@@ -393,6 +393,31 @@ export class Compositor {
     );
   }
 
+  /**
+   * Maske (Effekt- oder Gruppenmaske) als Leinwand-Ausschnitt, z. B. für den PSD-Export. host: Ebene, auf der der
+   * Effekt liegt; input: Eingangsbild bei Gruppen (Kartenbereiche aus dem Ergebnis); null = Maske „überall“.
+   */
+  maskTexture(
+    frame: Frame,
+    project: Project,
+    mask: EffectMask,
+    hostLayerId: string | null,
+    opts: RenderOptions,
+    input?: { tex: GPUTexture; group: Group },
+  ): { tex: GPUTexture; owned: boolean } | null {
+    this.use(project);
+    const layer = hostLayerId ? findLayer(project, hostLayerId) : undefined;
+    const host = layer ? { layer, geo: this.geometry(layer, opts) } : null;
+    const m = this.effectMask(
+      frame,
+      mask,
+      host,
+      opts,
+      input ? { input: { tex: input.tex, key: 'psd-input', owned: false }, group: input.group } : undefined,
+    );
+    return m ? m.get() : null;
+  }
+
   /** Fokuspunkte einer Ebene in Leinwand-px. */
   private focusPoints(layer: Layer, geo: Geometry) {
     const points = (layer.focusMap?.points ?? []).filter((p) => p.enabled && p.radius > 0);

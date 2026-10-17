@@ -429,6 +429,7 @@ export function ExportDialog() {
   const [format, setFormat] = useState<ExportFormat>('png');
   const [quality, setQuality] = useState(92);
   const [originals, setOriginals] = useState(false);
+  const [fxLayers, setFxLayers] = useState(false);
   return (
     <Modal open={open} onOpenChange={setOpen} title="Exportieren" testId="export-dialog">
       <fieldset className="choice-list">
@@ -475,9 +476,23 @@ export function ExportDialog() {
         </label>
       )}
       {format === 'psd' && (
+        <label className="choice">
+          <input
+            type="checkbox"
+            checked={fxLayers}
+            onChange={(e) => {
+              setFxLayers(e.target.checked);
+            }}
+            data-testid="export-effect-layers"
+          />
+          <span>Effekte als eigene Ebenen (Effektname, Effektmaske als Ebenenmaske)</span>
+        </label>
+      )}
+      {format === 'psd' && (
         <p className="section-note">
-          Ebenen enthalten ihre Effekte; Masken liegen zusätzlich als deaktivierte Ebenenmasken bei. Gruppen
-          mit eigenen Effekten werden als eine Ebene gerendert.
+          Gruppen bleiben Ebenengruppen (Gruppenmaske aktiv, Gruppeneffekte als oberste Ebene). Ebenen
+          enthalten ihre Effekte, Ebenenmasken liegen deaktiviert bei – oder jeder Effekt wird eine eigene
+          Ebene.
         </p>
       )}
       <div className="dialog-actions">
@@ -494,7 +509,13 @@ export function ExportDialog() {
           data-testid="export-start"
           onClick={() => {
             setOpen(false);
-            void exportAs({ ...DEFAULT_EXPORT, format, quality: quality / 100, includeOriginals: originals });
+            void exportAs({
+              ...DEFAULT_EXPORT,
+              format,
+              quality: quality / 100,
+              includeOriginals: originals,
+              effectsAsLayers: fxLayers,
+            });
           }}
         >
           Exportieren

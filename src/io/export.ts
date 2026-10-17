@@ -15,6 +15,8 @@ export type ExportOptions = {
   quality: number;
   /** PSD: unbearbeitete Originale als ausgeblendete Ebenen */
   includeOriginals: boolean;
+  /** PSD: jeder Effekt als eigene gerasterte Ebene (Name = Effektname, Effektmaske als Ebenenmaske) */
+  effectsAsLayers?: boolean;
 };
 
 export const DEFAULT_EXPORT: ExportOptions = { format: 'png', quality: 0.92, includeOriginals: false };
@@ -108,6 +110,7 @@ export async function exportConfirmed(options: ExportOptions = DEFAULT_EXPORT): 
       const { renderPsd } = await import('./psd');
       const bytes = await renderPsd(engine, project, {
         includeOriginals: options.includeOriginals,
+        effectsAsLayers: options.effectsAsLayers ?? false,
         onProgress: (d, t) => {
           upsertTask({
             id: taskId,

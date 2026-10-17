@@ -2,7 +2,15 @@
 
 import { defaultParams, type ParamValue } from '../effects/manifest';
 import { usePluginStore, type Plugin } from '../effects/pluginStore';
-import { findNode, firstLayer, walk, type Group, type Project, type SceneNode } from '../state/project';
+import {
+  findNode,
+  firstLayer,
+  walk,
+  type EffectMask,
+  type Group,
+  type Project,
+  type SceneNode,
+} from '../state/project';
 import { getPlugin } from '../effects/pluginStore';
 import type { View } from '../state/viewMath';
 import { AsyncEffects } from './asyncEffects';
@@ -643,6 +651,60 @@ export class Engine {
     });
     frame.submit();
     this.sources.endFrame();
+    if (!tex) return null;
+    const u16 = await this.readR16(tex.tex);
+    if (tex.owned) this.core.pool.release(tex.tex);
+    const out = new Uint8Array(u16.length);
+    for (let i = 0; i < u16.length; i++) out[i] = Math.round((u16[i] ?? 0) / 257);
+    return out;
+  }
+
+  /** Rendert das Projekt in voller Auflösung am Stück als Arbeitstextur (z. B. Eingang einer Gruppenmaske). */
+  async renderTexture(project: Project): Promise<{ tex: GPUTexture; owned: boolean }> {
+    const { width: W, height: H } = project.canvas;
+    return this.renderResolved(project, {
+      scale: 1,
+      canvasSize: [W, H],
+      region: { x: 0, y: 0, width: W, height: H },
+      ignoreEffects: false,
+      cache: null,
+      variant: 'psd',
+      final: true,
+    });
+  }
+
+  /**
+   * Maske (Effekt- oder Gruppenmaske) in voller Auflösung als 8-Bit-Werte. hostLayerId: Ebene des Effekts;
+   * inputProject: bei Gruppen das Projekt, dessen Ergebnis der Eingang ist (Kartenbereiche); null = keine Einschränkung.
+   */
+  async maskPixels(
+    project: Project,
+    mask: EffectMask,
+    hostLayerId: string | null,
+    input?: { project: Project; group: Group },
+  ): Promise<Uint8Array | null> {
+    const { width: W, height: H } = project.canvas;
+    const inputTex = input ? await this.renderTexture(input.project) : null;
+    const frame = new Frame(this.device, this.core.pool, 'psd-mask');
+    const tex = this.compositor.maskTexture(
+      frame,
+      project,
+      mask,
+      hostLayerId,
+      {
+        scale: 1,
+        canvasSize: [W, H],
+        region: { x: 0, y: 0, width: W, height: H },
+        ignoreEffects: false,
+        cache: null,
+        variant: 'psd',
+        final: true,
+      },
+      inputTex && input ? { tex: inputTex.tex, group: input.group } : undefined,
+    );
+    frame.submit();
+    this.sources.endFrame();
+    if (inputTex?.owned) this.core.pool.release(inputTex.tex);
     if (!tex) return null;
     const u16 = await this.readR16(tex.tex);
     if (tex.owned) this.core.pool.release(tex.tex);

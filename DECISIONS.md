@@ -10,6 +10,20 @@ Abweichungen von der Spec und Festlegungen bei unklaren Anforderungen. Neueste o
 - **Betrifft:** (Spec-Abschnitt / Phase)
 -->
 
+## 2026-10-17 – E1: PSD-Export von Gruppen und Effekten
+
+- **Gruppen** sind immer PSD-Ebenengruppen (Deckkraft, Mischmodus, Sichtbarkeit; Gruppenmaske als **aktive** Maske der
+  PSD-Gruppe). Gruppen mit eigenen Effekten: die Kinder bleiben erhalten, aber **ausgeblendet**; darüber liegt das
+  gerenderte Gruppenergebnis („<Gruppe> – <Effekte> (gerendert)“). So stimmt das Gesamtbild exakt (psd-tools-Gegenprobe:
+  99 % der Pixel ≤ 1 Stufe), und die Kinder lassen sich in Photoshop weiterbearbeiten.
+- **Option „Effekte als eigene Ebenen“:** jede Ebene mit Effekten wird eine PSD-Gruppe aus Basisebene (Ebenenmaske
+  deaktiviert beigelegt) und je Effekt einer gerasterten Ebene (Name = Effektname; reines Effektergebnis auf seinem
+  Eingang; Stärke → Deckkraft, Mischmodus → Mischmodus, Effektmaske → aktive Ebenenmaske). Gruppeneffekte ebenso als
+  oberste Ebenen der Gruppe. In deckenden Bereichen entspricht das genau der Mischung der App; in halbtransparenten
+  Bereichen legt Photoshop die Effekt-Ebene **über** ihren Eingang statt ihn zu ersetzen – dort kleine Abweichungen.
+- **Namen** im Standardmodus unverändert (Ebenenname), damit bestehende Exporte gleich bleiben.
+- Wirkbereich „Fokus-gewichtet“ eines Effekts wird in der Effekt-Ebene nicht als Maske abgebildet (selten; Hinweis).
+
 ## 2026-10-17 – E1: Asynchrone Effekte (Browser-CPU und Python-Dienst)
 
 - **Ablauf:** Der Compositor bleibt synchron. Fehlt das Ergebnis eines Worker-/Dienst-Effekts, meldet er eine Anfrage mit

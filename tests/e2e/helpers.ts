@@ -12,7 +12,8 @@ export async function enableTestEffects(page: Page): Promise<void> {
 
 export async function waitForApp(page: Page): Promise<void> {
   await page.goto('/');
-  await expect(page.locator('.statusbar-gpu')).toContainText('WebGPU ·');
+  // großzügig: im langen Gesamtlauf braucht der Dev-Server nach einem Neuladen gelegentlich länger
+  await expect(page.locator('.statusbar-gpu')).toContainText('WebGPU ·', { timeout: 15_000 });
   // Plugins kompiliert?
   await expect
     .poll(

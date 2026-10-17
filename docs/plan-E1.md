@@ -23,7 +23,7 @@ Grundlage: [spec-effekte-und-malvorlagen.md](spec-effekte-und-malvorlagen.md), E
 - [x] 11. Effekt: `kuwahara` (anisotrop)
 - [x] 12. Effekte: `dither`, `pixel-sort`, `low-poly`
 - [x] 13. Effekt: `double-exposure`
-- [ ] 14. PSD: Option „Effekte als eigene Ebenen“; Gruppen (auch mit Effekten) als Ebenengruppen mit Gruppenmaske
+- [x] 14. PSD: Option „Effekte als eigene Ebenen“; Gruppen (auch mit Effekten) als Ebenengruppen mit Gruppenmaske
 - [ ] 15. Effekt-Browser: Kennzeichen (Kosten, Lizenz, Karten), Ausschnitt-Vorschau, Sperre im kommerziellen Modus,
       Gruppe „Erweitert“
 - [ ] 16. Ausschnitt in voller Auflösung beim Hineinzoomen
