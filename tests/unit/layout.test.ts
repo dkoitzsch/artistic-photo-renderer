@@ -28,6 +28,11 @@ const manifest: EffectManifest = {
     { key: 'angle', label: 'W', type: 'angle', default: 180 },
     { key: 'n', label: 'N', type: 'int', min: 0, max: 9, default: 3 },
   ],
+  implementations: { preview: 'webgpu', final: 'webgpu' },
+  license: { commercialUse: true },
+  cost: 'realtime',
+  randomized: false,
+  requires: [],
 };
 
 describe('buildLayout', () => {
@@ -87,5 +92,68 @@ describe('shaderValue / packUniforms', () => {
     expect(dv.getUint32(60, true)).toBe(1);
     expect(dv.getUint32(72, true)).toBe(1);
     expect(dv.getInt32(80, true)).toBe(7);
+  });
+});
+
+describe('Manifest v2: Seed, Palette, Zweitbild', () => {
+  const m: EffectManifest = {
+    ...manifest,
+    params: [
+      { key: 'seed', label: 'S', type: 'seed', default: 7 },
+      {
+        key: 'colors',
+        label: 'P',
+        type: 'palette',
+        default: [
+          [1, 0, 0],
+          [0, 0, 1],
+        ],
+      },
+      { key: 'other', label: 'I', type: 'image', default: '' },
+      { key: 'k', label: 'K', type: 'float', min: 0, max: 1, default: 0.5 },
+    ],
+  };
+
+  it('legt Palette als array<vec4f, 16> mit Zähler an', () => {
+    const l = buildLayout(m);
+    const off = Object.fromEntries(l.fields.map((f) => [f.name, f.offset]));
+    // Kern 0..28, seed u32 @32, Palette auf 16 ausgerichtet @48 (256 Byte), count @304, image @308, k @312
+    expect(off).toMatchObject({ seed: 32, colors: 48, colors_count: 304, other: 308, k: 312 });
+    expect(l.size).toBe(320);
+    expect(l.struct).toContain('colors: array<vec4f, 16>');
+    expect(l.struct).toContain('colors_count: u32');
+  });
+
+  it('packt Seed, Palette (linear) und Bild-Flag', () => {
+    const l = buildLayout(m);
+    const buf = packUniforms(
+      m,
+      l,
+      {
+        seed: 42,
+        colors: [
+          [1, 0, 0],
+          [0.5, 0.5, 0.5],
+          [0, 0, 1],
+        ],
+        other: 'abc',
+      },
+      {
+        resolution: [1, 1],
+        origin: [0, 0],
+        canvasSize: [1, 1],
+        scale: 1,
+      },
+    );
+    const dv = new DataView(buf);
+    expect(dv.getUint32(32, true)).toBe(42);
+    expect(dv.getFloat32(48, true)).toBeCloseTo(1);
+    expect(dv.getFloat32(48 + 16, true)).toBeCloseTo(srgbToLinear(0.5), 5);
+    expect(dv.getFloat32(48 + 32 + 8, true)).toBeCloseTo(1);
+    expect(dv.getUint32(304, true)).toBe(3);
+    expect(dv.getUint32(308, true)).toBe(1);
+    const image = m.params[2];
+    if (!image) throw new Error('Parameter fehlt');
+    expect(shaderValue(image, '', 1)).toBe(0);
   });
 });

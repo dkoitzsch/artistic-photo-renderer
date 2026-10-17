@@ -2,7 +2,16 @@
 // Liefert alle Fehler auf einmal, damit sie im UI angezeigt werden können.
 
 import { compileExpr, parseCondition } from './expr';
-import { EFFECT_INPUTS, PARAM_TYPES, type EffectManifest } from './manifest';
+import {
+  ANALYSIS_MAPS,
+  COSTS,
+  EFFECT_INPUTS,
+  IMPLEMENTATIONS,
+  MAX_PALETTE,
+  PARAM_TYPES,
+  type EffectManifest,
+  type ParamSpec,
+} from './manifest';
 
 export type ValidationResult = { ok: true; manifest: EffectManifest } | { ok: false; errors: string[] };
 
@@ -21,12 +30,24 @@ const isStr = (v: unknown): v is string => typeof v === 'string' && v.trim().len
 const isRgb = (v: unknown) =>
   Array.isArray(v) && v.length === 3 && v.every((c) => isNum(c) && c >= 0 && c <= 1);
 const isPoint = (v: unknown) => Array.isArray(v) && v.length === 2 && v.every(isNum);
+const oneOf = <T extends string>(list: readonly T[], v: unknown): v is T =>
+  (list as readonly unknown[]).includes(v);
+
+/** Automatisch ergänzter Seed-Parameter für "randomized": true. */
+export const AUTO_SEED: ParamSpec = {
+  key: 'seed',
+  label: 'Seed',
+  type: 'seed',
+  default: 1,
+  group: 'Erweitert',
+};
 
 export function validateManifest(raw: unknown, folder?: string): ValidationResult {
   const errors: string[] = [];
   if (!isObj(raw)) return { ok: false, errors: ['manifest.json ist kein JSON-Objekt.'] };
 
   const { id, name, version, category, inputs, passes, params, presets, reach, visibleIf } = raw;
+  const { implementations, license, cost, randomized, requires } = raw;
   if (!isStr(id) || !ID_RE.test(id))
     errors.push('"id" fehlt oder ist nicht in kebab-case (z. B. "echo-offset").');
   else if (folder !== undefined && id !== folder)
@@ -49,8 +70,9 @@ export function validateManifest(raw: unknown, folder?: string): ValidationResul
         errors.push(`${where} ist kein Objekt.`);
         return;
       }
-      const { key, label, type } = p;
+      const { key, label, type, group } = p;
       const at = isStr(key) ? `Parameter "${key}"` : where;
+      if (group !== undefined && !isStr(group)) errors.push(`${at}: "group" muss Text sein.`);
       if (!isStr(key) || !KEY_RE.test(key))
         errors.push(`${where}: "key" muss ein Bezeichner sein (Buchstaben, Ziffern, _).`);
       else if (RESERVED_KEYS.includes(key)) errors.push(`${at}: "${key}" ist für den Kern reserviert.`);
@@ -88,6 +110,19 @@ export function validateManifest(raw: unknown, folder?: string): ValidationResul
           break;
         case 'point':
           if (!isPoint(d)) errors.push(`${at}: "default" muss [x, y] sein.`);
+          break;
+        case 'seed':
+          if (!isNum(d) || !Number.isInteger(d) || d < 0 || d > 0xffffffff)
+            errors.push(`${at}: "default" muss eine ganze Zahl ≥ 0 sein.`);
+          break;
+        case 'palette':
+          if (!Array.isArray(d) || d.length < 1 || d.length > MAX_PALETTE || !d.every(isRgb))
+            errors.push(
+              `${at}: "default" muss eine Liste von 1–${MAX_PALETTE} Farben [r, g, b] (0..1) sein.`,
+            );
+          break;
+        case 'image':
+          if (d !== '') errors.push(`${at}: "default" muss "" sein (kein Bild).`);
           break;
         case 'enum': {
           const opts = p.options;
@@ -147,5 +182,62 @@ export function validateManifest(raw: unknown, folder?: string): ValidationResul
       });
   }
 
-  return errors.length ? { ok: false, errors } : { ok: true, manifest: raw as EffectManifest };
+  // ---- Manifest v2 ----
+  let impl = { preview: 'webgpu', final: 'webgpu' } as EffectManifest['implementations'];
+  if (implementations !== undefined) {
+    if (!isObj(implementations) || !oneOf(IMPLEMENTATIONS, implementations.final))
+      errors.push(`"implementations.final" muss einer von ${IMPLEMENTATIONS.join(', ')} sein.`);
+    else if (implementations.preview !== undefined && !oneOf(IMPLEMENTATIONS, implementations.preview))
+      errors.push(`"implementations.preview" muss einer von ${IMPLEMENTATIONS.join(', ')} sein.`);
+    else
+      impl = {
+        final: implementations.final,
+        preview: oneOf(IMPLEMENTATIONS, implementations.preview)
+          ? implementations.preview
+          : implementations.final,
+      };
+  }
+  let lic: EffectManifest['license'] = { commercialUse: true };
+  if (license !== undefined) {
+    if (!isObj(license) || typeof license.commercialUse !== 'boolean')
+      errors.push('"license" muss { "commercialUse": true|false, "notes"?: "…" } sein.');
+    else if (license.notes !== undefined && typeof license.notes !== 'string')
+      errors.push('"license.notes" muss Text sein.');
+    else
+      lic = {
+        commercialUse: license.commercialUse,
+        ...(isStr(license.notes) ? { notes: license.notes } : {}),
+      };
+  }
+  if (cost !== undefined && !oneOf(COSTS, cost))
+    errors.push(`"cost" muss einer von ${COSTS.join(', ')} sein.`);
+  if (randomized !== undefined && typeof randomized !== 'boolean')
+    errors.push('"randomized" muss true/false sein.');
+  if (requires !== undefined && (!Array.isArray(requires) || !requires.every((m) => oneOf(ANALYSIS_MAPS, m))))
+    errors.push(`"requires" muss eine Liste aus ${ANALYSIS_MAPS.join(', ')} sein.`);
+  if (Array.isArray(params) && params.filter((p) => isObj(p) && p.type === 'image').length > 1)
+    errors.push('Höchstens ein Parameter vom Typ "image" (Zweitbild in src_b).');
+
+  if (errors.length) return { ok: false, errors };
+
+  // Normalisieren: Standardwerte ergänzen, Seed-Parameter bei "randomized" anfügen
+  const manifest = raw as unknown as EffectManifest;
+  const paramList = [...manifest.params];
+  if (randomized === true && !paramList.some((p) => p.type === 'seed')) {
+    if (keys.has('seed'))
+      return { ok: false, errors: ['"randomized": Parameter "seed" muss vom Typ "seed" sein.'] };
+    paramList.push(AUTO_SEED);
+  }
+  return {
+    ok: true,
+    manifest: {
+      ...manifest,
+      params: paramList,
+      implementations: impl,
+      license: lic,
+      cost: oneOf(COSTS, cost) ? cost : 'realtime',
+      randomized: randomized === true,
+      requires: Array.isArray(requires) ? (requires as EffectManifest['requires']) : [],
+    },
+  };
 }

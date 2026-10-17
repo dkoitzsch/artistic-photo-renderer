@@ -17,6 +17,17 @@ const shaderFiles = import.meta.glob<string>('/effects/*/effect.wgsl', {
   import: 'default',
 });
 const scriptFiles = import.meta.glob<{ default?: EffectModule }>('/effects/*/effect.ts');
+// Weitere Ausführungsorte: CPU im Browser (Web Worker) und Python-Dienst (nur Existenz prüfen)
+const workerFiles = import.meta.glob<string>('/effects/*/effect.worker.ts', {
+  eager: true,
+  query: '?url',
+  import: 'default',
+});
+const pythonFiles = import.meta.glob<string>('/effects/*/effect.py', {
+  eager: true,
+  query: '?url',
+  import: 'default',
+});
 const previewFiles = import.meta.glob<string>('/effects/*/preview.{jpg,png,webp}', {
   eager: true,
   query: '?url',
@@ -40,6 +51,8 @@ export function discoverPlugins(): Record<string, Plugin> {
   const shaders = byFolder(shaderFiles);
   const scripts = byFolder(scriptFiles);
   const previews = byFolder(previewFiles);
+  const workers = byFolder(workerFiles);
+  const pythons = byFolder(pythonFiles);
   const folders = new Set([...manifests.keys(), ...shaders.keys()]);
   const revision = nextRevision();
   const out: Record<string, Plugin> = {};
@@ -64,9 +77,16 @@ export function discoverPlugins(): Record<string, Plugin> {
       }
     }
     const wgsl = shaders.get(folder) ?? null;
-    if (wgsl === null) errors.push('effect.wgsl fehlt (Pflicht).');
+    const impl = manifest?.implementations ?? { preview: 'webgpu', final: 'webgpu' };
+    const uses = (x: string) => impl.preview === x || impl.final === x;
+    if (uses('webgpu') && wgsl === null)
+      errors.push('effect.wgsl fehlt (Pflicht für Ausführung auf der GPU).');
+    if (uses('browser-cpu') && !workers.has(folder))
+      errors.push('effect.worker.ts fehlt (Pflicht für Ausführung „browser-cpu“).');
+    if (uses('python') && !pythons.has(folder))
+      errors.push('effect.py fehlt (Pflicht für Ausführung „python“).');
     const hasScript = scripts.has(folder);
-    if (wgsl !== null && !hasScript && !/fn\s+effect\s*\(/.test(wgsl))
+    if (uses('webgpu') && wgsl !== null && !hasScript && !/fn\s+effect\s*\(/.test(wgsl))
       errors.push('Einstufiger Effekt: effect.wgsl muss fn effect(p: vec2i) -> vec4f definieren.');
 
     out[folder] = {

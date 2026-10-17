@@ -7,9 +7,11 @@ Ordner, die mit `_` beginnen (z. B. `_template/`), werden ignoriert.
 ```
 effects/
   mein-effekt/
-    manifest.json   # Pflicht: Beschreibung und Parameter
-    effect.wgsl     # Pflicht: Shader
-    effect.ts       # optional: mehrstufige Pässe
+    manifest.json     # Pflicht: Beschreibung und Parameter
+    effect.wgsl       # Pflicht, wenn der Effekt auf der GPU läuft ("webgpu")
+    effect.ts         # optional: mehrstufige Pässe
+    effect.worker.ts  # Pflicht bei Ausführung "browser-cpu" (Web Worker, ganze Ebene)
+    effect.py         # Pflicht bei Ausführung "python" (lokaler Dienst)
     preview.jpg     # optional: Miniatur im Effekt-Browser (sonst Live-Vorschau am aktuellen Bild)
 ```
 
@@ -33,19 +35,29 @@ effects/
 | `params`           | ja      | Parameterliste, siehe unten                                                                                                                                                                                                                                                                          |
 | `reach`            | nein    | Reichweite in px (volle Auflösung) als Ausdruck über Parameter, z. B. `"radius"` oder `"distance + softness"`. Pflicht für alles, was Pixel aus der Umgebung liest – sonst entstehen Nähte im gekachelten Export. Erlaubt: Zahlen, Parameternamen, `+ - * /`, Klammern, `max`, `min`, `abs`, `sqrt`. |
 | `presets`          | nein    | `[{ "name": "Rotfilter", "values": { "red": 90 } }]` – Auswahl in der Effektkarte                                                                                                                                                                                                                    |
+| `implementations`  | nein    | Ausführungsort `{ "preview": …, "final": … }` aus `webgpu`, `browser-cpu`, `python`; Standard beide `webgpu`, fehlt `preview`, gilt `final`                                                                                                                                                          |
+| `license`          | nein    | `{ "commercialUse": true, "notes": "Herkunft von Verfahren/Modellen/Daten" }`; Standard kommerziell nutzbar. Effekte mit `false` sind im Lizenzmodus „Kommerziell“ gesperrt                                                                                                                          |
+| `cost`             | nein    | `realtime` (Standard), `interactive`, `slow`, `very-slow` – Hinweis im Effekt-Browser                                                                                                                                                                                                                |
+| `randomized`       | nein    | `true`: der Kern ergänzt einen Parameter `seed` (Typ `seed`, Gruppe „Erweitert“), falls keiner existiert                                                                                                                                                                                             |
+| `requires`         | nein    | benötigte Analysekarten: `luminance`, `edges`, `flow`, `depth`, `normals`, `segmentation`, `saliency`, `faces`                                                                                                                                                                                       |
 | `visibleIf`        | nein    | `{ "param": "bedingung" }` – Parameter nur zeigen, wenn die Bedingung gilt: `"duotone"`, `"!duotone"`, `"mode=hue"`, `"grain!=0"`                                                                                                                                                                    |
 
 ### Parametertypen
 
-| `type`  | Felder                                                    | Im Shader (`params.<key>`) |
-| ------- | --------------------------------------------------------- | -------------------------- |
-| `int`   | `min`, `max`, `default`, optional `step`, `unit`, `scale` | `i32`                      |
-| `float` | wie `int`                                                 | `f32`                      |
-| `angle` | `default` (Grad)                                          | `f32` in **Radiant**       |
-| `bool`  | `default`                                                 | `u32` (0/1)                |
-| `color` | `default` `[r, g, b]` sRGB 0..1                           | `vec3f` **linear**         |
-| `enum`  | `options: [{ value, label }]`, `default`                  | `u32` = Index der Option   |
-| `point` | `default` `[x, y]` in Leinwand-px                         | `vec2f`, skaliert          |
+| `type`    | Felder                                                    | Im Shader (`params.<key>`)                                              |
+| --------- | --------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `int`     | `min`, `max`, `default`, optional `step`, `unit`, `scale` | `i32`                                                                   |
+| `float`   | wie `int`                                                 | `f32`                                                                   |
+| `angle`   | `default` (Grad)                                          | `f32` in **Radiant**                                                    |
+| `bool`    | `default`                                                 | `u32` (0/1)                                                             |
+| `color`   | `default` `[r, g, b]` sRGB 0..1                           | `vec3f` **linear**                                                      |
+| `enum`    | `options: [{ value, label }]`, `default`                  | `u32` = Index der Option                                                |
+| `point`   | `default` `[x, y]` in Leinwand-px                         | `vec2f`, skaliert                                                       |
+| `seed`    | `default` ganze Zahl ≥ 0                                  | `u32`                                                                   |
+| `palette` | `default` `[[r, g, b], …]` sRGB 0..1, 1–16 Farben         | `array<vec4f, 16>` **linear** + `<key>_count: u32`                      |
+| `image`   | `default` `""` (Wert = ID eines Originals im Projekt)     | `u32` (1 = vorhanden); Bild in `src_b`, höchstens ein `image` je Effekt |
+
+- `"group": "Erweitert"`: Parameter erscheinen in einer eingeklappten Gruppe.
 
 - `"unit": "px"`: Der Kern multipliziert den Wert mit dem Skalierungsfaktor (Vorschau < 1, Export = 1), damit Vorschau und Export gleich aussehen. Andere Einheiten (`"%"`) dienen nur der Anzeige.
 - `"scale": "log"`: logarithmischer Regler (gut für Radien).

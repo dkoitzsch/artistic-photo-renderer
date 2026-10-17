@@ -6,6 +6,17 @@
   "description": "Weiche Unschärfe mit Radius bis 300 px; mit Fokuskarte bleiben Fokuspunkte schärfer.",
   "inputs": ["source", "focus"],
   "passes": 4,
+  "implementations": {
+    "preview": "webgpu",
+    "final": "webgpu"
+  },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung (separabler Gauß mit Pyramide)."
+  },
+  "cost": "realtime",
+  "randomized": false,
+  "requires": [],
   "params": [
     {
       "key": "radius",

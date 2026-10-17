@@ -6,6 +6,17 @@
   "description": "Bokeh wie bei einem Objektiv: Lichter werden zu Scheiben oder Sechsecken.",
   "inputs": ["source", "focus"],
   "passes": 3,
+  "implementations": {
+    "preview": "webgpu",
+    "final": "webgpu"
+  },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung (Gather-Bokeh mit Blendenform)."
+  },
+  "cost": "interactive",
+  "randomized": false,
+  "requires": [],
   "params": [
     {
       "key": "radius",
@@ -24,12 +35,23 @@
       "label": "Blende",
       "type": "enum",
       "options": [
-        { "value": "disc", "label": "Scheibe" },
-        { "value": "hexagon", "label": "Sechseck" }
+        {
+          "value": "disc",
+          "label": "Scheibe"
+        },
+        {
+          "value": "hexagon",
+          "label": "Sechseck"
+        }
       ],
       "default": "disc"
     },
-    { "key": "rotation", "label": "Drehung", "type": "angle", "default": 0 },
+    {
+      "key": "rotation",
+      "label": "Drehung",
+      "type": "angle",
+      "default": 0
+    },
     {
       "key": "highlights",
       "label": "Lichter",
@@ -69,6 +91,9 @@
       "unit": "%"
     }
   ],
-  "visibleIf": { "rotation": "shape=hexagon", "threshold": "highlights!=0" },
+  "visibleIf": {
+    "rotation": "shape=hexagon",
+    "threshold": "highlights!=0"
+  },
   "reach": "radius"
 }

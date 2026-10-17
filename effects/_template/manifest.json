@@ -6,8 +6,27 @@
   "description": "Kurzbeschreibung für den Effekt-Browser.",
   "inputs": ["source"],
   "passes": 1,
+  "implementations": {
+    "preview": "webgpu",
+    "final": "webgpu"
+  },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung."
+  },
+  "cost": "realtime",
+  "randomized": false,
+  "requires": [],
   "params": [
-    { "key": "amount", "label": "Stärke", "type": "float", "min": 0, "max": 100, "default": 50, "unit": "%" },
+    {
+      "key": "amount",
+      "label": "Stärke",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 50,
+      "unit": "%"
+    },
     {
       "key": "offset",
       "label": "Versatz",
@@ -18,9 +37,24 @@
       "unit": "px",
       "scale": "log"
     },
-    { "key": "angle", "label": "Richtung", "type": "angle", "default": 45 },
-    { "key": "tint", "label": "Farbe", "type": "color", "default": [1, 0.8, 0.6] },
-    { "key": "invert", "label": "Umkehren", "type": "bool", "default": false }
+    {
+      "key": "angle",
+      "label": "Richtung",
+      "type": "angle",
+      "default": 45
+    },
+    {
+      "key": "tint",
+      "label": "Farbe",
+      "type": "color",
+      "default": [1, 0.8, 0.6]
+    },
+    {
+      "key": "invert",
+      "label": "Umkehren",
+      "type": "bool",
+      "default": false
+    }
   ],
   "reach": "offset"
 }

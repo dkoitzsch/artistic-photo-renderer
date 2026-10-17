@@ -6,6 +6,17 @@
   "description": "Erzeugt aus der Maske einer Ebene einen weichen, versetzten Schatten (verknüpfter Schatten-Layer).",
   "inputs": ["source", "mask"],
   "passes": 6,
+  "implementations": {
+    "preview": "webgpu",
+    "final": "webgpu"
+  },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung (Schlagschatten aus der Ebenenmaske)."
+  },
+  "cost": "realtime",
+  "randomized": false,
+  "requires": [],
   "params": [
     {
       "key": "direction",
@@ -56,7 +67,12 @@
       "default": 40,
       "unit": "%"
     },
-    { "key": "color", "label": "Farbe", "type": "color", "default": [0, 0, 0] },
+    {
+      "key": "color",
+      "label": "Farbe",
+      "type": "color",
+      "default": [0, 0, 0]
+    },
     {
       "key": "shadowScale",
       "label": "Skalierung",
@@ -88,6 +104,8 @@
       "unit": "%"
     }
   ],
-  "visibleIf": { "groundLine": "shadowScale!=100" },
+  "visibleIf": {
+    "groundLine": "shadowScale!=100"
+  },
   "reach": "distance * 2.5 + softness + 24 + abs(shadowScale - 100) / 100 * canvasHeight + abs(tilt) / 60 * canvasHeight + 4"
 }

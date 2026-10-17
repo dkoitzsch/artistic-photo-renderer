@@ -91,4 +91,54 @@ describe('validateManifest', () => {
     expect(validateManifest(null).ok).toBe(false);
     expect(validateManifest([]).ok).toBe(false);
   });
+
+  it('ergänzt Standardwerte für Manifest v2', () => {
+    const r = validateManifest(base(), 'echo-offset');
+    if (!r.ok) throw new Error(r.errors.join());
+    expect(r.manifest.implementations).toEqual({ preview: 'webgpu', final: 'webgpu' });
+    expect(r.manifest.license).toEqual({ commercialUse: true });
+    expect(r.manifest.cost).toBe('realtime');
+    expect(r.manifest.randomized).toBe(false);
+    expect(r.manifest.requires).toEqual([]);
+  });
+
+  it('prüft Manifest-v2-Felder und neue Parametertypen', () => {
+    const r = validateManifest(
+      {
+        ...base(),
+        implementations: { preview: 'webgl', final: 'python' },
+        license: { commercialUse: 'ja' },
+        cost: 'fast',
+        requires: ['edges', 'xray'],
+        params: [
+          ...base().params,
+          { key: 's', label: 'S', type: 'seed', default: -1 },
+          { key: 'p', label: 'P', type: 'palette', default: [] },
+          { key: 'i1', label: 'I', type: 'image', default: '' },
+          { key: 'i2', label: 'I', type: 'image', default: '' },
+        ],
+      },
+      'echo-offset',
+    );
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.errors.join('\n')).toMatch(/implementations\.preview/);
+    expect(r.errors.join('\n')).toMatch(/license/);
+    expect(r.errors.join('\n')).toMatch(/cost/);
+    expect(r.errors.join('\n')).toMatch(/requires/);
+    expect(r.errors.join('\n')).toMatch(/Parameter "s"/);
+    expect(r.errors.join('\n')).toMatch(/Parameter "p"/);
+    expect(r.errors.join('\n')).toMatch(/Höchstens ein Parameter vom Typ "image"/);
+  });
+
+  it('randomized ergänzt einen Seed-Parameter; preview übernimmt final', () => {
+    const r = validateManifest(
+      { ...base(), randomized: true, implementations: { final: 'browser-cpu' }, requires: ['edges'] },
+      'echo-offset',
+    );
+    if (!r.ok) throw new Error(r.errors.join());
+    expect(r.manifest.params.at(-1)).toMatchObject({ key: 'seed', type: 'seed', group: 'Erweitert' });
+    expect(r.manifest.implementations).toEqual({ preview: 'browser-cpu', final: 'browser-cpu' });
+    expect(r.manifest.requires).toEqual(['edges']);
+  });
 });

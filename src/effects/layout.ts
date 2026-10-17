@@ -2,14 +2,29 @@
 // (WGSL-Ausrichtung: f32/i32/u32 4 Byte, vec2f 8, vec3f 16 bei 12 Byte Größe; Struct auf 16 gerundet).
 
 import { srgbToLinear } from '../render/color';
-import type { EffectManifest, ParamSpec, ParamValue } from './manifest';
+import { MAX_PALETTE, type EffectManifest, type ParamSpec, type ParamValue, type Rgb } from './manifest';
 
-type FieldKind = 'f32' | 'i32' | 'u32' | 'vec2f' | 'vec3f';
+type FieldKind = 'f32' | 'i32' | 'u32' | 'vec2f' | 'vec3f' | 'palette';
 export type Field = { name: string; kind: FieldKind; offset: number };
 export type UniformLayout = { fields: Field[]; size: number; struct: string };
 
-const SIZE: Record<FieldKind, number> = { f32: 4, i32: 4, u32: 4, vec2f: 8, vec3f: 12 };
-const ALIGN: Record<FieldKind, number> = { f32: 4, i32: 4, u32: 4, vec2f: 8, vec3f: 16 };
+const SIZE: Record<FieldKind, number> = {
+  f32: 4,
+  i32: 4,
+  u32: 4,
+  vec2f: 8,
+  vec3f: 12,
+  palette: 16 * MAX_PALETTE,
+};
+const ALIGN: Record<FieldKind, number> = { f32: 4, i32: 4, u32: 4, vec2f: 8, vec3f: 16, palette: 16 };
+const WGSL_TYPE: Record<FieldKind, string> = {
+  f32: 'f32',
+  i32: 'i32',
+  u32: 'u32',
+  vec2f: 'vec2f',
+  vec3f: 'vec3f',
+  palette: `array<vec4f, ${MAX_PALETTE}>`,
+};
 
 /** Vom Kern belegte Felder am Anfang jedes Params-Structs. */
 const CORE_FIELDS: { name: string; kind: FieldKind; doc: string }[] = [
@@ -29,11 +44,15 @@ function kindOf(p: ParamSpec): FieldKind {
       return 'f32';
     case 'bool':
     case 'enum':
+    case 'seed':
+    case 'image':
       return 'u32';
     case 'color':
       return 'vec3f';
     case 'point':
       return 'vec2f';
+    case 'palette':
+      return 'palette';
   }
 }
 
@@ -46,11 +65,14 @@ export function buildLayout(manifest: EffectManifest): UniformLayout {
   const add = (name: string, kind: FieldKind, doc: string) => {
     offset = roundUp(offset, ALIGN[kind]);
     fields.push({ name, kind, offset });
-    lines.push(`  ${name}: ${kind}, // ${doc}`);
+    lines.push(`  ${name}: ${WGSL_TYPE[kind]}, // ${doc}`);
     offset += SIZE[kind];
   };
   for (const f of CORE_FIELDS) add(f.name, f.kind, f.doc);
-  for (const p of manifest.params) add(p.key, kindOf(p), describe(p));
+  for (const p of manifest.params) {
+    add(p.key, kindOf(p), describe(p));
+    if (p.type === 'palette') add(`${p.key}_count`, 'u32', `Anzahl Farben in ${p.key}`);
+  }
   const size = roundUp(Math.max(offset, 16), 16);
   return { fields, size, struct: `struct Params {\n${lines.join('\n')}\n}` };
 }
@@ -67,9 +89,22 @@ function describe(p: ParamSpec): string {
       return `${p.label} (0/1)`;
     case 'point':
       return `${p.label} (px, skaliert)`;
-    default:
+    case 'seed':
+      return `${p.label} (Seed)`;
+    case 'palette':
+      return `${p.label} (linear RGB, max. ${MAX_PALETTE})`;
+    case 'image':
+      return `${p.label} (1 = Zweitbild in src_b)`;
+    case 'int':
+    case 'float':
       return p.unit === 'px' ? `${p.label} (px, skaliert)` : p.label;
   }
+}
+
+/** Palette aus einem Projektwert (ungültig → Standard), höchstens MAX_PALETTE Farben. */
+export function paletteOf(v: ParamValue | undefined, fallback: Rgb[]): Rgb[] {
+  const list = Array.isArray(v) && v.length > 0 && v.every((c) => Array.isArray(c)) ? v : fallback;
+  return list.slice(0, MAX_PALETTE);
 }
 
 export type CoreValues = {
@@ -85,6 +120,12 @@ export type CoreValues = {
 export function shaderValue(p: ParamSpec, raw: ParamValue | undefined, scale: number): number | number[] {
   const v = raw ?? p.default;
   switch (p.type) {
+    case 'seed':
+      return Math.max(0, Math.floor(Number(v))) >>> 0;
+    case 'image':
+      return typeof v === 'string' && v !== '' ? 1 : 0;
+    case 'palette':
+      return paletteOf(v, p.default).flatMap((c) => [...c.map((x) => srgbToLinear(x)), 1]);
     case 'int':
       return Math.round(Number(v) * (p.unit === 'px' ? scale : 1));
     case 'float':
@@ -99,11 +140,11 @@ export function shaderValue(p: ParamSpec, raw: ParamValue | undefined, scale: nu
         p.options.findIndex((o) => o.value === v),
       );
     case 'color': {
-      const c = Array.isArray(v) && v.length === 3 ? v : p.default;
+      const c = Array.isArray(v) && v.length === 3 && v.every((x) => typeof x === 'number') ? v : p.default;
       return c.map((x) => srgbToLinear(x));
     }
     case 'point': {
-      const c = Array.isArray(v) && v.length === 2 ? v : p.default;
+      const c = Array.isArray(v) && v.length === 2 && v.every((x) => typeof x === 'number') ? v : p.default;
       return [c[0] * scale, c[1] * scale];
     }
   }
@@ -137,6 +178,9 @@ export function packUniforms(
   write(f('canvas_size'), core.canvasSize);
   write(f('scale'), core.scale);
   write(f('flags'), core.flags ?? 0);
-  for (const p of manifest.params) write(f(p.key), shaderValue(p, params[p.key], core.scale));
+  for (const p of manifest.params) {
+    write(f(p.key), shaderValue(p, params[p.key], core.scale));
+    if (p.type === 'palette') write(f(`${p.key}_count`), paletteOf(params[p.key], p.default).length);
+  }
   return buf;
 }

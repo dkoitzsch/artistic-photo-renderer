@@ -1,7 +1,7 @@
 import { parseHexColor } from '../../render/color';
 import type { Rgb } from '../../effects/manifest';
 
-const toHex = (c: Rgb) =>
+export const toHex = (c: Rgb) =>
   `#${c
     .map((x) =>
       Math.round(Math.min(1, Math.max(0, x)) * 255)

@@ -6,6 +6,17 @@
   "description": "Schwarz-Weiß mit Kanalmischer (Filter-Presets), Kontrast-S-Kurve, Schwarz-/Weißpunkt und optionalem Korn.",
   "inputs": ["source"],
   "passes": 1,
+  "implementations": {
+    "preview": "webgpu",
+    "final": "webgpu"
+  },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung (Kanalmischer, Korn per Hash)."
+  },
+  "cost": "realtime",
+  "randomized": false,
+  "requires": [],
   "params": [
     {
       "key": "amount",
@@ -17,11 +28,49 @@
       "default": 100,
       "unit": "%"
     },
-    { "key": "red", "label": "Rot", "type": "float", "min": -200, "max": 300, "default": 21, "unit": "%" },
-    { "key": "green", "label": "Grün", "type": "float", "min": -200, "max": 300, "default": 72, "unit": "%" },
-    { "key": "blue", "label": "Blau", "type": "float", "min": -200, "max": 300, "default": 7, "unit": "%" },
-    { "key": "contrast", "label": "Kontrast", "type": "float", "min": -100, "max": 100, "default": 0 },
-    { "key": "brightness", "label": "Helligkeit", "type": "float", "min": -100, "max": 100, "default": 0 },
+    {
+      "key": "red",
+      "label": "Rot",
+      "type": "float",
+      "min": -200,
+      "max": 300,
+      "default": 21,
+      "unit": "%"
+    },
+    {
+      "key": "green",
+      "label": "Grün",
+      "type": "float",
+      "min": -200,
+      "max": 300,
+      "default": 72,
+      "unit": "%"
+    },
+    {
+      "key": "blue",
+      "label": "Blau",
+      "type": "float",
+      "min": -200,
+      "max": 300,
+      "default": 7,
+      "unit": "%"
+    },
+    {
+      "key": "contrast",
+      "label": "Kontrast",
+      "type": "float",
+      "min": -100,
+      "max": 100,
+      "default": 0
+    },
+    {
+      "key": "brightness",
+      "label": "Helligkeit",
+      "type": "float",
+      "min": -100,
+      "max": 100,
+      "default": 0
+    },
     {
       "key": "blackPoint",
       "label": "Schwarzpunkt",
@@ -40,7 +89,15 @@
       "default": 100,
       "unit": "%"
     },
-    { "key": "grain", "label": "Korn", "type": "float", "min": 0, "max": 100, "default": 0, "unit": "%" },
+    {
+      "key": "grain",
+      "label": "Korn",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 0,
+      "unit": "%"
+    },
     {
       "key": "grainSize",
       "label": "Korngröße",
@@ -52,11 +109,48 @@
     }
   ],
   "presets": [
-    { "name": "Neutral", "values": { "red": 21, "green": 72, "blue": 7 } },
-    { "name": "Rotfilter", "values": { "red": 90, "green": 20, "blue": -10 } },
-    { "name": "Gelbfilter", "values": { "red": 55, "green": 55, "blue": -10 } },
-    { "name": "Grünfilter", "values": { "red": 10, "green": 90, "blue": 0 } },
-    { "name": "Infrarot-Look", "values": { "red": -70, "green": 200, "blue": -30 } }
+    {
+      "name": "Neutral",
+      "values": {
+        "red": 21,
+        "green": 72,
+        "blue": 7
+      }
+    },
+    {
+      "name": "Rotfilter",
+      "values": {
+        "red": 90,
+        "green": 20,
+        "blue": -10
+      }
+    },
+    {
+      "name": "Gelbfilter",
+      "values": {
+        "red": 55,
+        "green": 55,
+        "blue": -10
+      }
+    },
+    {
+      "name": "Grünfilter",
+      "values": {
+        "red": 10,
+        "green": 90,
+        "blue": 0
+      }
+    },
+    {
+      "name": "Infrarot-Look",
+      "values": {
+        "red": -70,
+        "green": 200,
+        "blue": -30
+      }
+    }
   ],
-  "visibleIf": { "grainSize": "grain!=0" }
+  "visibleIf": {
+    "grainSize": "grain!=0"
+  }
 }

@@ -5,7 +5,7 @@ Grundlage: [spec-effekte-und-malvorlagen.md](spec-effekte-und-malvorlagen.md), E
 
 - [x] 1. Testgrundlage: Architektur-Testbild (CC0), Golden-Helfer für Effekte (Parameter, Seed, Toleranz, NaN/Rand-Prüfung),
       `LICENSES-THIRD-PARTY.md`
-- [ ] 2. Manifest v2: `implementations`, `license`, `cost`, `randomized`, `requires`, Parameter-`group`, Typen `seed`,
+- [x] 2. Manifest v2: `implementations`, `license`, `cost`, `randomized`, `requires`, Parameter-`group`, Typen `seed`,
       `palette`, `image`; Bestandseffekte migriert
 - [ ] 3. Maske und Mischmodus je Effekt (Projektformat 5, Migration)
 - [ ] 4. Seed: Würfel-Knopf, Zufall nach Leinwandposition (kachel- und vorschaustabil)

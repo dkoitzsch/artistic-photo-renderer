@@ -6,6 +6,17 @@
   "description": "Radial zum Zentrum hin verwischt, wie beim Zoomen während der Belichtung.",
   "inputs": ["source", "focus"],
   "passes": 3,
+  "implementations": {
+    "preview": "webgpu",
+    "final": "webgpu"
+  },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung (radiale Abtastung)."
+  },
+  "cost": "realtime",
+  "randomized": false,
+  "requires": [],
   "params": [
     {
       "key": "amount",

@@ -1,6 +1,10 @@
 // Erzeugt den passenden Regler aus einer Parameterbeschreibung des Manifests.
 
-import type { ParamSpec, ParamValue } from '../../effects/manifest';
+import type { ParamSpec, ParamValue, Rgb } from '../../effects/manifest';
+import { paletteOf } from '../../effects/layout';
+import { ImageControl } from './ImageControl';
+import { PaletteControl } from './PaletteControl';
+import { SeedControl } from './SeedControl';
 import { ColorControl } from './ColorControl';
 import { EnumControl } from './EnumControl';
 import { PointControl } from './PointControl';
@@ -79,7 +83,7 @@ export function ParamControl({
       return (
         <ColorControl
           label={spec.label}
-          value={Array.isArray(v) && v.length === 3 ? v : spec.default}
+          value={Array.isArray(v) && v.length === 3 && typeof v[0] === 'number' ? (v as Rgb) : spec.default}
           onChange={(c) => {
             onChange(c, false);
           }}
@@ -89,10 +93,47 @@ export function ParamControl({
       return (
         <PointControl
           label={spec.label}
-          value={Array.isArray(v) && v.length === 2 ? v : spec.default}
+          value={
+            Array.isArray(v) && v.length === 2 && typeof v[0] === 'number'
+              ? (v as [number, number])
+              : spec.default
+          }
           onChange={(p) => {
             onChange(p, false);
           }}
+        />
+      );
+    case 'seed':
+      return (
+        <SeedControl
+          label={spec.label}
+          value={typeof v === 'number' ? v : spec.default}
+          onChange={(n) => {
+            onChange(n, false);
+          }}
+          testId={`param-${spec.key}`}
+        />
+      );
+    case 'palette':
+      return (
+        <PaletteControl
+          label={spec.label}
+          value={paletteOf(v, spec.default)}
+          onChange={(list) => {
+            onChange(list, false);
+          }}
+          testId={`param-${spec.key}`}
+        />
+      );
+    case 'image':
+      return (
+        <ImageControl
+          label={spec.label}
+          value={typeof v === 'string' ? v : ''}
+          onChange={(id) => {
+            onChange(id, false);
+          }}
+          testId={`param-${spec.key}`}
         />
       );
   }

@@ -98,7 +98,10 @@ export class Engine {
         const tag = `${p.folder}#${p.revision}`;
         this.compiling.add(tag);
         try {
-          const errors = await this.runner.compile(p);
+          // Effekte ohne GPU-Ausführung (Worker/Dienst) haben keinen Shader
+          const impl = p.manifest?.implementations;
+          const errors =
+            impl && impl.preview !== 'webgpu' && impl.final !== 'webgpu' ? [] : await this.runner.compile(p);
           const current = usePluginStore.getState().plugins[p.folder];
           if (current?.revision !== p.revision) return; // inzwischen neu geladen
           updatePlugin(p.folder, errors.length ? { status: 'error', errors } : { status: 'ok', errors: [] });
