@@ -92,6 +92,12 @@ Hilfsfunktionen: `src_size()`, `load_src(p)`, `sample_src(uv)`, `load_mask(p)`, 
 `canvas_pos(p)` (Position in Leinwand-px bei voller Auflösung – für ortsfeste Muster wie Korn),
 `unpremultiply(c)`, `premultiply(c)`, `luminance(rgb)`, `hash21(vec2u)`, `srgb_to_linear(rgb)`, `linear_to_srgb(rgb)`.
 
+**Zufall mit Seed** (für `"randomized": true`, Seed in `params.seed`): `rand_at(canvas_pos(p), params.seed, k)` liefert 0..1 je
+Leinwand-Pixel und Kanal `k`; `rand_noise(cp, zellgröße, seed)` und `rand_fbm(cp, zellgröße, oktaven, seed)` liefern weiches
+Rauschen. Alle hängen nur von Leinwandposition und Seed ab – Vorschau, Export-Kacheln und Endrender stimmen überein.
+Die Namen des Vorspanns (`rand_*`, `load_*`, `hash21`, …) sind reserviert.
+Für CPU-Effekte gibt es dieselben Funktionen in `src/effects/random.ts` (`randCell`, dazu `mulberry32` für Punktmengen).
+
 **Regeln**
 
 - Eingang und Ausgang sind **linear** und **vormultipliziert**. Für Farbmanipulationen erst `unpremultiply`, am Ende `premultiply`.

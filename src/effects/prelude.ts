@@ -86,6 +86,61 @@ fn luminance(c: vec3f) -> f32 {
   return dot(c, vec3f(0.2126, 0.7152, 0.0722));
 }
 
+/** PCG3D-Hash (Jarzynski & Olano 2020); identisch zu src/effects/random.ts (pcg3). */
+fn rand_pcg3(v0: vec3u) -> vec3u {
+  var v = v0 * 1664525u + 1013904223u;
+  v.x += v.y * v.z;
+  v.y += v.z * v.x;
+  v.z += v.x * v.y;
+  v ^= v >> vec3u(16u);
+  v.x += v.y * v.z;
+  v.y += v.z * v.x;
+  v.z += v.x * v.y;
+  return v;
+}
+
+/**
+ * Zufall 0..1 je Leinwandzelle (ganzzahlige Leinwand-px bei voller Auflösung), Seed und Kanal k.
+ * Hängt nur von Leinwandposition und Seed ab → gleich in Vorschau, Export-Kacheln und Endrender.
+ */
+fn rand_cell(cell: vec2i, seed: u32, k: u32) -> f32 {
+  let h = rand_pcg3(vec3u(bitcast<u32>(cell.x), bitcast<u32>(cell.y), seed * 747796405u + k));
+  return f32(h.x >> 8u) / 16777216.0;
+}
+
+/** Zufall an einer Leinwandposition (z. B. canvas_pos(p)). */
+fn rand_at(cp: vec2f, seed: u32, k: u32) -> f32 {
+  return rand_cell(vec2i(floor(cp)), seed, k);
+}
+
+/** Weiches Wertrauschen 0..1 mit Zellgröße cell (Leinwand-px). */
+fn rand_noise(cp: vec2f, cell: f32, seed: u32) -> f32 {
+  let q = cp / max(cell, 1e-3);
+  let i = vec2i(floor(q));
+  let f = fract(q);
+  let u = f * f * (3.0 - 2.0 * f);
+  let a = rand_cell(i, seed, 0u);
+  let b = rand_cell(i + vec2i(1, 0), seed, 0u);
+  let c = rand_cell(i + vec2i(0, 1), seed, 0u);
+  let d = rand_cell(i + vec2i(1, 1), seed, 0u);
+  return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+}
+
+/** Fraktales Rauschen (Summe von Oktaven, je halbe Zellgröße), 0..1. */
+fn rand_fbm(cp: vec2f, cell: f32, octaves: u32, seed: u32) -> f32 {
+  var sum = 0.0;
+  var amp = 0.5;
+  var norm = 0.0;
+  var c = cell;
+  for (var o = 0u; o < octaves; o++) {
+    sum += amp * rand_noise(cp, c, seed + o * 1013u);
+    norm += amp;
+    amp *= 0.5;
+    c *= 0.5;
+  }
+  return sum / max(norm, 1e-6);
+}
+
 /** Deterministisches Rauschen 0..1 (PCG-Hash). */
 fn hash21(p: vec2u) -> f32 {
   var v = p.x * 747796405u + p.y * 2891336453u + 1u;
