@@ -29,6 +29,7 @@ export default defineCpuEffect({
     const lo = Number(ctx.params.lower) / 100;
     const hi = Number(ctx.params.upper) / 100;
     const minLen = Math.max(1, Math.round(Number(ctx.params.minLength) * ctx.scale));
+    const softness = Math.max(0, Math.min(100, Number(ctx.params.softness) || 0)) / 100;
     const vertical = dir === 'down' || dir === 'up';
     const reverse = dir === 'left' || dir === 'up';
     const lum = ctx.luminance();
@@ -60,10 +61,21 @@ export default defineCpuEffect({
             order.push(j);
           }
           order.sort((a, b) => ((keys[a] ?? 0) - (keys[b] ?? 0)) * (reverse ? -1 : 1));
+          // Weichheit: an den Enden der Spanne zum Original zurückblenden statt hart zu schneiden, sonst
+          // entsteht an jedem Spannenrand eine sichtbare Kante (abrupter Sprung auf den sortierten Wert).
+          const spanLen = end - k;
+          const featherLen = softness * spanLen * 0.5;
           order.forEach((src, n) => {
             const to = idx(line, k + n) * 4;
             const from = idx(line, src) * 4;
-            for (let c = 0; c < 4; c++) out[to + c] = img[from + c] ?? 0;
+            const distToEdge = Math.min(n, spanLen - 1 - n);
+            const t = featherLen > 0 ? Math.min(1, distToEdge / featherLen) : 1;
+            const w = t * t * (3 - 2 * t); // smoothstep
+            for (let c = 0; c < 4; c++) {
+              const sorted = img[from + c] ?? 0;
+              const original = img[to + c] ?? 0;
+              out[to + c] = w >= 1 ? sorted : original + (sorted - original) * w;
+            }
           });
         }
         k = end;

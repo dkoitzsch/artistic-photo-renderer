@@ -44,6 +44,15 @@ import {
 import { getProject, newHistory, useAppStore } from './store';
 import { instancesFrom, type StackPreset } from '../presets/model';
 
+/**
+ * Läuft gerade eine Regler-Geste (Ziehen)? Dient dem Compositor dazu, teure asynchrone Effekte
+ * (Browser-CPU/Dienst) erst beim Loslassen neu zu berechnen statt bei jedem Zwischenwert.
+ */
+let gestureActive = false;
+export function isGestureActive(): boolean {
+  return gestureActive;
+}
+
 /** Wendet eine Änderung an. Gleicher coalesceKey innerhalb einer Geste → ein History-Eintrag. */
 export function commit(label: string, fn: (p: Project) => Project, coalesceKey?: string): void {
   const { history, setHistory } = useAppStore.getState();
@@ -52,13 +61,16 @@ export function commit(label: string, fn: (p: Project) => Project, coalesceKey?:
   if (!current) return;
   const next = fn(current);
   if (next === current) return;
+  if (coalesceKey !== undefined) gestureActive = true;
   setHistory(push(history, label, { ...next, updatedAt: new Date().toISOString() }, coalesceKey));
 }
 
-/** Beendet eine Geste (z. B. Regler losgelassen). */
+/** Beendet eine Geste (z. B. Regler losgelassen): History-Einträge versiegeln, einmal neu rendern. */
 export function endGesture(): void {
-  const { history, setHistory } = useAppStore.getState();
+  gestureActive = false;
+  const { history, setHistory, bumpRenderTick } = useAppStore.getState();
   if (history) setHistory(sealCoalescing(history));
+  bumpRenderTick();
 }
 
 export function undoCommand(): void {

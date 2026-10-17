@@ -52,8 +52,11 @@ fn kuwahara(@builtin(global_invocation_id) id: vec3u) {
       let eu = select(vec2f(1.0, 0.0), e / len, len > 1e-6);
       for (var k = 0; k < N; k++) {
         // weiche, überlappende Sektorgewichte: cos³ des Winkels zur Sektormitte (Skalarprodukt, ohne atan2)
+        // Zusätzlich mit der Deckkraft gewichten: (teil-)transparente Proben (unpremultiply → rgb = 0) dürfen
+        // nicht als „einfarbig schwarz“ in Mittelwert/Varianz einfließen, sonst wirkt ein durchsichtiger Rand
+        // bei großem Pinsel wie eine ruhige (= scharf gewichtete) schwarze Fläche und erzeugt schwarze Flecken.
         let c = max(dot(eu, SECTOR[k]), 0.0);
-        let wk = c * c * c * radial;
+        let wk = c * c * c * radial * px.a;
         if (wk <= 0.0) { continue; }
         m[k] += wk * col;
         s[k] += wk * col * col;

@@ -3,6 +3,7 @@
 
 import { defaultParams } from '../effects/manifest';
 import { getPlugin } from '../effects/pluginStore';
+import { effectReach } from '../effects/reach';
 import {
   findNode,
   walk,
@@ -15,6 +16,7 @@ import {
   type Project,
   type SceneNode,
 } from '../state/project';
+import { isGestureActive } from '../state/commands';
 import { apply, invert, isAligned, placement, type Affine } from '../state/transform';
 import type { GpuCore } from './core';
 import type { EffectRunner } from './effectRunner';
@@ -289,7 +291,7 @@ export class Compositor {
     const other = this.root ? findNode(this.root, mask.layerId) : undefined;
     if (other?.kind !== 'layer') return null;
     const geo = this.geometry(other, opts);
-    const m = this.processedMask(frame, other, geo);
+    const m = this.processedMask(frame, other, geo, opts);
     const key = `layermask|${m?.key ?? 'full'}${geo.key}|${mask.invert ? 'inv' : ''}`;
     return {
       key,
@@ -478,7 +480,7 @@ export class Compositor {
         : null;
     }
     if (kind === 'mask') {
-      const m = this.processedMask(frame, layer, geo);
+      const m = this.processedMask(frame, layer, geo, opts);
       if (!m) return { tex: this.core.white, owned: false };
       return keep(`${m.key}${geo.key}${regionKey}`, () => this.place(frame, geo, m.tex, opts, 'mask-view'));
     }
@@ -517,8 +519,19 @@ export class Compositor {
     return { tex: out, owned: true };
   }
 
+  /** Reichweite der eigenen Effekte einer Ebene in Leinwand-px (Summe; wie `projectReach`, aber nur diese Ebene). */
+  private ownEffectReach(layer: Layer, canvasSize: readonly [number, number]): number {
+    const canvas = { width: canvasSize[0], height: canvasSize[1] };
+    return layer.effects.filter((fx) => fx.enabled).reduce((s, fx) => s + effectReach(fx, canvas), 0);
+  }
+
   /** Aufbereitete Maske einer Ebene in Ebenengröße (Kantenübergang angewendet), gecacht. */
-  private processedMask(frame: Frame, layer: Layer, geo: Geometry): { tex: GPUTexture; key: string } | null {
+  private processedMask(
+    frame: Frame,
+    layer: Layer,
+    geo: Geometry,
+    opts: RenderOptions,
+  ): { tex: GPUTexture; key: string } | null {
     const m = layer.mask;
     if (m.kind === 'full') return null;
     const [cw, ch] = geo.local;
@@ -531,11 +544,17 @@ export class Compositor {
       });
       return { tex, key };
     }
-    // Tiefenband
-    const key = `mask|${m.depthId}@${cw}x${ch}|band${m.near},${m.far},${m.overlap}|${edgeKey}`;
+    // Tiefenband: Weichzeichnung/Dunst usw. dieser Ebene greifen über ihre eigene Bandgrenze hinaus (reichen bis zu
+    // `reach` px in den Nachbarband); die Bandmaske selbst muss mindestens so weit überlappen/ausfasern, sonst zeigt
+    // sich dort eine sichtbare Lücke (die Nachbarebene deckt die Stelle nicht, an der diese Ebene schon ausgeblendet
+    // ist). Das zugrunde liegende Bild bleibt überall vollständig (volles Originalfoto bzw. Lochfüllung zur Kamera
+    // hin), daher ist die weitere Ausfaserung unbedenklich.
+    const reachPx = this.ownEffectReach(layer, opts.canvasSize) * px;
+    const overlapPx = Math.max(m.overlap * px, reachPx);
+    const key = `mask|${m.depthId}@${cw}x${ch}|band${m.near},${m.far},${overlapPx.toFixed(2)}|${edgeKey}`;
     const tex = this.sources.derive(key, cw, ch, (out) => {
       const band = this.core.pool.acquire(cw, ch, 'band');
-      this.core.depthBand(frame, this.sources.mask(m.depthId), m.near, m.far, m.overlap * px, band);
+      this.core.depthBand(frame, this.sources.mask(m.depthId), m.near, m.far, overlapPx, band);
       this.core.processMask(frame, band, false, layer.maskEdge, px, out);
       this.core.pool.release(band);
     });
@@ -658,7 +677,7 @@ export class Compositor {
     const base = filled?.tex ?? this.sources.at(frame, layer.originalId, lw, lh);
     const baseKey = (filled?.key ?? `${layer.originalId}@${lw}x${lh}`) + geo.key;
     // Gespeicherte Maske + Lochfüllung: Ebene wird deckend (Hintergrund). Tiefenband: gefüllt UND maskiert.
-    const mask = filled && layer.mask.kind === 'stored' ? null : this.processedMask(frame, layer, geo);
+    const mask = filled && layer.mask.kind === 'stored' ? null : this.processedMask(frame, layer, geo, opts);
 
     let src: RenderResult;
     const placedKey = baseKey + regionKey;
@@ -843,24 +862,28 @@ export class Compositor {
         const asyncKey = `${cur.key}|${fx.effectId}#${manifest.version}${JSON.stringify(fx.params)}|${impl}`;
         const done = this.async.result(asyncKey);
         if (!done) {
-          const p = { ...defaultParams(manifest), ...fx.params };
-          this.async.request(
-            frame,
-            asyncKey,
-            {
-              label: `${manifest.name}${opts.final ? ' (Vollauflösung)' : ''}`,
-              impl,
-              final: opts.final ?? false,
-              effectId: fx.effectId,
-              params: p,
-              seed: typeof p.seed === 'number' ? p.seed : 0,
-              scale: opts.scale,
-              origin: [opts.region.x, opts.region.y],
-              canvasSize: opts.canvasSize,
-            },
-            cur.tex,
-          );
-          this.missingAsync.push(asyncKey);
+          // Während einer Regler-Geste (Ziehen) nicht bei jedem Zwischenwert neu rechnen – erst beim
+          // Loslassen (Export/`opts.final` immer, da dort keine Geste läuft, aber ein Ergebnis nötig ist).
+          if (opts.final || !isGestureActive()) {
+            const p = { ...defaultParams(manifest), ...fx.params };
+            this.async.request(
+              frame,
+              asyncKey,
+              {
+                label: `${manifest.name}${opts.final ? ' (Vollauflösung)' : ''}`,
+                impl,
+                final: opts.final ?? false,
+                effectId: fx.effectId,
+                params: p,
+                seed: typeof p.seed === 'number' ? p.seed : 0,
+                scale: opts.scale,
+                origin: [opts.region.x, opts.region.y],
+                canvasSize: opts.canvasSize,
+              },
+              cur.tex,
+            );
+            this.missingAsync.push(asyncKey);
+          }
           return; // Eingang vorerst durchreichen
         }
         this.effectRuns++;

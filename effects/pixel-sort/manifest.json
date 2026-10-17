@@ -66,6 +66,17 @@
       "default": 6,
       "unit": "px",
       "group": "Erweitert"
+    },
+    {
+      "key": "softness",
+      "label": "Weichheit",
+      "hint": "Blendet jede sortierte Spanne an ihren Enden weich zum Original ein, statt hart zu schneiden.",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 0,
+      "unit": "%",
+      "group": "Erweitert"
     }
   ],
   "presets": [
