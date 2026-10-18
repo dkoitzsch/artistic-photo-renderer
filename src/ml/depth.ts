@@ -13,6 +13,7 @@ import {
   type DepthMapRef,
   type EffectInstance,
   type Group,
+  type DepthBandMask,
   type Layer,
   type LicenseMode,
   type Project,
@@ -158,7 +159,15 @@ function effect(effectId: string, params: Record<string, ParamValue>): EffectIns
 export function buildDepthGroup(layer: Layer, depth: DepthMapRef, o: DepthSplitOptions): Group {
   const b = o.boundaries;
   const n = b.length - 1;
-  const { shadow: _s, focusMap: _f, ...base } = layer;
+  const {
+    shadow: _s,
+    focusMap: _f,
+    selection: _sel,
+    maskStrokes: _strokes,
+    holeMask: _hole,
+    initial: _initial,
+    ...base
+  } = layer;
   const children: Layer[] = [];
   // Rang: 0 = nächste Ebene … n−1 = fernste; Kinder-Index 0 = ganz hinten = fernste
   for (let rank = n - 1; rank >= 0; rank--) {
@@ -171,21 +180,23 @@ export function buildDepthGroup(layer: Layer, depth: DepthMapRef, o: DepthSplitO
       ...(o.preset !== 'none' ? effect('gaussian-blur', { radius: v.blur }) : []),
       ...(o.preset === 'atmosphere' ? effect('haze', { amount: v.haze }) : []),
     ];
+    const mask: DepthBandMask = {
+      kind: 'depth',
+      depthId: depth.id,
+      // fernste Ebene deckt alles ab (keine Lücken), die übrigen ihr Band
+      near: farthest ? 0 : near,
+      far,
+      overlap: o.overlap,
+      fillBelow: near,
+    };
     children.push({
       ...base,
       id: newId(),
       name: rank === 0 ? 'Ebene 1 (nah)' : farthest ? `Ebene ${rank + 1} (fern)` : `Ebene ${rank + 1}`,
       maskSource: 'depth',
-      mask: {
-        kind: 'depth',
-        depthId: depth.id,
-        // fernste Ebene deckt alles ab (keine Lücken), die übrigen ihr Band
-        near: farthest ? 0 : near,
-        far,
-        overlap: o.overlap,
-        fillBelow: near,
-      },
+      mask,
       holeFill: rank > 0,
+      initial: { mask, maskEdge: base.maskEdge, holeFill: rank > 0 },
       depthMap: depth,
       depth: (near + far) / 2,
       opacity: 1,

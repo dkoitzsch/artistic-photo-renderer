@@ -11,6 +11,6 @@ Nutzer am 18.10.2026 („Phase 5 und dann E3 umsetzen“). Push nach Abschluss d
       Hinzufügen/Entfernen (Alt), Glättung, Stiftdruck; Farbschleier (Farbe, ~40 %), Pinselkreis
 - [x] 3. Smarte Auswahl (SAM 2.1 tiny im Browser): Positiv-/Negativ-Klicks, Ergebnis als Markierung, danach mit dem
       Pinsel verfeinern; Modell im Register und in MODELS.md
-- [ ] 4. Aktionen: Hervorheben (neue Ebene darüber, optional Lochfüllung im Quell-Layer), Extrahieren, Markierung
-      löschen/umkehren, „Layer auf Original zurücksetzen“
+- [x] 4. Aktionen: Hervorheben (neue Ebene darüber, optional Lochfüllung im Quell-Layer), Extrahieren, Markierung
+      löschen, „Layer auf Original zurücksetzen“
 - [ ] 5. Abnahme (Hand markieren → hervorheben → schärfer → per Undo vollständig zurück), Spec abhaken, CLAUDE.md

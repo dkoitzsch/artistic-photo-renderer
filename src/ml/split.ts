@@ -178,7 +178,15 @@ export function buildSplitGroup(
   mask: Omit<Extract<MaskRef, { kind: 'stored' }>, 'inverted'>,
   focus?: FocusMapSpec,
 ): Group {
-  const { shadow: _shadow, focusMap: _focus, ...rest } = layer;
+  const {
+    shadow: _shadow,
+    focusMap: _focus,
+    selection: _sel,
+    maskStrokes: _strokes,
+    holeMask: _hole,
+    initial: _initial,
+    ...rest
+  } = layer;
   const base = { ...rest, maskSource: 'auto' as const };
   const background: Layer = {
     ...base,
@@ -186,6 +194,7 @@ export function buildSplitGroup(
     name: 'Hintergrund',
     mask: { ...mask, inverted: true },
     holeFill: true,
+    initial: { mask: { ...mask, inverted: true }, maskEdge: layer.maskEdge, holeFill: true },
     opacity: 1,
     blendMode: 'normal',
     visible: true,
@@ -197,6 +206,7 @@ export function buildSplitGroup(
     name: 'Vordergrund',
     mask: { ...mask, inverted: false },
     holeFill: false,
+    initial: { mask: { ...mask, inverted: false }, maskEdge: layer.maskEdge, holeFill: false },
     opacity: 1,
     blendMode: 'normal',
     visible: true,

@@ -141,3 +141,86 @@ test('Pinsel-Werkzeug: Ziehen malt eine Markierung mit Schleier, Alt entfernt, [
   });
   expect(after).toBe(0);
 });
+
+const selectCircle = (page: Page) =>
+  paint(page, 'selection', {
+    mode: 'add',
+    size: 80,
+    softness: 0,
+    flow: 1,
+    pressure: false,
+    points: [200, 150, 1],
+  });
+
+test('Hervorheben: neue Ebene über der Quelle bleibt scharf, Quelle optional lochgefüllt; Undo', async ({
+  page,
+}) => {
+  const orig = await renderExport(page);
+  await addEffect(page, 'gaussian-blur', { radius: 25 });
+  const blurred = await renderExport(page);
+  await selectCircle(page);
+  await page.keyboard.press('b');
+  await expect(page.getByTestId('selection-actions')).toBeVisible();
+  await page.getByTestId('highlight').click();
+  const tree = await page.evaluate(() =>
+    window.__bls.getProject()?.root.children.map((n) => ({
+      name: n.name,
+      effects: n.effects.length,
+      mask: n.kind === 'layer' ? n.mask.kind : '',
+      sel: n.kind === 'layer' ? !!n.selection : false,
+    })),
+  );
+  expect(tree?.length).toBe(2);
+  expect(tree?.[1]?.name).toMatch(/hervorgehoben$/);
+  expect(tree?.[1]?.effects).toBe(0);
+  expect(tree?.[1]?.mask).toBe('empty');
+  expect(tree?.[0]?.sel).toBe(false);
+  const hl = await renderExport(page);
+  const px = (img: typeof orig, x: number, y: number) => img.data[(y * 400 + x) * 4] ?? 0;
+  // Mitte des Kreises: Ecke des Farbfelds (100, 75) liegt außerhalb; (200, 150) innerhalb → wie das Original
+  for (const [x, y] of [
+    [200, 150],
+    [180, 140],
+  ] as const)
+    expect(Math.abs(px(hl, x, y) - px(orig, x, y))).toBeLessThanOrEqual(2);
+  // außerhalb weiter unscharf
+  expect(Math.abs(px(hl, 100, 75) - px(blurred, 100, 75))).toBeLessThanOrEqual(1);
+  expect(diffStats(hl, await renderExport(page, 64)).max).toBeLessThanOrEqual(1);
+  // Undo: Ebene weg, Markierung wieder da
+  await page.keyboard.press('Meta+z');
+  const back = await page.evaluate(() => {
+    const r = window.__bls.getProject()?.root.children ?? [];
+    const l = r[0];
+    return { n: r.length, sel: l?.kind === 'layer' && !!l.selection };
+  });
+  expect(back).toEqual({ n: 1, sel: true });
+  // mit Lochfüllung: Quelle bekommt den Lochbereich
+  await page.keyboard.press('b');
+  await page.getByRole('switch', { name: 'Lochfüllung in der Quelle' }).click();
+  await page.getByTestId('highlight').click();
+  const hole = await page.evaluate(() => {
+    const l = window.__bls.getProject()?.root.children[0];
+    return l?.kind === 'layer' ? { holeFill: l.holeFill, holeMask: !!l.holeMask } : null;
+  });
+  expect(hole).toEqual({ holeFill: true, holeMask: true });
+});
+
+test('Extrahieren behält nur die Markierung; Zurücksetzen stellt Maske und Effekte des Ausgangszustands her', async ({
+  page,
+}) => {
+  await addEffect(page, 'black-white');
+  await selectCircle(page);
+  await page.keyboard.press('b');
+  await page.getByTestId('extract').click();
+  const img = await renderExport(page);
+  expect(img.data[(150 * 400 + 200) * 4 + 3]).toBeGreaterThan(250); // im Kreis sichtbar
+  expect(img.data[(20 * 400 + 20) * 4 + 3]).toBeLessThan(5); // außerhalb ausgeblendet
+  await page.getByTestId('reset-layer').click();
+  const reset = await page.evaluate(() => {
+    const l = window.__bls.getProject()?.root.children[0];
+    return l?.kind === 'layer'
+      ? { mask: l.mask.kind, effects: l.effects.length, strokes: l.maskStrokes?.length ?? 0 }
+      : null;
+  });
+  expect(reset).toEqual({ mask: 'full', effects: 0, strokes: 0 });
+});

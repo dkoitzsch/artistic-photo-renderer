@@ -818,7 +818,11 @@ export class Compositor {
     const base = filled?.tex ?? this.sources.at(frame, layer.originalId, lw, lh);
     const baseKey = (filled?.key ?? `${layer.originalId}@${lw}x${lh}`) + geo.key;
     // Gespeicherte Maske + Lochfüllung: Ebene wird deckend (Hintergrund). Tiefenband: gefüllt UND maskiert.
-    const mask = filled && layer.mask.kind === 'stored' ? null : this.processedMask(frame, layer, geo, opts);
+    // Gespeicherte Maske + Lochfüllung = Hintergrund (deckend); mit Lochbereich aus einer Markierung bleibt die Maske
+    const mask =
+      filled && layer.mask.kind === 'stored' && !layer.holeMask
+        ? null
+        : this.processedMask(frame, layer, geo, opts);
 
     let src: RenderResult;
     const placedKey = baseKey + regionKey;

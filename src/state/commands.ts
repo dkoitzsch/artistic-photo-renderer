@@ -42,6 +42,7 @@ import {
   type MaskEdge,
   type MaskRef,
   type Project,
+  DEFAULT_MASK_EDGE,
 } from './project';
 import { getProject, newHistory, useAppStore } from './store';
 import { instancesFrom, type StackPreset } from '../presets/model';
@@ -432,6 +433,95 @@ export function setSelectionCommand(layerId: string, base: MaskRef, clicks: numb
       ...l,
       selection: { base, strokes: l.selection?.strokes ?? [], clicks },
     })),
+  );
+}
+
+/**
+ * Hervorheben (Basis-Spec g): die Markierung wird eine neue Ebene direkt über der Quelle – gleiches Original und gleiche
+ * Transformation, Maske = Markierung, ohne Effekte (scharf). fillHole: die Quelle füllt die Stelle per Lochfüllung auf.
+ * Liefert die ID der neuen Ebene.
+ */
+export function highlightSelectionCommand(layerId: string, fillHole: boolean): string | null {
+  const project = getProject();
+  const src = project ? findNode(project.root, layerId) : undefined;
+  if (src?.kind !== 'layer' || !src.selection) return null;
+  const sel = src.selection;
+  const id = newId();
+  const {
+    selection: _sel,
+    maskStrokes: _ms,
+    holeMask: _hm,
+    shadow: _sh,
+    focusMap: _fm,
+    initial: _in,
+    ...rest
+  } = src;
+  const layer: Layer = {
+    ...rest,
+    id,
+    name: `${src.name} – hervorgehoben`,
+    mask: sel.base,
+    maskStrokes: sel.strokes,
+    maskSource: 'brush',
+    holeFill: false,
+    effects: [],
+    opacity: 1,
+    blendMode: 'normal',
+    visible: true,
+    locked: false,
+    initial: { mask: sel.base, maskEdge: src.maskEdge, holeFill: false },
+  };
+  commit('Hervorgehoben', (p) => {
+    const withSource = updateLayer(p, layerId, (l) => {
+      const { selection: _s, ...without } = l;
+      return fillHole
+        ? { ...without, holeFill: true, holeMask: { base: sel.base, strokes: sel.strokes } }
+        : without;
+    });
+    return insertAbove(withSource, layer, layerId);
+  });
+  useAppStore.getState().select(id);
+  return id;
+}
+
+/** Extrahieren (Basis-Spec g): die Ebene behält nur den markierten Bereich; die bisherige Maske bleibt für Zurücksetzen. */
+export function extractSelectionCommand(layerId: string): void {
+  commit('Extrahiert', (p) =>
+    updateLayer(p, layerId, (l) => {
+      if (!l.selection) return l;
+      const { selection, holeMask: _h, ...rest } = l;
+      return {
+        ...rest,
+        initial: l.initial ?? { mask: l.mask, maskEdge: l.maskEdge, holeFill: l.holeFill },
+        mask: selection.base,
+        maskStrokes: selection.strokes,
+        maskSource: 'brush',
+        holeFill: false,
+      };
+    }),
+  );
+}
+
+/**
+ * „Layer auf Original zurücksetzen“ (Basis-Spec g): Maske, Kantenübergang und Lochfüllung des Ausgangszustands, ohne
+ * Effekte, Striche und Markierung. Fokuspunkte bleiben, gemalte Fokusbereiche werden entfernt.
+ */
+export function resetLayerCommand(layerId: string): void {
+  commit('Auf Original zurückgesetzt', (p) =>
+    updateLayer(p, layerId, (l) => {
+      const { selection: _s, maskStrokes: _m, holeMask: _h, ...rest } = l;
+      const init = l.initial;
+      const focusMap = l.focusMap ? { ...l.focusMap, strokes: [] } : undefined;
+      return {
+        ...rest,
+        mask: init?.mask ?? { kind: 'full' },
+        maskEdge: init?.maskEdge ?? { ...DEFAULT_MASK_EDGE },
+        holeFill: init?.holeFill ?? false,
+        maskSource: init ? l.maskSource : 'full',
+        effects: [],
+        ...(focusMap ? { focusMap } : {}),
+      };
+    }),
   );
 }
 

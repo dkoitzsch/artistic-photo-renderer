@@ -16,6 +16,7 @@ import {
   setShadowCommand,
   setShadowParamCommand,
   updateFocusPointCommand,
+  resetLayerCommand,
 } from '../../state/commands';
 import type { BlendMode, Layer, MaskEdge, SceneNode } from '../../state/project';
 import { useAppStore } from '../../state/store';
@@ -119,6 +120,18 @@ export function NodeSection({ node, isRoot }: { node: SceneNode; isRoot: boolean
           data-testid="split-button"
         >
           Aufteilen …
+        </button>
+      )}
+      {node.kind === 'layer' && (
+        <button
+          className="button"
+          onClick={() => {
+            resetLayerCommand(node.id);
+          }}
+          data-testid="reset-layer"
+          title="Maske und Effekte des Ausgangszustands wiederherstellen"
+        >
+          Auf Original zurücksetzen
         </button>
       )}
     </Section>
