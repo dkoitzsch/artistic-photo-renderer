@@ -1,6 +1,7 @@
 // Prüft geladene Projektdaten (Projektdatei, Autosave), bevor sie in den Store kommen,
 // und hebt ältere Formatversionen an.
 
+import { normalizeMalplan } from '../malplan/model';
 import { DEFAULT_MASK_EDGE, PROJECT_FORMAT_VERSION, type Project } from '../state/project';
 
 const isObj = (v: unknown): v is Record<string, unknown> =>
@@ -131,6 +132,8 @@ function migrate(raw: Record<string, unknown>): Record<string, unknown> {
   if (v.formatVersion === 4) v = { ...v, formatVersion: 5 };
   // 5 → 6: Gruppen erhalten optional eine eigene Maske
   if (v.formatVersion === 5) v = { ...v, formatVersion: 6 };
+  // 6 → 7: optionale Malplan-Einstellungen
+  if (v.formatVersion === 6) v = { ...v, formatVersion: 7 };
   return v;
 }
 
@@ -160,5 +163,10 @@ export function parseProject(raw: unknown): Project {
       fail(`original ${id.slice(0, 8)} unvollständig`);
   if (!isObj(json.root) || json.root.kind !== 'group') fail('root muss eine Gruppe sein');
   checkNode(json.root, 'root', json.originals);
+  // Malplan: unvollständige oder fremde Werte auf gültige Einstellungen bringen
+  if (json.malplan !== undefined) {
+    if (!isObj(json.malplan)) fail('malplan muss ein Objekt sein');
+    json.malplan = normalizeMalplan(json.malplan, { width: canvas.width, height: canvas.height });
+  }
   return json as unknown as Project;
 }

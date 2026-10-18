@@ -10,6 +10,7 @@ import { modelById } from './ml/registry';
 import * as split from './ml/split';
 import { getEngine } from './render/runtime';
 import { presetsSaved, usePresetStore } from './presets/store';
+import { useMalplanStore } from './malplan/store';
 import * as commands from './state/commands';
 import { findNode, newId, replaceNode } from './state/project';
 import { getProject, useAppStore } from './state/store';
@@ -49,5 +50,6 @@ export function installDebugApi(): void {
     renderPng,
     ml: { detectLandmarks, split, splitWithMask, browserDepth, modelById },
     presets: { store: usePresetStore, saved: presetsSaved },
+    malplan: useMalplanStore,
   };
 }

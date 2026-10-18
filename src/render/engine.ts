@@ -834,6 +834,41 @@ export class Engine {
     return out;
   }
 
+  /**
+   * Ergebnis eines Leinwandausschnitts (normiert 0..1) als 8-Bit-sRGB, lange Kante höchstens maxEdge px – z. B. für den
+   * Malplan. Worker-/Dienst-Effekte werden abgewartet; gleiche Pixel wie die Vorschau in dieser Größe.
+   */
+  async renderRegionImage(
+    project: Project,
+    crop: { x: number; y: number; width: number; height: number },
+    maxEdge: number,
+  ): Promise<ImageData> {
+    const { width: W, height: H } = project.canvas;
+    const cw = crop.width * W;
+    const ch = crop.height * H;
+    const s = Math.min(1, maxEdge / Math.max(cw, ch));
+    const cs: [number, number] = [Math.max(1, Math.round(W * s)), Math.max(1, Math.round(H * s))];
+    const region: Rect = {
+      x: Math.max(0, Math.round(crop.x * cs[0])),
+      y: Math.max(0, Math.round(crop.y * cs[1])),
+      width: 0,
+      height: 0,
+    };
+    region.width = Math.max(1, Math.min(cs[0] - region.x, Math.round(crop.width * cs[0])));
+    region.height = Math.max(1, Math.min(cs[1] - region.y, Math.round(crop.height * cs[1])));
+    const res = await this.renderResolved(project, {
+      scale: s,
+      canvasSize: cs,
+      region,
+      ignoreEffects: false,
+      cache: null,
+      variant: 'region-image',
+    });
+    const pixels = await this.encode(res.tex, [0, 0], region.width, region.height);
+    if (res.owned) this.core.pool.release(res.tex);
+    return new ImageData(pixels, region.width, region.height);
+  }
+
   /** Rendert das Projekt in voller Auflösung am Stück als Arbeitstextur (z. B. Eingang einer Gruppenmaske). */
   async renderTexture(project: Project): Promise<{ tex: GPUTexture; owned: boolean }> {
     const { width: W, height: H } = project.canvas;

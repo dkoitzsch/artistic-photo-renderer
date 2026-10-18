@@ -3,7 +3,9 @@
 
 import type { ParamValue } from '../effects/manifest';
 
-export const PROJECT_FORMAT_VERSION = 6;
+import type { MalplanSettings } from '../malplan/model';
+
+export const PROJECT_FORMAT_VERSION = 7;
 
 export type BlendMode =
   'normal' | 'multiply' | 'screen' | 'overlay' | 'soft-light' | 'lighten' | 'darken' | 'difference';
@@ -180,6 +182,8 @@ export type Project = {
   root: Group;
   /** Lizenzmodus, in dem zuletzt gearbeitet wurde (Spec: Projektdatei speichert ihn) */
   licenseMode: LicenseMode;
+  /** Malplan-Einstellungen (Projektformat 7); fehlen = Standardwerte */
+  malplan?: MalplanSettings;
 };
 
 export const newId = (): string => crypto.randomUUID();

@@ -43,6 +43,7 @@ import {
 } from './project';
 import { getProject, newHistory, useAppStore } from './store';
 import { instancesFrom, type StackPreset } from '../presets/model';
+import { normalizeMalplan, type MalplanSettings } from '../malplan/model';
 
 /**
  * Läuft gerade eine Regler-Geste (Ziehen)? Dient dem Compositor dazu, teure asynchrone Effekte
@@ -113,6 +114,20 @@ export function targetNodeId(): string | null {
 
 export function renameProject(name: string): void {
   commit('Projekt umbenannt', (p) => ({ ...p, name }), 'rename');
+}
+
+/** Malplan-Einstellungen ändern (Teilobjekt wird flach übernommen); gesture fasst Reglerbewegungen zusammen. */
+export function setMalplanCommand(
+  patch: Partial<MalplanSettings>,
+  gesture = false,
+  label = 'Malplan geändert',
+): void {
+  commit(
+    label,
+    (p) => ({ ...p, malplan: { ...normalizeMalplan(p.malplan, p.canvas), ...patch } }),
+    gesture ? `malplan:${Object.keys(patch).join(',')}` : undefined,
+  );
+  if (!gesture) endGesture();
 }
 
 export function addEffectCommand(effectId: string, nodeId = targetNodeId()): string | null {

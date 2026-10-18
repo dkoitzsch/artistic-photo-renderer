@@ -8,6 +8,7 @@ import type { browserDepth } from '../../src/ml/browserBackend';
 import type { modelById } from '../../src/ml/registry';
 import type * as split from '../../src/ml/split';
 import type { presetsSaved, usePresetStore } from '../../src/presets/store';
+import type { useMalplanStore } from '../../src/malplan/store';
 
 declare global {
   interface Window {
@@ -27,6 +28,7 @@ declare global {
         modelById: typeof modelById;
       };
       presets: { store: typeof usePresetStore; saved: typeof presetsSaved };
+      malplan: typeof useMalplanStore;
     };
   }
 }

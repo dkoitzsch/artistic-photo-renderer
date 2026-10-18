@@ -108,11 +108,11 @@ describe('parseProject', () => {
     expect(() => parseProject({ ...p, root: { ...p.root, kind: 'layer' } })).toThrow();
   });
 
-  it('migriert Format 2 → 6 und prüft Tiefenmasken und Transformation', () => {
+  it('migriert Format 2 → 7 und prüft Tiefenmasken und Transformation', () => {
     const p = createProjectFromImage(original);
     const v2 = JSON.parse(JSON.stringify({ ...p, formatVersion: 2 })) as Record<string, unknown>;
     const migrated = parseProject(v2);
-    expect(migrated.formatVersion).toBe(6);
+    expect(migrated.formatVersion).toBe(7);
     expect(migrated.root).toEqual(p.root);
 
     const layer = p.root.children[0];
@@ -155,7 +155,7 @@ describe('parseProject', () => {
 
   it('Format 5/6: Mischmodus und Maske je Effekt', () => {
     const p = addEffect(createProjectFromImage(original), createProjectFromImage(original).root.id, fx('m'));
-    expect(p.formatVersion).toBe(6);
+    expect(p.formatVersion).toBe(7);
     const withMix = {
       ...p,
       root: {
@@ -181,7 +181,7 @@ describe('parseProject', () => {
     ).toThrow(/Kartenbereich/);
     expect(() => parseProject(bad({ mask: { kind: 'brush' } }))).toThrow(/mask\.kind/);
     // altes Projekt (Format 4) wird ohne Änderung auf 6 gehoben
-    expect(parseProject({ ...JSON.parse(JSON.stringify(p)), formatVersion: 4 }).formatVersion).toBe(6);
+    expect(parseProject({ ...JSON.parse(JSON.stringify(p)), formatVersion: 4 }).formatVersion).toBe(7);
   });
 
   it('Format 6: Maske einer Gruppe', () => {
@@ -269,5 +269,17 @@ describe('Gruppen: Baum umbauen und Gruppenbearbeitung', () => {
     expect(r('B')).toBe(77);
     expect(r('C')).toBe(10);
     expect(r('A')).toBe(10); // nicht in der Gruppe
+  });
+
+  it('Format 7: Malplan-Einstellungen werden geprüft und ergänzt', () => {
+    const p = createProjectFromImage(original);
+    const raw = JSON.parse(
+      JSON.stringify({ ...p, formatVersion: 7, malplan: { shapes: 5000, colors: 9 } }),
+    ) as unknown;
+    const parsed = parseProject(raw);
+    expect(parsed.malplan?.shapes).toBe(2000);
+    expect(parsed.malplan?.colors).toBe(9);
+    expect(parsed.malplan?.values.levels).toBe(4);
+    expect(() => parseProject({ ...(raw as object), malplan: 3 })).toThrow(/malplan/);
   });
 });

@@ -11,10 +11,10 @@ Jeder Schritt endet lauffähig, mit grünen Tests, aktueller `PROGRESS.md`, Comm
 - [x] 3. Zeichnung & Grafik: `hatching`, `charcoal`, `blueprint`, `stipple` (Browser-CPU)
 - [x] 4. Malerei & Druck: `pointillism`, `riso`, `alt-process`, `infrared`, `instant-film`
 - [x] 5. Material, Geometrie, Licht: `paper`, `mosaic-glass`, `emboss-foil`, `kaleido`, `polar`, `god-rays`
-- [ ] 6. Malplan-Grundlagen: Datenmodell (Projektformat 7), Arbeitsbereich „Malplan“, Maltechnik, Untergrundformat in cm
+- [x] 6. Malplan-Grundlagen: Datenmodell (Projektformat 7), Arbeitsbereich „Malplan“, Maltechnik, Untergrundformat in cm
       mit Presets und Zuschnitt, Vereinfachungsgrad (Formen, Farben), Analyse im Worker (Farbreduktion, Flächen)
-- [ ] 7. Werte- und Farb-Hilfen: Notan, Werteskizze, Wertskala, Warm-Kalt-Karte; PNG je Hilfe
-- [ ] 8. Übertragungshilfen: Proportionsraster (Vorlage und eigenes Blatt), Konturvorlage als Vektor
+- [x] 7. Werte- und Farb-Hilfen: Notan, Werteskizze, Wertskala, Warm-Kalt-Karte; PNG je Hilfe
+- [x] 8. Übertragungshilfen: Proportionsraster (Vorlage und eigenes Blatt), Konturvorlage als Vektor
 - [ ] 9. Beamer-Modus (eigenes Fenster, Vollbild, Trapezkorrektur)
 - [ ] 10. PDF-Malmappe (eigener PDF-Schreiber): Deckblatt, Werteskizze + Wertskala, Notan, Warm-Kalt, Raster,
       Konturvorlage gekachelt A4/A3 mit Überlappung und Passmarken; Seiten wählbar

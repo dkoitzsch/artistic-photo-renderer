@@ -13,6 +13,7 @@ import { CanvasView } from './components/CanvasView';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ExportDialog, ExportWarningDialog, SettingsDialog, SplitDialog } from './components/Dialogs';
 import { EffectBrowser } from './components/EffectBrowser';
+import { MalplanWorkspace } from './components/MalplanWorkspace';
 import { ModelsDialog } from './components/ModelsDialog';
 import { ProjectOverview } from './components/ProjectOverview';
 import { SidePanel } from './components/SidePanel';
@@ -50,6 +51,8 @@ function startup(): Promise<void> {
 export function App() {
   const theme = useApplyTheme();
   const screen = useAppStore((s) => s.screen);
+  const workspace = useAppStore((s) => s.workspace);
+  const hasProject = useAppStore((s) => s.history !== null);
   useShortcuts();
 
   useEffect(() => {
@@ -73,13 +76,21 @@ export function App() {
         <TopBar theme={theme} />
       </ErrorBoundary>
       <div className="workspace">
-        <ToolBar />
-        <ErrorBoundary name="Leinwand">
-          <CanvasView theme={theme} />
-        </ErrorBoundary>
-        <ErrorBoundary name="Seitenleiste">
-          <SidePanel />
-        </ErrorBoundary>
+        {workspace === 'malplan' && hasProject ? (
+          <ErrorBoundary name="Malplan">
+            <MalplanWorkspace />
+          </ErrorBoundary>
+        ) : (
+          <>
+            <ToolBar />
+            <ErrorBoundary name="Leinwand">
+              <CanvasView theme={theme} />
+            </ErrorBoundary>
+            <ErrorBoundary name="Seitenleiste">
+              <SidePanel />
+            </ErrorBoundary>
+          </>
+        )}
         {screen === 'overview' && (
           <ErrorBoundary name="Projektübersicht">
             <ProjectOverview />

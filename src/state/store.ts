@@ -1,3 +1,4 @@
+import type { HelpId } from '../malplan/model';
 import { create } from 'zustand';
 import type { DownloadState } from '../ml/protocol';
 import type { AsyncJobInfo } from '../render/asyncEffects';
@@ -114,6 +115,11 @@ type AppState = {
   asyncJobs: AsyncJobInfo[];
   /** zählt hoch, wenn neue Effekt-Ergebnisse vorliegen (Vorschau neu rendern) */
   renderTick: number;
+  /** Arbeitsbereich: Effekt-Editor oder Malplan (Spec „Effekte“ 7) */
+  workspace: 'edit' | 'malplan';
+  malplanHelp: HelpId;
+  /** Zuschnitt auf der Malplan-Ansicht bearbeiten */
+  malplanCropEdit: boolean;
 
   setGpu: (gpu: GpuStatus) => void;
   setScreen: (screen: AppState['screen']) => void;
@@ -147,6 +153,9 @@ type AppState = {
   setAnalysisView: (patch: Partial<AnalysisView>) => void;
   setAsyncJobs: (jobs: AsyncJobInfo[]) => void;
   bumpRenderTick: () => void;
+  setWorkspace: (w: AppState['workspace']) => void;
+  setMalplanHelp: (h: HelpId) => void;
+  setMalplanCropEdit: (on: boolean) => void;
 };
 
 let nextNoticeId = 1;
@@ -184,6 +193,9 @@ export const useAppStore = create<AppState>()((set) => ({
   analysisView: { map: 'edges', opacity: 0.85 },
   asyncJobs: [],
   renderTick: 0,
+  workspace: 'edit',
+  malplanHelp: 'values',
+  malplanCropEdit: false,
 
   setGpu: (gpu) => set({ gpu }),
   setScreen: (screen) => set({ screen }),
@@ -223,6 +235,9 @@ export const useAppStore = create<AppState>()((set) => ({
   setAnalysisView: (patch) => set((s) => ({ analysisView: { ...s.analysisView, ...patch } })),
   setAsyncJobs: (asyncJobs) => set({ asyncJobs }),
   bumpRenderTick: () => set((s) => ({ renderTick: s.renderTick + 1 })),
+  setWorkspace: (workspace) => set({ workspace, malplanCropEdit: false }),
+  setMalplanHelp: (malplanHelp) => set({ malplanHelp }),
+  setMalplanCropEdit: (malplanCropEdit) => set({ malplanCropEdit }),
 }));
 
 /** Aktuelles Projekt (Gegenwart der History) oder null. */

@@ -56,6 +56,8 @@ export function TopBar({ theme }: { theme: 'light' | 'dark' }) {
   const parallaxOn = useAppStore((s) => s.parallax.enabled);
   const setParallax = useAppStore((s) => s.setParallax);
   const hasImage = project !== null;
+  const workspace = useAppStore((s) => s.workspace);
+  const setWorkspace = useAppStore((s) => s.setWorkspace);
 
   return (
     <header className="topbar">
@@ -114,75 +116,107 @@ export function TopBar({ theme }: { theme: 'light' | 'dark' }) {
       </div>
 
       <div className="topbar-group">
-        <span className="segmented view-modes" role="radiogroup" aria-label="Ansicht">
-          {VIEW_MODES.map((m) => (
+        <span className="segmented workspace-switch" role="radiogroup" aria-label="Arbeitsbereich">
+          {(
+            [
+              { value: 'edit', label: 'Bearbeiten' },
+              { value: 'malplan', label: 'Malplan' },
+            ] as const
+          ).map((w) => (
             <button
-              key={m.value}
+              key={w.value}
               role="radio"
-              aria-checked={viewMode === m.value}
-              className={viewMode === m.value ? 'active' : ''}
+              aria-checked={workspace === w.value}
+              className={workspace === w.value ? 'active' : ''}
               disabled={!hasImage}
-              title={`${m.label} (${m.key})`}
               onClick={() => {
-                setViewMode(m.value);
+                setWorkspace(w.value);
               }}
-              data-testid={`view-${m.value}`}
+              data-testid={`workspace-${w.value}`}
             >
-              {m.label}
+              {w.label}
             </button>
           ))}
         </span>
-        <button
-          className={`icon-button${parallaxOn ? ' active' : ''}`}
-          onClick={() => {
-            setParallax({ enabled: !parallaxOn, pointer: [0, 0] });
-          }}
-          disabled={!hasImage}
-          title="Parallax-Vorschau (P) – Ebenen verschieben sich mit der Maus nach ihrer Tiefe"
-          aria-label="Parallax-Vorschau"
-          aria-pressed={parallaxOn}
-          data-testid="parallax-toggle"
-        >
-          <ParallaxIcon />
-        </button>
-        <button
-          className={`icon-button${compare ? ' active' : ''}`}
-          onClick={toggleCompare}
-          disabled={!hasImage}
-          title="Vorher/Nachher (\)"
-          aria-label="Vorher/Nachher"
-          aria-pressed={compare}
-          data-testid="compare-toggle"
-        >
-          <CompareIcon />
-        </button>
-        <div className="divider" />
-        <button
-          className="icon-button"
-          onClick={() => {
-            zoomBy(1 / 1.25);
-          }}
-          disabled={!hasImage}
-          title="Verkleinern (⌘−)"
-        >
-          <MinusIcon />
-        </button>
-        <span className="zoom-value" data-testid="zoom-value">
-          {hasImage ? `${Math.round(zoom * 100)} %` : '–'}
-        </span>
-        <button
-          className="icon-button"
-          onClick={() => {
-            zoomBy(1.25);
-          }}
-          disabled={!hasImage}
-          title="Vergrößern (⌘+)"
-        >
-          <PlusIcon />
-        </button>
-        <button className="icon-button" onClick={fitToViewport} disabled={!hasImage} title="Einpassen (⌘0)">
-          <FitIcon />
-        </button>
+        {workspace === 'edit' && (
+          <>
+            <div className="divider" />
+            <span className="segmented view-modes" role="radiogroup" aria-label="Ansicht">
+              {VIEW_MODES.map((m) => (
+                <button
+                  key={m.value}
+                  role="radio"
+                  aria-checked={viewMode === m.value}
+                  className={viewMode === m.value ? 'active' : ''}
+                  disabled={!hasImage}
+                  title={`${m.label} (${m.key})`}
+                  onClick={() => {
+                    setViewMode(m.value);
+                  }}
+                  data-testid={`view-${m.value}`}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </span>
+            <button
+              className={`icon-button${parallaxOn ? ' active' : ''}`}
+              onClick={() => {
+                setParallax({ enabled: !parallaxOn, pointer: [0, 0] });
+              }}
+              disabled={!hasImage}
+              title="Parallax-Vorschau (P) – Ebenen verschieben sich mit der Maus nach ihrer Tiefe"
+              aria-label="Parallax-Vorschau"
+              aria-pressed={parallaxOn}
+              data-testid="parallax-toggle"
+            >
+              <ParallaxIcon />
+            </button>
+            <button
+              className={`icon-button${compare ? ' active' : ''}`}
+              onClick={toggleCompare}
+              disabled={!hasImage}
+              title="Vorher/Nachher (\)"
+              aria-label="Vorher/Nachher"
+              aria-pressed={compare}
+              data-testid="compare-toggle"
+            >
+              <CompareIcon />
+            </button>
+            <div className="divider" />
+            <button
+              className="icon-button"
+              onClick={() => {
+                zoomBy(1 / 1.25);
+              }}
+              disabled={!hasImage}
+              title="Verkleinern (⌘−)"
+            >
+              <MinusIcon />
+            </button>
+            <span className="zoom-value" data-testid="zoom-value">
+              {hasImage ? `${Math.round(zoom * 100)} %` : '–'}
+            </span>
+            <button
+              className="icon-button"
+              onClick={() => {
+                zoomBy(1.25);
+              }}
+              disabled={!hasImage}
+              title="Vergrößern (⌘+)"
+            >
+              <PlusIcon />
+            </button>
+            <button
+              className="icon-button"
+              onClick={fitToViewport}
+              disabled={!hasImage}
+              title="Einpassen (⌘0)"
+            >
+              <FitIcon />
+            </button>
+          </>
+        )}
       </div>
 
       <div className="topbar-group">
