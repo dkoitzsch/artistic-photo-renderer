@@ -405,10 +405,11 @@ Sieben Phasen (0–6); jede endet mit einer lauffähigen App. Das Plugin-System 
 
 ### Phase 5 – Pinsel (g)
 
-- [ ] Masken-Pinsel mit Weichheit, Fluss, Stiftdruck, halbtransparentem Schleier
-- [ ] Smarte Auswahl (SAM) mit Positiv-/Negativ-Klicks
-- [ ] Aktionen Hervorheben und Extrahieren; Pinsel auf Fokuskarte
-- [ ] Abnahme: Hand markieren, als eigenen Layer hervorheben, schärfer stellen; danach per Undo vollständig zurück
+- [x] Masken-Pinsel mit Weichheit, Fluss, Stiftdruck, halbtransparentem Schleier
+- [x] Smarte Auswahl (SAM) mit Positiv-/Negativ-Klicks
+- [x] Aktionen Hervorheben und Extrahieren; Pinsel auf Fokuskarte
+- [x] Abnahme: Hand markieren, als eigenen Layer hervorheben, schärfer stellen; danach per Undo vollständig zurück
+      (18.10.2026, [docs/abnahme-P5.md](docs/abnahme-P5.md))
 
 ### Phase 6 – Ausbau
 

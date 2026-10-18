@@ -13,4 +13,4 @@ Nutzer am 18.10.2026 („Phase 5 und dann E3 umsetzen“). Push nach Abschluss d
       Pinsel verfeinern; Modell im Register und in MODELS.md
 - [x] 4. Aktionen: Hervorheben (neue Ebene darüber, optional Lochfüllung im Quell-Layer), Extrahieren, Markierung
       löschen, „Layer auf Original zurücksetzen“
-- [ ] 5. Abnahme (Hand markieren → hervorheben → schärfer → per Undo vollständig zurück), Spec abhaken, CLAUDE.md
+- [x] 5. Abnahme (Hand markieren → hervorheben → schärfer → per Undo vollständig zurück), Spec abhaken, CLAUDE.md

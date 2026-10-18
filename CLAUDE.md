@@ -10,13 +10,13 @@ Abweichungen nur mit Eintrag in [DECISIONS.md](DECISIONS.md) und Hinweis an den 
 ## Status
 
 Abgeschlossen: **Phase 0 – Gerüst**, **Phase 1 – Ganzes Bild**, **Phase 2 – Vordergrund, Fokus, Schatten**,
-**Phase 3 – Tiefenebenen und Gruppen**, **Phase 4 – Weitere Bilder**. Erledigte Punkte werden in der Spec abgehakt.
+**Phase 3 – Tiefenebenen und Gruppen**, **Phase 4 – Weitere Bilder**, **Phase 5 – Pinsel** ([docs/abnahme-P5.md](docs/abnahme-P5.md)). Erledigte Punkte werden in der Spec abgehakt.
 
 **Erweiterung „Effekte & Malvorlagen“** ([docs/spec-effekte-und-malvorlagen.md](docs/spec-effekte-und-malvorlagen.md)):
 **Phasen E1 und E2 abgeschlossen** ([docs/plan-E1.md](docs/plan-E1.md), [docs/plan-E2.md](docs/plan-E2.md); Abnahme und
 Demo-Listen: [docs/abnahme-E1.md](docs/abnahme-E1.md), [docs/abnahme-E2.md](docs/abnahme-E2.md); Ideen für später:
 [docs/optimierungen-und-varianten.md](docs/optimierungen-und-varianten.md)).
-Nächste (wartet auf Freigabe): alte Phase 5 (Pinsel, SAM), dann E3 … E5 (Reihenfolge laut DECISIONS.md). Danach `docs/spec-ml-fotobearbeitung.md` (nicht anfassen).
+Nächste: **E3** (freigegeben 18.10.2026), danach E4, E5. Danach `docs/spec-ml-fotobearbeitung.md` (nicht anfassen).
 Nach jedem Schritt: Tests, [PROGRESS.md](PROGRESS.md) nachführen (Stand, offene Punkte, Logbuch, Stolpersteine, Messwerte), Commit, Push.
 
 ## Ordnerstruktur (✓ = existiert)
@@ -191,6 +191,18 @@ Autosave (`io/autosave.ts`) beobachtet den Store und schreibt ins OPFS.
 - Beamer-Fenster: eigene Seite `beamer.html` / `src/beamer.tsx` (BroadcastChannel, Trapezkorrektur per CSS matrix3d).
 - PDF: eigener Schreiber `src/io/pdf.ts` (PDF 1.4, Helvetica/WinAnsi, Bilder, Vektorpfade).
 
+**Phase 5 (Pinsel):**
+
+- Striche als Vektordaten (`BrushStroke` in `state/project.ts`, Projektformat 8) auf `maskStrokes`, `selection`
+  (Markierung, `PaintedMask` = Grundmaske + Striche + Klicks) und `focusMap.strokes`; Maskenart `empty`; `holeMask`
+  (Lochfüllung aus Markierung), `initial` (Ausgangszustand für „Zurücksetzen“).
+- Rasterung: `brush/dabs.ts` (Tupfer, gleicher Abstand, Druck) → `core.paintDabs` (Render-Pipeline `paint.wgsl`,
+  Mischung „über“); Compositor `baseMask`/`withStrokes`/`selectionMask`/`focusTexture` im Ebenenraum gecacht.
+- Werkzeuge: `BrushOverlay.tsx` + `BrushPanel.tsx` (B), `SmartSelectOverlay.tsx` (W), Aktionen `SelectionActions.tsx`;
+  Befehle `paintStrokeCommand` (ein Eintrag je Zug), `highlightSelectionCommand`, `extractSelectionCommand`,
+  `resetLayerCommand`; Anzeige: Überlagerung 7 = Farbschleier.
+- SAM: `ml/smartSelect.ts` → ML-Worker (`sam`-Anfrage, Bildmerkmale je Original gecacht) → `refineMask` → gespeicherte Maske.
+
 **Neuen Effekt anlegen:** siehe [effects/README.md](effects/README.md) – nur einen Ordner unter `effects/` anlegen.
 
 ## Referenz-Hardware
@@ -221,7 +233,9 @@ Eine neue Phase beginnt nur nach ausdrücklicher Freigabe durch den Nutzer.
   Änderungen an bestehenden Plugin-Dateien laden ohne Neuladen nach. Ein Produktions-Build braucht für neue Plugins einen Neubau.
 - Die Anzeige zeigt die Vorschau (≤ 2048 px); beim Hineinzoomen folgt nach 150 ms Ruhe der sichtbare Ausschnitt in voller Auflösung (nicht bei Worker-/Dienst-Effekten und Parallax).
 - Ist der Dienst aus, meldet die Browser-Konsole alle 20 s einen fehlgeschlagenen `/health`-Aufruf (ML-Modus „Browser“ vermeidet das).
-- Tiefenebenen „objekttreu“ (SAM) fehlt noch (Phase 5/6). Die Tiefe einer Ebene ist für Parallax die Bandmitte.
+- Tiefenebenen „objekttreu“ (SAM-Objekte) fehlt noch (folgt mit der Segmentierung in E3). Die Tiefe einer Ebene ist für
+  Parallax die Bandmitte.
+- Smarte Auswahl: ein Klick erfasst oft das ganze Objekt; mit Alt-Klicks und dem Pinsel eingrenzen. Kein „Markierung umkehren“.
 - PSD: 8 Bit sRGB; Ebenen enthalten ihre Effekte (nicht nachträglich änderbar), Masken nur als deaktivierte Ebenenmasken;
   Gruppen mit eigenen Effekten werden zu einer Ebene. An weichen Bandkanten mischen PSD-Programme minimal anders (8-Bit-sRGB).
 - Transform: Gruppen lassen sich nur verschieben (nicht skalieren/drehen). Maskenkanten gelten in Ebenen-px, Effekte in
