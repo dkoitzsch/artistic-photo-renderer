@@ -25,7 +25,7 @@ import { resetMalplan, updateMalplan, useMalplanStore } from '../../malplan/stor
 import { EnumControl } from '../controls/EnumControl';
 import { Slider } from '../controls/Slider';
 import { Section } from './LayerSections';
-import { BeamerButton } from './MalplanBeamer';
+import { BeamerButton, useBeamerSync } from './MalplanBeamer';
 import { PdfButton } from './MalplanPdf';
 
 function useSettings(): MalplanSettings | null {
@@ -46,6 +46,7 @@ export function MalplanWorkspace() {
     };
   }, [project]);
   useEffect(() => resetMalplan, [projectId]);
+  useBeamerSync();
   return (
     <div className="malplan-workspace" data-testid="malplan">
       <HelpList />
@@ -375,9 +376,11 @@ function MalplanPanel() {
           <button className="button small" data-testid="malplan-png" onClick={savePng} disabled={!result}>
             Als PNG speichern
           </button>
-          <BeamerButton />
           <PdfButton />
         </div>
+      </Section>
+      <Section title="Beamer" testId="malplan-beamer">
+        <BeamerButton />
       </Section>
     </div>
   );

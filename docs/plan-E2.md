@@ -15,7 +15,7 @@ Jeder Schritt endet lauffähig, mit grünen Tests, aktueller `PROGRESS.md`, Comm
       mit Presets und Zuschnitt, Vereinfachungsgrad (Formen, Farben), Analyse im Worker (Farbreduktion, Flächen)
 - [x] 7. Werte- und Farb-Hilfen: Notan, Werteskizze, Wertskala, Warm-Kalt-Karte; PNG je Hilfe
 - [x] 8. Übertragungshilfen: Proportionsraster (Vorlage und eigenes Blatt), Konturvorlage als Vektor
-- [ ] 9. Beamer-Modus (eigenes Fenster, Vollbild, Trapezkorrektur)
+- [x] 9. Beamer-Modus (eigenes Fenster, Vollbild, Trapezkorrektur)
 - [ ] 10. PDF-Malmappe (eigener PDF-Schreiber): Deckblatt, Werteskizze + Wertskala, Notan, Warm-Kalt, Raster,
       Konturvorlage gekachelt A4/A3 mit Überlappung und Passmarken; Seiten wählbar
 - [ ] 11. Abnahme (Foto → druckbare Malmappe im korrekten Maßstab), Demo-Liste, Spec abhaken, CLAUDE.md

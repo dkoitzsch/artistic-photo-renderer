@@ -42,7 +42,7 @@ Was die App kann:
 - **Dienst-Effekte:** asynchron mit Job-Anzeige.
 - **Effekt-Browser** mit Lizenzsperre.
 - **Ausschnitt in voller Auflösung** beim Hineinzoomen.
-- **Malplan** (E2): Notan, Werteskizze, Wertskala, Warm-Kalt-Karte, Proportionsraster, Konturvorlage.
+- **Malplan** (E2): Notan, Werteskizze, Wertskala, Warm-Kalt-Karte, Proportionsraster, Konturvorlage, Beamer-Modus mit Trapezkorrektur.
 - **Export:** PNG, JPEG, WebP und PSD (Gruppen als Ebenengruppen, optional Effekte als eigene Ebenen), bis 24 MP.
 - **Lizenzmodus** „Kommerziell“ oder „Alle“, geprüft in UI, Worker und Dienst.
 
@@ -74,6 +74,7 @@ Was die App kann:
 
 | Datum  | Commit                                       | Inhalt                                                                                                                                                                                                                                                                                         |
 | ------ | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 18.10. | „E2 Schritt 9: Beamer-Modus …“               | eigenes Fenster `beamer.html` (BroadcastChannel), Vollbild mit F, Trapezkorrektur als Homographie (CSS matrix3d), Ecken im Projekt                                                                                                                                                             |
 | 18.10. | „E2 Schritte 6–8: Malplan …“                 | Arbeitsbereich „Malplan“ (Projektformat 7): Maltechnik, Format in cm mit Presets und Zuschnitt, Formen/Farben; Analyse im Worker; Notan, Werteskizze, Wertskala, Warm-Kalt-Karte, Proportionsraster, Konturvorlage (Vektor); PNG je Hilfe                                                      |
 | 18.10. | „E2 Schritt 5: Material, Geometrie, Licht …“ | `paper`, `mosaic-glass`, `emboss-foil`, `kaleido` (inkl. Droste), `polar`, `god-rays`; alle 19 E2-Effekte fertig                                                                                                                                                                               |
 | 18.10. | „E2 Schritt 4: Malerei & Druck …“            | `pointillism` (Palette: Zufallswahl zwischen den zwei nächsten Farben), `riso` (Farbtrennung per kleinster Quadrate), `alt-process`, `infrared`, `instant-film`                                                                                                                                |

@@ -130,3 +130,41 @@ test('Malplan: Format und Zuschnitt, Formen-Regler, PNG einer Hilfe, zurück zum
   await page.getByTestId('workspace-edit').click();
   await expect(page.locator('canvas.canvas, [data-testid="canvas"]').first()).toBeVisible();
 });
+
+test('Beamer-Fenster: zeigt die Hilfe, Trapezkorrektur über Ecken wird im Projekt gespeichert', async ({
+  page,
+  context,
+}) => {
+  test.setTimeout(120_000);
+  await openFixture(page, 'golden/still-life.png');
+  await page.getByTestId('workspace-malplan').click();
+  await ready(page);
+  await page.getByTestId('beamer-help').selectOption('notan');
+  const popupP = context.waitForEvent('page');
+  await page.getByTestId('beamer-open').click();
+  const beamer = await popupP;
+  await beamer.setViewportSize({ width: 1000, height: 700 });
+  const img = beamer.getByTestId('beamer-image');
+  await expect(img).toBeVisible({ timeout: 30_000 });
+  await expect(img).toHaveAttribute('alt', 'Notan');
+  // eingepasst: Bild füllt die Breite oder Höhe, Seitenverhältnis bleibt
+  const b0 = await img.boundingBox();
+  expect(b0).not.toBeNull();
+  // Ecke oben links nach innen ziehen → Trapez
+  const corner = beamer.getByTestId('beamer-corner-0');
+  const cb = await corner.boundingBox();
+  if (!cb) throw new Error('keine Ecke');
+  await beamer.mouse.move(cb.x + cb.width / 2, cb.y + cb.height / 2);
+  await beamer.mouse.down();
+  await beamer.mouse.move(cb.x + 120, cb.y + 80, { steps: 5 });
+  await beamer.mouse.up();
+  await expect
+    .poll(() => page.evaluate(() => window.__bls.getProject()?.malplan?.beamer.corners[0]?.[0] ?? 0))
+    .toBeGreaterThan(0.1);
+  const t = await img.evaluate((el) => getComputedStyle(el).transform);
+  expect(t).toMatch(/^matrix3d/);
+  // Hilfe wechseln → Beamer folgt
+  await page.getByTestId('beamer-help').selectOption('contour');
+  await expect(img).toHaveAttribute('alt', 'Konturvorlage', { timeout: 30_000 });
+  await beamer.close();
+});

@@ -74,7 +74,11 @@ export default defineConfig({
   optimizeDeps: { include: ['delaunator'] },
   server: { port: 5317, strictPort: true },
   preview: { port: 4317, strictPort: true },
-  build: { target: 'es2023' },
+  build: {
+    target: 'es2023',
+    // zweite Seite: Beamer-Fenster des Malplans (ohne Effekte und GPU)
+    rollupOptions: { input: { main: 'index.html', beamer: 'beamer.html' } },
+  },
   test: {
     include: ['tests/unit/**/*.test.ts'],
     environment: 'node',
