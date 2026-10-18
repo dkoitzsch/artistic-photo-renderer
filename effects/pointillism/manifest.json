@@ -1,0 +1,98 @@
+{
+  "id": "pointillism",
+  "name": "Pointillismus",
+  "version": "1.0.0",
+  "category": "Malerei",
+  "description": "Bild aus vielen Farbtupfern wie bei Seurat: Tupfer in Bildfarbe mit Farbvariation, optional nur aus einer Palette, auf hellem Grund.",
+  "inputs": ["source"],
+  "passes": 1,
+  "implementations": { "preview": "webgpu", "final": "webgpu" },
+  "license": { "commercialUse": true, "notes": "Eigene Implementierung." },
+  "cost": "realtime",
+  "randomized": true,
+  "requires": [],
+  "params": [
+    {
+      "key": "dotSize",
+      "label": "Tupfergröße",
+      "type": "float",
+      "min": 2,
+      "max": 60,
+      "default": 9,
+      "step": 0.5,
+      "unit": "px",
+      "scale": "log"
+    },
+    {
+      "key": "density",
+      "label": "Dichte",
+      "hint": "Wie dicht die Tupfer liegen (100 % = Grund kaum sichtbar)",
+      "type": "float",
+      "min": 10,
+      "max": 100,
+      "default": 75,
+      "unit": "%"
+    },
+    {
+      "key": "variation",
+      "label": "Farbvariation",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 35,
+      "unit": "%"
+    },
+    {
+      "key": "usePalette",
+      "label": "Nur Palettenfarben",
+      "hint": "Jeder Tupfer nimmt die nächstliegende Palettenfarbe – das Auge mischt aus der Entfernung",
+      "type": "bool",
+      "default": false
+    },
+    {
+      "key": "palette",
+      "label": "Palette",
+      "type": "palette",
+      "default": [
+        [0.95, 0.85, 0.3],
+        [0.95, 0.55, 0.15],
+        [0.85, 0.2, 0.2],
+        [0.6, 0.25, 0.55],
+        [0.2, 0.3, 0.7],
+        [0.25, 0.6, 0.85],
+        [0.25, 0.6, 0.3],
+        [0.6, 0.75, 0.3],
+        [0.97, 0.96, 0.9],
+        [0.15, 0.13, 0.12]
+      ]
+    },
+    { "key": "ground", "label": "Grund", "type": "color", "default": [0.96, 0.94, 0.88] },
+    {
+      "key": "elongation",
+      "label": "Strichform",
+      "hint": "0 % = runde Tupfer, 100 % = kurze Striche",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 15,
+      "unit": "%",
+      "group": "Erweitert"
+    }
+  ],
+  "visibleIf": { "palette": "usePalette" },
+  "reach": "dotSize * 2 + 2",
+  "presets": [
+    {
+      "name": "Seurat",
+      "values": { "dotSize": 8, "density": 80, "variation": 40, "usePalette": false, "elongation": 10 }
+    },
+    {
+      "name": "Divisionismus (Palette)",
+      "values": { "dotSize": 7, "density": 85, "variation": 25, "usePalette": true, "elongation": 20 }
+    },
+    {
+      "name": "Grobe Tupfer",
+      "values": { "dotSize": 18, "density": 65, "variation": 30, "usePalette": false, "elongation": 35 }
+    }
+  ]
+}

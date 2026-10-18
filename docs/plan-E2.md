@@ -9,7 +9,7 @@ Jeder Schritt endet lauffähig, mit grünen Tests, aktueller `PROGRESS.md`, Comm
       (Reichweite ≥ halbe Leinwand) im Export am Stück, Ausschnitt in voller Auflösung bei zu großer Fläche aus
 - [x] 2. Digital & Glitch: `scanlines-crt`, `datamosh`, `displace`, `ascii` (neuer Parametertyp `text`, Glyphen-Atlas)
 - [x] 3. Zeichnung & Grafik: `hatching`, `charcoal`, `blueprint`, `stipple` (Browser-CPU)
-- [ ] 4. Malerei & Druck: `pointillism`, `riso`, `alt-process`, `infrared`, `instant-film`
+- [x] 4. Malerei & Druck: `pointillism`, `riso`, `alt-process`, `infrared`, `instant-film`
 - [ ] 5. Material, Geometrie, Licht: `paper`, `mosaic-glass`, `emboss-foil`, `kaleido`, `polar`, `god-rays`
 - [ ] 6. Malplan-Grundlagen: Datenmodell (Projektformat 7), Arbeitsbereich „Malplan“, Maltechnik, Untergrundformat in cm
       mit Presets und Zuschnitt, Vereinfachungsgrad (Formen, Farben), Analyse im Worker (Farbreduktion, Flächen)

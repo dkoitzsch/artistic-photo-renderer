@@ -1,0 +1,79 @@
+{
+  "id": "alt-process",
+  "name": "Alte Verfahren",
+  "version": "1.0.0",
+  "category": "Druck & Fotografie",
+  "description": "Edeldruck-Looks: Cyanotypie (Preußischblau), Sepia-Tonung und Kollodium-Nassplatte – mit Pinselrändern, Flecken und Vignette.",
+  "inputs": ["source"],
+  "passes": 1,
+  "implementations": { "preview": "webgpu", "final": "webgpu" },
+  "license": { "commercialUse": true, "notes": "Eigene Implementierung." },
+  "cost": "realtime",
+  "randomized": true,
+  "requires": [],
+  "params": [
+    {
+      "key": "process",
+      "label": "Verfahren",
+      "type": "enum",
+      "options": [
+        { "value": "cyanotype", "label": "Cyanotypie" },
+        { "value": "sepia", "label": "Sepia" },
+        { "value": "collodion", "label": "Kollodium" }
+      ],
+      "default": "cyanotype"
+    },
+    {
+      "key": "strength",
+      "label": "Tonung",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 100,
+      "unit": "%"
+    },
+    {
+      "key": "contrast",
+      "label": "Kontrast",
+      "type": "float",
+      "min": -100,
+      "max": 100,
+      "default": 20,
+      "unit": "%"
+    },
+    {
+      "key": "edges",
+      "label": "Randartefakte",
+      "hint": "Pinselstriche der Beschichtung, Gießränder, Flecken",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 50,
+      "unit": "%"
+    },
+    {
+      "key": "vignette",
+      "label": "Vignette",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 40,
+      "unit": "%"
+    },
+    { "key": "paper", "label": "Papier", "type": "color", "default": [0.96, 0.94, 0.88] }
+  ],
+  "presets": [
+    {
+      "name": "Cyanotypie",
+      "values": { "process": "cyanotype", "strength": 100, "contrast": 20, "edges": 55, "vignette": 30 }
+    },
+    {
+      "name": "Sepia, 1900",
+      "values": { "process": "sepia", "strength": 90, "contrast": 10, "edges": 30, "vignette": 55 }
+    },
+    {
+      "name": "Nassplatte",
+      "values": { "process": "collodion", "strength": 100, "contrast": 35, "edges": 70, "vignette": 60 }
+    }
+  ]
+}

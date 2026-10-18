@@ -1,0 +1,104 @@
+{
+  "id": "instant-film",
+  "name": "Sofortbild",
+  "version": "1.0.0",
+  "category": "Druck & Fotografie",
+  "description": "Sofortbild-Look: verschobene Farben (kühle Schatten, warme Lichter), ausgeblichener Kontrast, weiche Ränder und auf Wunsch der typische Rahmen.",
+  "inputs": ["source"],
+  "passes": 1,
+  "implementations": { "preview": "webgpu", "final": "webgpu" },
+  "license": { "commercialUse": true, "notes": "Eigene Implementierung (keine Markenfarben oder -zeichen)." },
+  "cost": "realtime",
+  "randomized": true,
+  "requires": [],
+  "params": [
+    {
+      "key": "colorShift",
+      "label": "Farbverschiebung",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 55,
+      "unit": "%"
+    },
+    {
+      "key": "fade",
+      "label": "Ausbleichen",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 40,
+      "unit": "%"
+    },
+    {
+      "key": "warmth",
+      "label": "Wärme",
+      "type": "float",
+      "min": -100,
+      "max": 100,
+      "default": 20,
+      "unit": "%"
+    },
+    {
+      "key": "vignette",
+      "label": "Vignette",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 35,
+      "unit": "%"
+    },
+    {
+      "key": "chemistry",
+      "label": "Entwicklerspuren",
+      "hint": "Unregelmäßige Ränder und Flecken der Entwicklerpaste",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 30,
+      "unit": "%"
+    },
+    { "key": "frame", "label": "Rahmen", "type": "bool", "default": true },
+    { "key": "frameColor", "label": "Rahmenfarbe", "type": "color", "default": [0.95, 0.94, 0.9] },
+    {
+      "key": "frameSize",
+      "label": "Rahmenbreite",
+      "hint": "Seitenrand in % der kurzen Kante; unten dreimal so breit",
+      "type": "float",
+      "min": 1,
+      "max": 15,
+      "default": 5,
+      "unit": "%"
+    }
+  ],
+  "visibleIf": { "frameColor": "frame", "frameSize": "frame" },
+  "presets": [
+    {
+      "name": "Klassisches Sofortbild",
+      "values": { "colorShift": 55, "fade": 40, "warmth": 20, "vignette": 35, "chemistry": 30, "frame": true }
+    },
+    {
+      "name": "Ohne Rahmen, verblasst",
+      "values": {
+        "colorShift": 40,
+        "fade": 70,
+        "warmth": 35,
+        "vignette": 25,
+        "chemistry": 10,
+        "frame": false
+      }
+    },
+    {
+      "name": "Kühl und kräftig",
+      "values": {
+        "colorShift": 80,
+        "fade": 20,
+        "warmth": -40,
+        "vignette": 45,
+        "chemistry": 45,
+        "frame": true,
+        "frameColor": [0.12, 0.12, 0.12]
+      }
+    }
+  ]
+}

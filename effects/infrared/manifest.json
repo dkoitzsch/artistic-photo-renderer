@@ -1,0 +1,78 @@
+{
+  "id": "infrared",
+  "name": "Infrarot",
+  "version": "1.0.0",
+  "category": "Druck & Fotografie",
+  "description": "Infrarot-Falschfarben wie auf Farbinfrarotfilm (Laub rot-magenta, Himmel tiefblau) oder Schwarz-Weiß-Infrarot (helles Laub, dunkler Himmel, Leuchten).",
+  "inputs": ["source"],
+  "passes": 2,
+  "implementations": { "preview": "webgpu", "final": "webgpu" },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung (Näherung der Infrarot-Reflexion aus RGB)."
+  },
+  "cost": "realtime",
+  "randomized": false,
+  "requires": [],
+  "params": [
+    {
+      "key": "mode",
+      "label": "Verfahren",
+      "type": "enum",
+      "options": [
+        { "value": "color", "label": "Farbinfrarot" },
+        { "value": "bw", "label": "Schwarz-Weiß-Infrarot" }
+      ],
+      "default": "color"
+    },
+    {
+      "key": "strength",
+      "label": "Stärke",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 100,
+      "unit": "%"
+    },
+    {
+      "key": "foliage",
+      "label": "Laub-Reflexion",
+      "hint": "Wie stark grüne Pflanzen im Infrarot leuchten",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 70,
+      "unit": "%"
+    },
+    {
+      "key": "glow",
+      "label": "Leuchten",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 30,
+      "unit": "%"
+    },
+    {
+      "key": "glowRadius",
+      "label": "Leuchtradius",
+      "type": "float",
+      "min": 1,
+      "max": 120,
+      "default": 18,
+      "step": 0.5,
+      "unit": "px",
+      "scale": "log",
+      "group": "Erweitert"
+    }
+  ],
+  "reach": "glowRadius",
+  "presets": [
+    { "name": "Farbinfrarot", "values": { "mode": "color", "strength": 100, "foliage": 70, "glow": 20 } },
+    {
+      "name": "S/W-Infrarot",
+      "values": { "mode": "bw", "strength": 100, "foliage": 75, "glow": 45, "glowRadius": 22 }
+    },
+    { "name": "Rosa Landschaft", "values": { "mode": "color", "strength": 80, "foliage": 90, "glow": 10 } }
+  ]
+}

@@ -1,0 +1,110 @@
+{
+  "id": "riso",
+  "name": "Risografie",
+  "version": "1.0.0",
+  "category": "Druck & Fotografie",
+  "description": "Druck mit 2–3 Sonderfarben: Farbtrennung auf die gewählten Farben, körniges Raster je Farbe und leicht versetzte Druckgänge.",
+  "inputs": ["source"],
+  "passes": 1,
+  "implementations": { "preview": "webgpu", "final": "webgpu" },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung; Farbtöne sind Näherungen gängiger Sonderfarben (keine Markenfarben)."
+  },
+  "cost": "realtime",
+  "randomized": true,
+  "requires": [],
+  "params": [
+    {
+      "key": "inks",
+      "label": "Farben",
+      "type": "enum",
+      "options": [
+        { "value": "2", "label": "2 Farben" },
+        { "value": "3", "label": "3 Farben" }
+      ],
+      "default": "2"
+    },
+    { "key": "ink1", "label": "Farbe 1", "type": "color", "default": [0.0, 0.47, 0.75] },
+    { "key": "ink2", "label": "Farbe 2", "type": "color", "default": [1.0, 0.28, 0.69] },
+    { "key": "ink3", "label": "Farbe 3", "type": "color", "default": [1.0, 0.91, 0.0] },
+    { "key": "paper", "label": "Papier", "type": "color", "default": [0.97, 0.95, 0.9] },
+    { "key": "grain", "label": "Körnung", "type": "float", "min": 0, "max": 100, "default": 55, "unit": "%" },
+    {
+      "key": "grainSize",
+      "label": "Korngröße",
+      "type": "float",
+      "min": 0.5,
+      "max": 8,
+      "default": 1.2,
+      "step": 0.1,
+      "unit": "px",
+      "scale": "log"
+    },
+    {
+      "key": "misregister",
+      "label": "Versatz",
+      "hint": "Druckgänge leicht gegeneinander verschoben",
+      "type": "float",
+      "min": 0,
+      "max": 30,
+      "default": 4,
+      "step": 0.1,
+      "unit": "px"
+    },
+    {
+      "key": "contrast",
+      "label": "Kontrast",
+      "type": "float",
+      "min": -100,
+      "max": 100,
+      "default": 15,
+      "unit": "%"
+    },
+    {
+      "key": "inkDensity",
+      "label": "Farbdeckung",
+      "type": "float",
+      "min": 30,
+      "max": 100,
+      "default": 88,
+      "unit": "%",
+      "group": "Erweitert"
+    }
+  ],
+  "visibleIf": { "ink3": "inks=3" },
+  "reach": "misregister + grainSize * 2 + 2",
+  "presets": [
+    {
+      "name": "Blau und Pink",
+      "values": {
+        "inks": "2",
+        "ink1": [0.0, 0.47, 0.75],
+        "ink2": [1.0, 0.28, 0.69],
+        "grain": 55,
+        "misregister": 4
+      }
+    },
+    {
+      "name": "Drei Farben (Pink, Gelb, Blau)",
+      "values": {
+        "inks": "3",
+        "ink1": [0.0, 0.47, 0.75],
+        "ink2": [1.0, 0.28, 0.69],
+        "ink3": [1.0, 0.91, 0.0],
+        "grain": 50,
+        "misregister": 5
+      }
+    },
+    {
+      "name": "Grün und Orange",
+      "values": {
+        "inks": "2",
+        "ink1": [0.0, 0.6, 0.45],
+        "ink2": [1.0, 0.42, 0.13],
+        "grain": 65,
+        "misregister": 3
+      }
+    }
+  ]
+}
