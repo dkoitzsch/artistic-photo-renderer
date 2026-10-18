@@ -32,7 +32,7 @@ Was die App kann:
   - Vordergrund und Hintergrund trennen (BiRefNet), mit Fokuspunkten (MediaPipe), Schatten und Tiefenebenen
     (Depth Anything V2).
   - Gruppen (verschachtelt, mit Effekten, Maske, Deckkraft und Mischmodus) und Parallax.
-- **Effekte:** 26 Plugins (E2 bisher: Röhrenbild & VHS, Datamosh, Verschiebung & Slit-Scan, ASCII):
+- **Effekte:** 30 Plugins (E2 bisher: Röhrenbild & VHS, Datamosh, Verschiebung & Slit-Scan, ASCII, Schraffur, Kohle & Rötel, Blaupause, Stippling):
   - GPU: 18 (7 aus den Phasen 1–3, 11 aus E1).
   - Browser-CPU: Dithering und Pixel-Sorting.
   - Browser-CPU und Python-Dienst: Low-Poly.
@@ -73,6 +73,7 @@ Was die App kann:
 
 | Datum  | Commit                                  | Inhalt                                                                                                                                                                                                                                                                                         |
 | ------ | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 18.10. | „E2 Schritt 3: Zeichnung & Grafik …“    | `hatching` (gerade oder entlang des Richtungsfelds per LIC), `charcoal`, `blueprint`, `stipple` (Worker, gewichtete Lloyd-Relaxation)                                                                                                                                                          |
 | 18.10. | „E2 Schritt 2: Digital & Glitch …“      | `scanlines-crt`, `datamosh` (echte 8×8-DCT), `displace`, `ascii`; Parametertyp `text`, Glyphen-Atlas `ctx.glyphs`                                                                                                                                                                              |
 | 17.10. | „E2 Schritt 1: Analysekarte flow …“     | Richtungsfeld `flow` (GPU, Worker, Dienst; GPU gegen CPU Mittel 0,2°, p95 1°), Ansicht „Richtungsfeld“, globale Effekte im Export am Stück                                                                                                                                                     |
 | 17.10. | „E2 Schritt 0: Plan …“                  | E2 freigegeben: Plan `docs/plan-E2.md`, Grundsatzentscheidungen (Ausführungsorte, `flow`, Schrift, globale Effekte, Malplan, Beamer, PDF)                                                                                                                                                      |

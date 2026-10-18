@@ -1,0 +1,133 @@
+{
+  "id": "hatching",
+  "name": "Schraffur",
+  "version": "1.0.0",
+  "category": "Zeichnung & Grafik",
+  "description": "Schraffur und Kreuzschraffur: je dunkler, desto mehr Lagen. Gerade Linien oder Striche entlang der Formen (Richtungsfeld).",
+  "inputs": ["source"],
+  "passes": 1,
+  "implementations": { "preview": "webgpu", "final": "webgpu" },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung; Striche entlang des Richtungsfelds per Line Integral Convolution (Cabral & Leedom 1993, Verfahren)."
+  },
+  "cost": "realtime",
+  "randomized": true,
+  "requires": ["edges", "flow"],
+  "params": [
+    { "key": "layers", "label": "Lagen", "type": "int", "min": 1, "max": 4, "default": 3 },
+    { "key": "angle", "label": "Winkel", "type": "angle", "default": 45 },
+    {
+      "key": "spacing",
+      "label": "Abstand",
+      "type": "float",
+      "min": 2,
+      "max": 40,
+      "default": 6,
+      "step": 0.1,
+      "unit": "px",
+      "scale": "log"
+    },
+    {
+      "key": "width",
+      "label": "Strichstärke",
+      "type": "float",
+      "min": 0.3,
+      "max": 8,
+      "default": 1.1,
+      "step": 0.1,
+      "unit": "px"
+    },
+    {
+      "key": "followFlow",
+      "label": "Entlang der Formen",
+      "hint": "Striche folgen dem Richtungsfeld statt gerader Linien",
+      "type": "bool",
+      "default": false
+    },
+    {
+      "key": "strokeLength",
+      "label": "Strichlänge",
+      "type": "float",
+      "min": 4,
+      "max": 120,
+      "default": 28,
+      "step": 0.5,
+      "unit": "px",
+      "scale": "log"
+    },
+    {
+      "key": "tone",
+      "label": "Helligkeit",
+      "type": "float",
+      "min": -100,
+      "max": 100,
+      "default": 0,
+      "unit": "%"
+    },
+    {
+      "key": "outline",
+      "label": "Kontur",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 40,
+      "unit": "%"
+    },
+    {
+      "key": "jitter",
+      "label": "Handschrift",
+      "hint": "Unruhe der Linien",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 35,
+      "unit": "%"
+    },
+    { "key": "ink", "label": "Tinte", "type": "color", "default": [0.1, 0.09, 0.09] },
+    { "key": "paper", "label": "Papier", "type": "color", "default": [0.97, 0.95, 0.9] }
+  ],
+  "visibleIf": { "strokeLength": "followFlow", "angle": "!followFlow" },
+  "reach": "strokeLength + spacing * 2 + 80",
+  "presets": [
+    {
+      "name": "Kreuzschraffur",
+      "values": {
+        "layers": 3,
+        "angle": 45,
+        "spacing": 6,
+        "width": 1.1,
+        "followFlow": false,
+        "outline": 40,
+        "jitter": 35
+      }
+    },
+    {
+      "name": "Bleistift entlang der Formen",
+      "values": {
+        "layers": 2,
+        "spacing": 4,
+        "width": 0.9,
+        "followFlow": true,
+        "strokeLength": 30,
+        "outline": 55,
+        "jitter": 20,
+        "ink": [0.22, 0.22, 0.24]
+      }
+    },
+    {
+      "name": "Kupferstich",
+      "values": {
+        "layers": 4,
+        "angle": 30,
+        "spacing": 4,
+        "width": 1.4,
+        "followFlow": false,
+        "outline": 25,
+        "jitter": 5,
+        "ink": [0.12, 0.08, 0.06],
+        "paper": [0.95, 0.9, 0.8]
+      }
+    }
+  ]
+}

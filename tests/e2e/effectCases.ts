@@ -208,4 +208,47 @@ export const EFFECT_CASES: EffectCase[] = [
     preset: 'Farbiger Text',
     flatBorder: false,
   },
+  // ---- E2 Schritt 3 ----
+  {
+    name: 'hatching-cross-portrait',
+    fixture: 'portrait',
+    effectId: 'hatching',
+    preset: 'Kreuzschraffur',
+    flatBorder: false,
+  },
+  {
+    name: 'hatching-flow-still-life',
+    fixture: 'still-life',
+    effectId: 'hatching',
+    preset: 'Bleistift entlang der Formen',
+    flatBorder: false,
+  },
+  {
+    name: 'charcoal-portrait',
+    fixture: 'portrait',
+    effectId: 'charcoal',
+    preset: 'Kohlezeichnung',
+    flatBorder: false,
+  },
+  {
+    name: 'charcoal-sanguine-landscape',
+    fixture: 'landscape',
+    effectId: 'charcoal',
+    preset: 'Rötelstudie',
+    flatBorder: false,
+  },
+  {
+    name: 'blueprint-architecture',
+    fixture: 'architecture',
+    effectId: 'blueprint',
+    preset: 'Klassische Blaupause',
+    flatBorder: false,
+  },
+  {
+    name: 'stipple-portrait',
+    fixture: 'portrait',
+    effectId: 'stipple',
+    preset: 'Tuschepunkte',
+    flatBorder: false,
+  },
 ];

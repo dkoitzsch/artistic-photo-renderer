@@ -1,0 +1,113 @@
+{
+  "id": "charcoal",
+  "name": "Kohle & Rötel",
+  "version": "1.0.0",
+  "category": "Zeichnung & Grafik",
+  "description": "Zeichnung mit Kohle, Rötel, Sepia oder Graphit: Körnung auf rauem Papier, verwischte Töne entlang der Formen, betonte Kanten.",
+  "inputs": ["source"],
+  "passes": 1,
+  "implementations": { "preview": "webgpu", "final": "webgpu" },
+  "license": { "commercialUse": true, "notes": "Eigene Implementierung; Papierstruktur prozedural." },
+  "cost": "realtime",
+  "randomized": true,
+  "requires": ["edges", "flow"],
+  "params": [
+    {
+      "key": "medium",
+      "label": "Material",
+      "type": "enum",
+      "options": [
+        { "value": "charcoal", "label": "Kohle" },
+        { "value": "sanguine", "label": "Rötel" },
+        { "value": "sepia", "label": "Sepia" },
+        { "value": "graphite", "label": "Graphit" }
+      ],
+      "default": "charcoal"
+    },
+    { "key": "grain", "label": "Körnung", "type": "float", "min": 0, "max": 100, "default": 55, "unit": "%" },
+    {
+      "key": "grainSize",
+      "label": "Papierkorn",
+      "type": "float",
+      "min": 0.5,
+      "max": 8,
+      "default": 1.6,
+      "step": 0.1,
+      "unit": "px",
+      "scale": "log"
+    },
+    {
+      "key": "smudge",
+      "label": "Verwischung",
+      "hint": "Töne werden entlang der Formen verwischt",
+      "type": "float",
+      "min": 0,
+      "max": 80,
+      "default": 12,
+      "step": 0.5,
+      "unit": "px",
+      "scale": "log"
+    },
+    {
+      "key": "strokes",
+      "label": "Striche",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 45,
+      "unit": "%"
+    },
+    { "key": "edges", "label": "Kanten", "type": "float", "min": 0, "max": 100, "default": 50, "unit": "%" },
+    {
+      "key": "contrast",
+      "label": "Kontrast",
+      "type": "float",
+      "min": -100,
+      "max": 100,
+      "default": 25,
+      "unit": "%"
+    },
+    { "key": "paper", "label": "Papier", "type": "color", "default": [0.95, 0.92, 0.86] }
+  ],
+  "reach": "smudge + grainSize * 4 + 80",
+  "presets": [
+    {
+      "name": "Kohlezeichnung",
+      "values": {
+        "medium": "charcoal",
+        "grain": 55,
+        "grainSize": 1.6,
+        "smudge": 12,
+        "strokes": 45,
+        "edges": 50,
+        "contrast": 25
+      }
+    },
+    {
+      "name": "Rötelstudie",
+      "values": {
+        "medium": "sanguine",
+        "grain": 65,
+        "grainSize": 2,
+        "smudge": 8,
+        "strokes": 55,
+        "edges": 40,
+        "contrast": 15,
+        "paper": [0.96, 0.92, 0.84]
+      }
+    },
+    {
+      "name": "Weicher Graphit",
+      "values": {
+        "medium": "graphite",
+        "grain": 30,
+        "grainSize": 1.2,
+        "smudge": 20,
+        "strokes": 30,
+        "edges": 60,
+        "contrast": 10,
+        "paper": [0.97, 0.97, 0.95]
+      }
+    }
+  ]
+}

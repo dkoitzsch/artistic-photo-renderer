@@ -1,0 +1,91 @@
+{
+  "id": "stipple",
+  "name": "Stippling",
+  "version": "1.0.0",
+  "category": "Zeichnung & Grafik",
+  "description": "Punktzeichnung: Tausende Punkte, dicht in dunklen Bereichen, gleichmäßig verteilt (gewichtete Voronoi-Relaxation nach Secord).",
+  "inputs": ["source"],
+  "passes": 1,
+  "implementations": { "preview": "browser-cpu", "final": "browser-cpu" },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung nach Secord (2002): Weighted Voronoi Stippling (Verfahren, kein Fremdcode)."
+  },
+  "cost": "slow",
+  "randomized": true,
+  "requires": [],
+  "params": [
+    {
+      "key": "dots",
+      "label": "Punktanzahl",
+      "type": "int",
+      "min": 500,
+      "max": 60000,
+      "default": 9000,
+      "step": 100,
+      "scale": "log"
+    },
+    {
+      "key": "minSize",
+      "label": "Punktgröße min.",
+      "type": "float",
+      "min": 0.5,
+      "max": 20,
+      "default": 1.5,
+      "step": 0.1,
+      "unit": "px"
+    },
+    {
+      "key": "maxSize",
+      "label": "Punktgröße max.",
+      "type": "float",
+      "min": 0.5,
+      "max": 40,
+      "default": 4,
+      "step": 0.1,
+      "unit": "px"
+    },
+    {
+      "key": "iterations",
+      "label": "Durchgänge",
+      "hint": "Mehr Durchgänge = gleichmäßigere Verteilung, längere Rechnung",
+      "type": "int",
+      "min": 0,
+      "max": 60,
+      "default": 24
+    },
+    {
+      "key": "contrast",
+      "label": "Kontrast",
+      "hint": "Wie stark sich die Punkte in dunklen Bereichen sammeln",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 50,
+      "unit": "%"
+    },
+    { "key": "ink", "label": "Tinte", "type": "color", "default": [0.08, 0.08, 0.1] },
+    { "key": "paper", "label": "Papier", "type": "color", "default": [0.98, 0.97, 0.94] }
+  ],
+  "presets": [
+    {
+      "name": "Tuschepunkte",
+      "values": { "dots": 9000, "minSize": 1.5, "maxSize": 4, "iterations": 24, "contrast": 50 }
+    },
+    {
+      "name": "Fein und dicht",
+      "values": { "dots": 30000, "minSize": 0.8, "maxSize": 2.2, "iterations": 20, "contrast": 60 }
+    },
+    {
+      "name": "Grobe Punkte",
+      "values": {
+        "dots": 2500,
+        "minSize": 3,
+        "maxSize": 10,
+        "iterations": 30,
+        "contrast": 40,
+        "ink": [0.55, 0.12, 0.1]
+      }
+    }
+  ]
+}

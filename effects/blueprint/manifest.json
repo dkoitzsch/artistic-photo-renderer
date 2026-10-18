@@ -1,0 +1,99 @@
+{
+  "id": "blueprint",
+  "name": "Blaupause",
+  "version": "1.0.0",
+  "category": "Zeichnung & Grafik",
+  "description": "Technische Zeichnung: helle Linien auf Preußischblau, wahlweise mit Raster und leichter Schattierung.",
+  "inputs": ["source"],
+  "passes": 4,
+  "implementations": { "preview": "webgpu", "final": "webgpu" },
+  "license": { "commercialUse": true, "notes": "Eigene Implementierung (Differenz zweier Gauß-Filter)." },
+  "cost": "realtime",
+  "randomized": true,
+  "requires": [],
+  "params": [
+    {
+      "key": "lineWidth",
+      "label": "Linienstärke",
+      "type": "float",
+      "min": 0.5,
+      "max": 8,
+      "default": 1.4,
+      "step": 0.1,
+      "unit": "px"
+    },
+    {
+      "key": "detail",
+      "label": "Detail",
+      "hint": "Wie viele schwache Kanten zu Linien werden",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 55,
+      "unit": "%"
+    },
+    {
+      "key": "shading",
+      "label": "Schattierung",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 25,
+      "unit": "%"
+    },
+    { "key": "grid", "label": "Raster", "type": "bool", "default": true },
+    {
+      "key": "gridSize",
+      "label": "Rasterweite",
+      "type": "float",
+      "min": 4,
+      "max": 200,
+      "default": 24,
+      "step": 1,
+      "unit": "px",
+      "scale": "log"
+    },
+    { "key": "blue", "label": "Grund", "type": "color", "default": [0.07, 0.24, 0.5] },
+    { "key": "lineColor", "label": "Linien", "type": "color", "default": [0.93, 0.96, 1] },
+    {
+      "key": "texture",
+      "label": "Papierstruktur",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 30,
+      "unit": "%",
+      "group": "Erweitert"
+    }
+  ],
+  "visibleIf": { "gridSize": "grid" },
+  "reach": "lineWidth * 6 + 4",
+  "presets": [
+    {
+      "name": "Klassische Blaupause",
+      "values": {
+        "lineWidth": 1.4,
+        "detail": 55,
+        "shading": 25,
+        "grid": true,
+        "gridSize": 24,
+        "blue": [0.07, 0.24, 0.5],
+        "lineColor": [0.93, 0.96, 1]
+      }
+    },
+    { "name": "Nur Linien", "values": { "lineWidth": 1.2, "detail": 70, "shading": 0, "grid": false } },
+    {
+      "name": "Weißpause",
+      "values": {
+        "lineWidth": 1.6,
+        "detail": 50,
+        "shading": 15,
+        "grid": true,
+        "gridSize": 32,
+        "blue": [0.96, 0.96, 0.94],
+        "lineColor": [0.08, 0.2, 0.48],
+        "texture": 15
+      }
+    }
+  ]
+}
