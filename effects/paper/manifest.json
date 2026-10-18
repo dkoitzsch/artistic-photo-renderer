@@ -1,0 +1,85 @@
+{
+  "id": "paper",
+  "name": "Papier",
+  "version": "1.0.0",
+  "category": "Material & Oberfläche",
+  "description": "Das Bild wie auf Papier gedruckt: zerknittert, gefaltet, Kraftpapier, Büttenrand oder Wasserflecken – alles prozedural.",
+  "inputs": ["source"],
+  "passes": 1,
+  "implementations": { "preview": "webgpu", "final": "webgpu" },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung; Texturen prozedural (keine fremden Texturdateien)."
+  },
+  "cost": "realtime",
+  "randomized": true,
+  "requires": [],
+  "params": [
+    {
+      "key": "paperType",
+      "label": "Papier",
+      "type": "enum",
+      "options": [
+        { "value": "plain", "label": "Weißes Papier" },
+        { "value": "kraft", "label": "Kraftpapier" },
+        { "value": "aged", "label": "Vergilbt" }
+      ],
+      "default": "plain"
+    },
+    {
+      "key": "crumple",
+      "label": "Knitterstärke",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 40,
+      "unit": "%"
+    },
+    { "key": "folds", "label": "Faltlinien", "type": "int", "min": 0, "max": 6, "default": 2 },
+    { "key": "stains", "label": "Wasserflecken", "type": "int", "min": 0, "max": 12, "default": 2 },
+    { "key": "deckle", "label": "Büttenrand", "type": "bool", "default": false },
+    {
+      "key": "fiber",
+      "label": "Faserstruktur",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 40,
+      "unit": "%"
+    },
+    { "key": "lightAngle", "label": "Lichtrichtung", "type": "angle", "default": 135, "group": "Erweitert" },
+    {
+      "key": "ink",
+      "label": "Druckdeckung",
+      "hint": "Wie stark das Bild das Papier deckt",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 85,
+      "unit": "%",
+      "group": "Erweitert"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Zerknittert",
+      "values": { "paperType": "plain", "crumple": 65, "folds": 0, "stains": 0, "deckle": false, "fiber": 30 }
+    },
+    {
+      "name": "Gefalteter Brief",
+      "values": { "paperType": "aged", "crumple": 15, "folds": 3, "stains": 2, "deckle": false, "fiber": 45 }
+    },
+    {
+      "name": "Kraftpapier mit Büttenrand",
+      "values": {
+        "paperType": "kraft",
+        "crumple": 20,
+        "folds": 0,
+        "stains": 0,
+        "deckle": true,
+        "fiber": 70,
+        "ink": 75
+      }
+    }
+  ]
+}

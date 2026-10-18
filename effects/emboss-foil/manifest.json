@@ -1,0 +1,74 @@
+{
+  "id": "emboss-foil",
+  "name": "Prägung & Metallfolie",
+  "version": "1.0.0",
+  "category": "Material & Oberfläche",
+  "description": "Relief aus der Helligkeit: Blindprägung auf Papier oder geprägte Metallfolie (Gold, Silber, Kupfer, Roségold) mit Glanz.",
+  "inputs": ["source"],
+  "passes": 2,
+  "implementations": { "preview": "webgpu", "final": "webgpu" },
+  "license": { "commercialUse": true, "notes": "Eigene Implementierung." },
+  "cost": "realtime",
+  "randomized": false,
+  "requires": [],
+  "params": [
+    {
+      "key": "metal",
+      "label": "Material",
+      "type": "enum",
+      "options": [
+        { "value": "blind", "label": "Blindprägung (Papier)" },
+        { "value": "gold", "label": "Gold" },
+        { "value": "silver", "label": "Silber" },
+        { "value": "copper", "label": "Kupfer" },
+        { "value": "rose", "label": "Roségold" }
+      ],
+      "default": "gold"
+    },
+    { "key": "height", "label": "Höhe", "type": "float", "min": 0, "max": 100, "default": 50, "unit": "%" },
+    {
+      "key": "softness",
+      "label": "Weichheit",
+      "type": "float",
+      "min": 0.5,
+      "max": 30,
+      "default": 2.5,
+      "step": 0.1,
+      "unit": "px",
+      "scale": "log"
+    },
+    { "key": "lightAngle", "label": "Lichtrichtung", "type": "angle", "default": 135 },
+    { "key": "gloss", "label": "Glanz", "type": "float", "min": 0, "max": 100, "default": 60, "unit": "%" },
+    {
+      "key": "keepColor",
+      "label": "Bildfarbe behalten",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 0,
+      "unit": "%"
+    },
+    {
+      "key": "invert",
+      "label": "Vertieft statt erhaben",
+      "type": "bool",
+      "default": false,
+      "group": "Erweitert"
+    }
+  ],
+  "reach": "softness * 2 + 4",
+  "presets": [
+    {
+      "name": "Goldfolie",
+      "values": { "metal": "gold", "height": 50, "softness": 2.5, "gloss": 65, "keepColor": 0 }
+    },
+    {
+      "name": "Blindprägung",
+      "values": { "metal": "blind", "height": 60, "softness": 2, "gloss": 10, "keepColor": 0 }
+    },
+    {
+      "name": "Kupfer, getönt",
+      "values": { "metal": "copper", "height": 40, "softness": 4, "gloss": 50, "keepColor": 35 }
+    }
+  ]
+}

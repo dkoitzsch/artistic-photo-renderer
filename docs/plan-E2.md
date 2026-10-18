@@ -10,7 +10,7 @@ Jeder Schritt endet lauffähig, mit grünen Tests, aktueller `PROGRESS.md`, Comm
 - [x] 2. Digital & Glitch: `scanlines-crt`, `datamosh`, `displace`, `ascii` (neuer Parametertyp `text`, Glyphen-Atlas)
 - [x] 3. Zeichnung & Grafik: `hatching`, `charcoal`, `blueprint`, `stipple` (Browser-CPU)
 - [x] 4. Malerei & Druck: `pointillism`, `riso`, `alt-process`, `infrared`, `instant-film`
-- [ ] 5. Material, Geometrie, Licht: `paper`, `mosaic-glass`, `emboss-foil`, `kaleido`, `polar`, `god-rays`
+- [x] 5. Material, Geometrie, Licht: `paper`, `mosaic-glass`, `emboss-foil`, `kaleido`, `polar`, `god-rays`
 - [ ] 6. Malplan-Grundlagen: Datenmodell (Projektformat 7), Arbeitsbereich „Malplan“, Maltechnik, Untergrundformat in cm
       mit Presets und Zuschnitt, Vereinfachungsgrad (Formen, Farben), Analyse im Worker (Farbreduktion, Flächen)
 - [ ] 7. Werte- und Farb-Hilfen: Notan, Werteskizze, Wertskala, Warm-Kalt-Karte; PNG je Hilfe

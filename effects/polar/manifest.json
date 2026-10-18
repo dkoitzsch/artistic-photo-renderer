@@ -1,0 +1,38 @@
+{
+  "id": "polar",
+  "name": "Polarkoordinaten",
+  "version": "1.0.0",
+  "category": "Geometrisch & Abstrakt",
+  "description": "Wickelt das Bild zu einem „kleinen Planeten“ (Unterkante in die Mitte) oder rollt einen Kreis wieder zu einem Streifen ab.",
+  "inputs": ["source"],
+  "passes": 1,
+  "implementations": { "preview": "webgpu", "final": "webgpu" },
+  "license": { "commercialUse": true, "notes": "Eigene Implementierung." },
+  "cost": "realtime",
+  "randomized": false,
+  "requires": [],
+  "params": [
+    {
+      "key": "direction",
+      "label": "Richtung",
+      "type": "enum",
+      "options": [
+        { "value": "toPolar", "label": "Kleiner Planet" },
+        { "value": "invert", "label": "Tunnel (Oberkante in der Mitte)" },
+        { "value": "fromPolar", "label": "Abrollen" }
+      ],
+      "default": "toPolar"
+    },
+    { "key": "center", "label": "Zentrum", "type": "point", "default": [0, 0] },
+    { "key": "centerInMiddle", "label": "Zentrum in der Bildmitte", "type": "bool", "default": true },
+    { "key": "rotation", "label": "Drehung", "type": "angle", "default": 0 },
+    { "key": "radius", "label": "Größe", "type": "float", "min": 20, "max": 200, "default": 100, "unit": "%" }
+  ],
+  "visibleIf": { "center": "!centerInMiddle" },
+  "reach": "max(canvasWidth, canvasHeight)",
+  "presets": [
+    { "name": "Kleiner Planet", "values": { "direction": "toPolar", "rotation": 0, "radius": 100 } },
+    { "name": "Tunnel", "values": { "direction": "invert", "rotation": 0, "radius": 110 } },
+    { "name": "Abrollen", "values": { "direction": "fromPolar", "rotation": 0, "radius": 100 } }
+  ]
+}

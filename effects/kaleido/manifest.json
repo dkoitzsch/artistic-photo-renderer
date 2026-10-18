@@ -1,0 +1,78 @@
+{
+  "id": "kaleido",
+  "name": "Kaleidoskop",
+  "version": "1.0.0",
+  "category": "Geometrisch & Abstrakt",
+  "description": "Kaleidoskop mit wählbarer Segmentzahl, Spiegelung an Achsen oder Droste-Effekt (Bild im Bild als Spirale).",
+  "inputs": ["source"],
+  "passes": 1,
+  "implementations": { "preview": "webgpu", "final": "webgpu" },
+  "license": { "commercialUse": true, "notes": "Eigene Implementierung." },
+  "cost": "realtime",
+  "randomized": false,
+  "requires": [],
+  "params": [
+    {
+      "key": "mode",
+      "label": "Modus",
+      "type": "enum",
+      "options": [
+        { "value": "kaleido", "label": "Kaleidoskop" },
+        { "value": "mirror", "label": "Spiegelung" },
+        { "value": "droste", "label": "Droste" }
+      ],
+      "default": "kaleido"
+    },
+    { "key": "segments", "label": "Segmente", "type": "int", "min": 2, "max": 24, "default": 6 },
+    { "key": "center", "label": "Zentrum", "type": "point", "default": [0, 0] },
+    { "key": "centerInMiddle", "label": "Zentrum in der Bildmitte", "type": "bool", "default": true },
+    { "key": "rotation", "label": "Drehung", "type": "angle", "default": 0 },
+    {
+      "key": "mirrorAxes",
+      "label": "Achsen",
+      "type": "enum",
+      "options": [
+        { "value": "vertical", "label": "Senkrecht" },
+        { "value": "horizontal", "label": "Waagerecht" },
+        { "value": "both", "label": "Beide" }
+      ],
+      "default": "vertical"
+    },
+    {
+      "key": "zoom",
+      "label": "Zoom",
+      "type": "float",
+      "min": 25,
+      "max": 400,
+      "default": 100,
+      "unit": "%",
+      "scale": "log"
+    },
+    {
+      "key": "drosteScale",
+      "label": "Verkleinerung je Umlauf",
+      "hint": "Wie stark das Bild bei jeder Wiederholung schrumpft",
+      "type": "float",
+      "min": 1.5,
+      "max": 8,
+      "default": 3,
+      "step": 0.1
+    }
+  ],
+  "visibleIf": {
+    "segments": "mode=kaleido",
+    "mirrorAxes": "mode=mirror",
+    "drosteScale": "mode=droste",
+    "center": "!centerInMiddle"
+  },
+  "reach": "max(canvasWidth, canvasHeight)",
+  "presets": [
+    { "name": "Sechsfach", "values": { "mode": "kaleido", "segments": 6, "rotation": 0, "zoom": 100 } },
+    {
+      "name": "Zwölffach, gedreht",
+      "values": { "mode": "kaleido", "segments": 12, "rotation": 15, "zoom": 140 }
+    },
+    { "name": "Spiegelachsen", "values": { "mode": "mirror", "mirrorAxes": "both" } },
+    { "name": "Droste-Spirale", "values": { "mode": "droste", "drosteScale": 3, "rotation": 0, "zoom": 100 } }
+  ]
+}

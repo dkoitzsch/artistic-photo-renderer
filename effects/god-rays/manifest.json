@@ -1,0 +1,110 @@
+{
+  "id": "god-rays",
+  "name": "Lichtstrahlen",
+  "version": "1.0.0",
+  "category": "Licht & Atmosphäre",
+  "description": "Strahlen von einer Lichtquelle durch helle Bildbereiche; dunkle Bereiche oder die Ebenenmaske verdecken das Licht.",
+  "inputs": ["source", "mask"],
+  "passes": 1,
+  "implementations": { "preview": "webgpu", "final": "webgpu" },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung (radiale Streuung, Verfahren nach Mitchell 2007)."
+  },
+  "cost": "realtime",
+  "randomized": true,
+  "requires": [],
+  "params": [
+    {
+      "key": "lightPosition",
+      "label": "Lage",
+      "type": "enum",
+      "options": [
+        { "value": "top", "label": "Oben Mitte" },
+        { "value": "top-left", "label": "Oben links" },
+        { "value": "top-right", "label": "Oben rechts" },
+        { "value": "center", "label": "Mitte" },
+        { "value": "custom", "label": "Eigener Punkt" }
+      ],
+      "default": "top-right"
+    },
+    { "key": "light", "label": "Lichtquelle", "type": "point", "default": [0, 0] },
+    { "key": "length", "label": "Länge", "type": "float", "min": 5, "max": 100, "default": 55, "unit": "%" },
+    {
+      "key": "intensity",
+      "label": "Stärke",
+      "type": "float",
+      "min": 0,
+      "max": 200,
+      "default": 80,
+      "unit": "%"
+    },
+    {
+      "key": "threshold",
+      "label": "Schwelle",
+      "hint": "Nur hellere Bereiche strahlen",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 60,
+      "unit": "%"
+    },
+    {
+      "key": "occlusion",
+      "label": "Verdeckung",
+      "type": "enum",
+      "options": [
+        { "value": "brightness", "label": "Dunkle Bereiche" },
+        { "value": "mask", "label": "Ebenenmaske verdeckt" },
+        { "value": "none", "label": "Keine" }
+      ],
+      "default": "brightness"
+    },
+    { "key": "color", "label": "Lichtfarbe", "type": "color", "default": [1, 0.92, 0.75] },
+    {
+      "key": "decay",
+      "label": "Abklingen",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 40,
+      "unit": "%",
+      "group": "Erweitert"
+    }
+  ],
+  "visibleIf": { "light": "lightPosition=custom" },
+  "reach": "max(canvasWidth, canvasHeight)",
+  "presets": [
+    {
+      "name": "Sonne durchs Laub",
+      "values": {
+        "lightPosition": "top-right",
+        "length": 60,
+        "intensity": 90,
+        "threshold": 60,
+        "occlusion": "brightness"
+      }
+    },
+    {
+      "name": "Gegenlicht hinter der Person",
+      "values": {
+        "lightPosition": "center",
+        "length": 45,
+        "intensity": 110,
+        "threshold": 50,
+        "occlusion": "mask"
+      }
+    },
+    {
+      "name": "Kirchenfenster",
+      "values": {
+        "lightPosition": "top-left",
+        "length": 85,
+        "intensity": 70,
+        "threshold": 75,
+        "occlusion": "brightness",
+        "color": [1, 0.97, 0.9]
+      }
+    }
+  ]
+}
