@@ -401,7 +401,8 @@ export function paintStrokeCommand(
         const next = same ? [...list.slice(0, -1), stroke] : [...list, stroke];
         return { ...withStrokes(l, target, next), maskSource: target === 'mask' ? 'brush' : l.maskSource };
       }),
-    gesture ? `paint:${strokeId}` : undefined,
+    // gleicher Schlüssel auch beim letzten Aufruf: der ganze Zug bleibt ein Eintrag
+    `paint:${strokeId}`,
   );
   activeStroke = { id: strokeId, layerId, target };
   if (!gesture) {

@@ -3,7 +3,11 @@ import { importImageAsLayer, openFile } from '../../io/import';
 import { PROJECT_EXTENSION } from '../../io/projectFile';
 import { openFileDialog } from '../../io/openDialog';
 import { parseHexColor, srgbToLinear } from '../../render/color';
-import type { ViewColors } from '../../render/engine';
+import type { Overlay, ViewColors } from '../../render/engine';
+import type { BrushSettings } from '../../state/store';
+import { paintLayerOf } from './BrushOverlay';
+import { BrushOverlay } from './BrushOverlay';
+import { BrushPanel } from './BrushPanel';
 import { getEngine } from '../../render/runtime';
 import { useAppStore, useProject } from '../../state/store';
 import { panBy, zoomBy } from '../../state/viewActions';
@@ -26,6 +30,14 @@ function readViewColors(): ViewColors {
     checkerA: cssColorLinear(style, '--checker-a'),
     checkerB: cssColorLinear(style, '--checker-b'),
   };
+}
+
+/** Ansicht während des Malens: Markierung als Farbschleier, Maske bzw. Fokuskarte als Prüfansicht. */
+function brushOverlay(layerId: string, target: BrushSettings['target'], brush: BrushSettings): Overlay {
+  if (target === 'mask') return { layerId, kind: 'mask' };
+  if (target === 'focus') return { layerId, kind: 'focus' };
+  const [r, g, b] = brush.veilColor.map((c) => srgbToLinear(c)) as [number, number, number];
+  return { layerId, kind: 'selection', opacity: brush.veilOpacity, color: [r, g, b] };
 }
 
 /** Abgelegte Dateien: Projektdatei oder Bild ohne offenes Projekt → öffnen; sonst Bilder als neue Ebenen. */
@@ -59,6 +71,8 @@ export function CanvasView({ theme }: { theme: 'light' | 'dark' }) {
   const parallax = useAppStore((s) => s.parallax);
   const analysisView = useAppStore((s) => s.analysisView);
   const renderTick = useAppStore((s) => s.renderTick);
+  const tool = useAppStore((s) => s.tool);
+  const brush = useAppStore((s) => s.brush);
   const selectedId = useAppStore((s) => s.selectedNodeId);
   const view = useAppStore((s) => s.view);
   const viewport = useAppStore((s) => s.viewport);
@@ -100,8 +114,11 @@ export function CanvasView({ theme }: { theme: 'light' | 'dark' }) {
     if (!gpuReady) return;
     const id = requestAnimationFrame(() => {
       const splitX = compareSplit === null ? null : compareSplit * viewport.width;
-      const overlay =
-        viewMode === 'result' || !selectedId
+      const paintLayer =
+        (tool === 'brush' || tool === 'smart') && project ? paintLayerOf(project, selectedId) : null;
+      const overlay: Overlay | null = paintLayer
+        ? brushOverlay(paintLayer.id, tool === 'smart' ? 'selection' : brush.target, brush)
+        : viewMode === 'result' || !selectedId
           ? null
           : viewMode === 'analysis'
             ? { layerId: selectedId, kind: analysisView.map, opacity: analysisView.opacity }
@@ -133,6 +150,8 @@ export function CanvasView({ theme }: { theme: 'light' | 'dark' }) {
     parallax,
     analysisView,
     renderTick,
+    tool,
+    brush,
   ]);
 
   // Mausrad/Trackpad: Pinch bzw. ⌘/Strg + Rad zoomt um den Cursor, sonst verschieben.
@@ -263,6 +282,8 @@ export function CanvasView({ theme }: { theme: 'light' | 'dark' }) {
       )}
       <TransformOverlay />
       <FocusOverlay />
+      <BrushOverlay />
+      <BrushPanel />
       <ParallaxPanel />
       <AnalysisPanel />
       <GpuStatus />

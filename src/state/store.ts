@@ -69,7 +69,35 @@ export type ParallaxState = {
   /** Zeigerposition relativ zur Leinwandmitte, −1…1 */
   pointer: [number, number];
 };
-export type Tool = 'move' | 'focus';
+export type Tool = 'move' | 'focus' | 'brush' | 'smart';
+
+/** Einstellungen des Pinsels (Basis-Spec g), pro Browser gespeichert */
+export type BrushSettings = {
+  target: 'selection' | 'mask' | 'focus';
+  /** Durchmesser in Leinwand-px (1–800) */
+  size: number;
+  /** 0..1 */
+  softness: number;
+  flow: number;
+  smoothing: number;
+  mode: 'add' | 'remove';
+  pressure: boolean;
+  /** Farbschleier der Markierung (sRGB 0..1) und Deckkraft */
+  veilColor: [number, number, number];
+  veilOpacity: number;
+};
+
+export const DEFAULT_BRUSH: BrushSettings = {
+  target: 'selection',
+  size: 60,
+  softness: 0.5,
+  flow: 0.8,
+  smoothing: 0.3,
+  mode: 'add',
+  pressure: true,
+  veilColor: [1, 0.25, 0.35],
+  veilOpacity: 0.4,
+};
 
 export type ExportWarning = {
   layers: { id: string; name: string; modelId: string }[];
@@ -117,6 +145,7 @@ type AppState = {
   renderTick: number;
   /** Arbeitsbereich: Effekt-Editor oder Malplan (Spec „Effekte“ 7) */
   workspace: 'edit' | 'malplan';
+  brush: BrushSettings;
   malplanHelp: HelpId;
   /** Zuschnitt auf der Malplan-Ansicht bearbeiten */
   malplanCropEdit: boolean;
@@ -154,9 +183,19 @@ type AppState = {
   setAsyncJobs: (jobs: AsyncJobInfo[]) => void;
   bumpRenderTick: () => void;
   setWorkspace: (w: AppState['workspace']) => void;
+  setBrush: (patch: Partial<BrushSettings>) => void;
   setMalplanHelp: (h: HelpId) => void;
   setMalplanCropEdit: (on: boolean) => void;
 };
+
+function loadBrush(): BrushSettings {
+  try {
+    const raw = JSON.parse(localStorage.getItem('bls.brush') ?? '{}') as Partial<BrushSettings>;
+    return { ...DEFAULT_BRUSH, ...raw };
+  } catch {
+    return { ...DEFAULT_BRUSH };
+  }
+}
 
 let nextNoticeId = 1;
 const MAX_NOTICES = 100;
@@ -194,6 +233,7 @@ export const useAppStore = create<AppState>()((set) => ({
   asyncJobs: [],
   renderTick: 0,
   workspace: 'edit',
+  brush: loadBrush(),
   malplanHelp: 'values',
   malplanCropEdit: false,
 
@@ -236,6 +276,16 @@ export const useAppStore = create<AppState>()((set) => ({
   setAsyncJobs: (asyncJobs) => set({ asyncJobs }),
   bumpRenderTick: () => set((s) => ({ renderTick: s.renderTick + 1 })),
   setWorkspace: (workspace) => set({ workspace, malplanCropEdit: false }),
+  setBrush: (patch) =>
+    set((s) => {
+      const brush = { ...s.brush, ...patch };
+      try {
+        localStorage.setItem('bls.brush', JSON.stringify(brush));
+      } catch {
+        // ohne Speicher: nur für diese Sitzung
+      }
+      return { brush };
+    }),
   setMalplanHelp: (malplanHelp) => set({ malplanHelp }),
   setMalplanCropEdit: (malplanCropEdit) => set({ malplanCropEdit }),
 }));

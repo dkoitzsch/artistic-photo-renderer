@@ -14,13 +14,14 @@ struct View {
   split_x: f32,       // CSS-Pixel; < 0 = keine Teilung (links „vorher“)
   overlay: f32,       // 0 aus, 1 Maske (rot = ausgeblendet), 2 Fokuskarte, 3 Tiefe (Farbskala),
                       // 4 Analysekarte grau (r), 5 Kantenkarte (Farbe = Richtung, Helligkeit = Stärke),
-                      // 6 Richtungsfeld (Farbe = Richtung, Helligkeit = Kohärenz)
+                      // 6 Richtungsfeld (Farbe = Richtung, Helligkeit = Kohärenz), 7 Markierung (Farbschleier)
   overlay_opacity: f32, // nur 4/5: Deckkraft der Karte über dem Bild
   _p2: f32,
   detail_origin: vec2f, // Ausschnitt in voller Auflösung: Ursprung der Textur in Leinwand-px
   has_detail: f32,
   _p3: f32,
   detail_rect: vec4f,   // gültiger Bereich (x0, y0, x1, y1) in Leinwand-px
+  veil: vec4f,          // Farbe des Schleiers der Markierung (linear), Überlagerung 7
 }
 
 @group(0) @binding(0) var<uniform> view: View;
@@ -118,6 +119,9 @@ fn fs(@builtin(position) pos: vec4f) -> @location(0) vec4f {
         color = mix(color, srgb_to_linear(depth_colormap(o)), 0.8);
       } else if (view.overlay < 4.5) {
         color = mix(color, srgb_to_linear(vec3f(o)), view.overlay_opacity);
+      } else if (view.overlay > 6.5) {
+        // Markierung: Farbschleier mit wählbarer Deckkraft, Original bleibt sichtbar
+        color = mix(color, view.veil.rgb, view.overlay_opacity * o);
       } else {
         let e = textureSampleLevel(overlay_tex, samp, px / view.image_size, 0.0);
         let t = e.gb * 2.0 - 1.0;

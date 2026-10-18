@@ -133,6 +133,30 @@ const SHORTCUTS: Shortcut[] = [
     },
   },
   {
+    key: 'b',
+    meta: false,
+    run: () => {
+      useAppStore.getState().setTool('brush');
+    },
+  },
+  {
+    // Pinselgröße (Basis-Spec g: Tastatur [ und ])
+    key: ']',
+    meta: false,
+    run: () => {
+      const s = useAppStore.getState();
+      s.setBrush({ size: Math.min(800, Math.round(s.brush.size * 1.2 + 1)) });
+    },
+  },
+  {
+    key: '[',
+    meta: false,
+    run: () => {
+      const s = useAppStore.getState();
+      s.setBrush({ size: Math.max(1, Math.round(s.brush.size / 1.2)) });
+    },
+  },
+  {
     key: 'escape',
     meta: false,
     run: () => {

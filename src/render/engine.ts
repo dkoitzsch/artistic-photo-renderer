@@ -39,12 +39,14 @@ export type FrameStats = { cpuMs: number; gpuMs: number; effectRuns: number };
 /** Prüfansicht über dem Ergebnis: Maske (rot = ausgeblendet) oder Fokuskarte */
 export type Overlay = {
   layerId: string;
-  kind: 'mask' | 'focus' | 'depth' | 'luminance' | 'edges' | 'flow';
-  /** Deckkraft der Analysekarten-Ansicht (0..1) */
+  kind: 'mask' | 'focus' | 'depth' | 'luminance' | 'edges' | 'flow' | 'selection';
+  /** Deckkraft der Analysekarten-Ansicht bzw. des Farbschleiers (0..1) */
   opacity?: number;
+  /** Farbe des Schleiers der Markierung (linear) */
+  color?: [number, number, number];
 };
 
-const VIEW_UNIFORM_FLOATS = 32;
+const VIEW_UNIFORM_FLOATS = 36;
 
 /**
  * Ausschnitt in voller Auflösung (Spec „Effekte“ Abschnitt 8): ab diesem Verhältnis Geräte-Pixel pro Vorschau-Pixel
@@ -99,6 +101,7 @@ export class Engine {
   private lastOverlay: GPUTexture | null = null;
   private overlayKind = 0;
   private overlayOpacity = 1;
+  private overlayColor: [number, number, number] = [1, 0.2, 0.3];
   private compiling = new Set<string>();
   private detail: Detail | null = null;
   private detailTimer: ReturnType<typeof setTimeout> | null = null;
@@ -232,8 +235,11 @@ export class Engine {
         if (tex) {
           // mit Vorschau-Cache nie „owned“: der Cache hält die Textur bis zum nächsten Frame
           this.lastOverlay = tex.tex;
-          this.overlayKind = { mask: 1, focus: 2, depth: 3, luminance: 4, edges: 5, flow: 6 }[overlay.kind];
+          this.overlayKind = { mask: 1, focus: 2, depth: 3, luminance: 4, edges: 5, flow: 6, selection: 7 }[
+            overlay.kind
+          ];
           this.overlayOpacity = overlay.opacity ?? 1;
+          this.overlayColor = overlay.color ?? [1, 0.2, 0.3];
         }
       }
       this.updateDetail(project, view, dpr, splitX !== null, parallax !== null);
@@ -275,6 +281,7 @@ export class Engine {
     u.set([...colors.checkerA, 1], 12);
     u.set([...colors.checkerB, 1], 16);
     u.set([splitX ?? -1, this.overlayKind, this.overlayOpacity], 20);
+    u.set([...this.overlayColor, 1], 32);
     const detail = this.detail;
     if (detail) {
       u.set([detail.region.x, detail.region.y, 1, 0], 24);

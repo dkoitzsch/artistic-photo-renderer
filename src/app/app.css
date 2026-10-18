@@ -2307,3 +2307,44 @@ button:disabled {
   gap: var(--space-2);
   align-items: flex-start;
 }
+
+/* ---------- Pinsel ---------- */
+
+.brush-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  cursor: none;
+  touch-action: none;
+  overflow: hidden;
+}
+
+.brush-cursor {
+  position: absolute;
+  border-radius: 50%;
+  border: 1.5px solid rgb(255 255 255 / 0.9);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.6);
+  pointer-events: none;
+}
+
+.brush-cursor.remove {
+  border-style: dashed;
+}
+
+.brush-cursor-core {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgb(255 255 255 / 0.45);
+}
+
+.brush-panel {
+  left: var(--space-4);
+  top: var(--space-4);
+  bottom: auto;
+  transform: none;
+  grid-template-columns: 1fr;
+  width: 330px;
+  gap: var(--space-1);
+  max-height: calc(100% - 2 * var(--space-4));
+  overflow: auto;
+}

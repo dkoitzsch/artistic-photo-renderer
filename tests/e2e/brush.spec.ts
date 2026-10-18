@@ -1,6 +1,6 @@
 // Phase 5: Pinselstriche als Vektordaten – Maske, Markierung und Fokuskarte; Kacheln, Undo.
 import { expect, test, type Page } from '@playwright/test';
-import { addEffect, diffStats, openFixture, renderExport, waitForApp } from './helpers';
+import { addEffect, canvasPixel, diffStats, openFixture, renderExport, waitForApp } from './helpers';
 
 type Target = 'selection' | 'mask' | 'focus';
 
@@ -90,4 +90,54 @@ test('Fokuskarte: gemalter Bereich bleibt scharf unter dem Gauß', async ({ page
   expect(Math.abs(px(blurred, 100, 75) - px(orig, 100, 75))).toBeGreaterThan(20);
   expect(Math.abs(px(sharp, 300, 224) - px(blurred, 300, 224))).toBeLessThan(2);
   expect(diffStats(sharp, await renderExport(page, 64)).max).toBeLessThanOrEqual(1);
+});
+
+test('Pinsel-Werkzeug: Ziehen malt eine Markierung mit Schleier, Alt entfernt, [ ] ändert die Größe, Undo', async ({
+  page,
+}) => {
+  await page.keyboard.press('b');
+  await expect(page.getByTestId('brush-panel')).toBeVisible();
+  const box = await page.getByTestId('brush-overlay').boundingBox();
+  if (!box) throw new Error('keine Leinwand');
+  const before = await canvasPixel(page, 0.5, 0.5);
+  // waagerechter Strich durch die Mitte
+  await page.mouse.move(box.x + box.width * 0.4, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * 0.6, box.y + box.height / 2, { steps: 8 });
+  await page.mouse.up();
+  const layer = await page.evaluate(() => {
+    const l = window.__bls.getProject()?.root.children[0];
+    return l?.kind === 'layer' ? l : null;
+  });
+  const strokes = layer?.selection?.strokes ?? [];
+  expect(strokes.length).toBe(1);
+  expect(strokes[0]?.mode).toBe('add');
+  expect((strokes[0]?.points.length ?? 0) / 3).toBeGreaterThan(3);
+  // Schleier sichtbar: Farbe an der Strichmitte verändert
+  await expect.poll(() => canvasPixel(page, 0.5, 0.5)).not.toEqual(before);
+  // Größe mit [ und ]
+  const size0 = await page.evaluate(() => window.__bls.store.getState().brush.size);
+  await page.keyboard.press(']');
+  expect(await page.evaluate(() => window.__bls.store.getState().brush.size)).toBeGreaterThan(size0);
+  await page.keyboard.press('[');
+  // Alt: Entfernen-Strich
+  await page.keyboard.down('Alt');
+  await page.mouse.move(box.x + box.width * 0.45, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * 0.55, box.y + box.height / 2, { steps: 4 });
+  await page.mouse.up();
+  await page.keyboard.up('Alt');
+  const modes = await page.evaluate(() => {
+    const l = window.__bls.getProject()?.root.children[0];
+    return l?.kind === 'layer' ? (l.selection?.strokes.map((s) => s.mode) ?? []) : [];
+  });
+  expect(modes).toEqual(['add', 'remove']);
+  // ein Zug = ein History-Eintrag
+  await page.keyboard.press('Meta+z');
+  await page.keyboard.press('Meta+z');
+  const after = await page.evaluate(() => {
+    const l = window.__bls.getProject()?.root.children[0];
+    return l?.kind === 'layer' ? (l.selection?.strokes.length ?? 0) : -1;
+  });
+  expect(after).toBe(0);
 });

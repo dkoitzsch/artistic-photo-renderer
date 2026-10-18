@@ -6,7 +6,7 @@ type Tool = { id: string; label: string; icon: ReactNode; phase?: number; tool?:
 
 const TOOLS: Tool[] = [
   { id: 'move', label: 'Verschieben (V)', icon: <MoveIcon />, tool: 'move' },
-  { id: 'brush', label: 'Pinsel (B)', icon: <BrushIcon />, phase: 5 },
+  { id: 'brush', label: 'Pinsel (B)', icon: <BrushIcon />, tool: 'brush' },
   { id: 'smart', label: 'Smarte Auswahl', icon: <SmartSelectIcon />, phase: 5 },
   { id: 'focus', label: 'Fokuspunkt (F)', icon: <FocusIcon />, tool: 'focus' },
   { id: 'eyedropper', label: 'Pipette', icon: <EyedropperIcon />, phase: 1 },
