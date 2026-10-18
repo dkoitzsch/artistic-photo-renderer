@@ -168,3 +168,38 @@ test('Beamer-Fenster: zeigt die Hilfe, Trapezkorrektur über Ecken wird im Proje
   await expect(img).toHaveAttribute('alt', 'Konturvorlage', { timeout: 30_000 });
   await beamer.close();
 });
+
+test('PDF-Malmappe: alle Seiten, Konturvorlage in Originalgröße auf A4 gekachelt', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(120_000);
+  await openFixture(page, 'golden/landscape.png');
+  await page.getByTestId('workspace-malplan').click();
+  await ready(page);
+  // Format 60 × 40 cm (quer), Konturvorlage auf A4 mit 1 cm Überlappung
+  await page.getByTestId('malplan-width').fill('60');
+  await page.getByTestId('malplan-height').fill('40');
+  await ready(page);
+  await page.getByTestId('pdf-toggle').click();
+  const dl = page.waitForEvent('download');
+  await page.getByTestId('pdf-create').click();
+  const download = await dl;
+  expect(download.suggestedFilename()).toMatch(/Malmappe\.pdf$/);
+  const path = testInfo.outputPath('malmappe.pdf');
+  await download.saveAs(path);
+  const { readFileSync, copyFileSync } = await import('node:fs');
+  const bytes = readFileSync(path);
+  if (process.env.MALMAPPE_OUT) copyFileSync(path, process.env.MALMAPPE_OUT);
+  const s = bytes.toString('latin1');
+  expect(s.startsWith('%PDF-1.4')).toBe(true);
+  const count = Number(/\/Type \/Pages \/Kids \[[^\]]*\] \/Count (\d+)/.exec(s)?.[1]);
+  // 6 Einzelseiten + Übersicht + Kacheln (60 × 40 cm auf A4: 3 × 2 quer bzw. 4 × 2 hoch)
+  expect(count).toBeGreaterThanOrEqual(7 + 4);
+  // Bildrahmen in Originalgröße: 60 × 40 cm = 1700,787 × 1133,858 pt
+  expect(s).toContain('1700.787 1133.858 re S');
+  // A4-Seiten (hoch oder quer)
+  expect(s).toMatch(/\/MediaBox \[0 0 (595\.28 841\.89|841\.89 595\.28)\]/);
+  // Kachelblätter mit Kontrollmaß und Bezeichnung
+  expect(s).toContain('(5 cm) Tj');
+  expect(s).toContain('Blatt A1');
+});

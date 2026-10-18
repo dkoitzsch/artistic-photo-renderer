@@ -42,7 +42,7 @@ Was die App kann:
 - **Dienst-Effekte:** asynchron mit Job-Anzeige.
 - **Effekt-Browser** mit Lizenzsperre.
 - **Ausschnitt in voller Auflösung** beim Hineinzoomen.
-- **Malplan** (E2): Notan, Werteskizze, Wertskala, Warm-Kalt-Karte, Proportionsraster, Konturvorlage, Beamer-Modus mit Trapezkorrektur.
+- **Malplan** (E2): Notan, Werteskizze, Wertskala, Warm-Kalt-Karte, Proportionsraster, Konturvorlage, Beamer-Modus mit Trapezkorrektur, PDF-Malmappe.
 - **Export:** PNG, JPEG, WebP und PSD (Gruppen als Ebenengruppen, optional Effekte als eigene Ebenen), bis 24 MP.
 - **Lizenzmodus** „Kommerziell“ oder „Alle“, geprüft in UI, Worker und Dienst.
 
@@ -74,6 +74,7 @@ Was die App kann:
 
 | Datum  | Commit                                       | Inhalt                                                                                                                                                                                                                                                                                         |
 | ------ | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 18.10. | „E2 Schritt 10: PDF-Malmappe …“              | eigener PDF-Schreiber (`src/io/pdf.ts`); Malmappe mit Deckblatt, Werteskizze + Wertskala, Notan, Warm-Kalt, Raster, Rasterblatt, Konturvorlage in Originalgröße gekachelt (Übersicht, Passmarken, 5-cm-Kontrollmaß); pypdf-Prüfung strikt fehlerfrei                                           |
 | 18.10. | „E2 Schritt 9: Beamer-Modus …“               | eigenes Fenster `beamer.html` (BroadcastChannel), Vollbild mit F, Trapezkorrektur als Homographie (CSS matrix3d), Ecken im Projekt                                                                                                                                                             |
 | 18.10. | „E2 Schritte 6–8: Malplan …“                 | Arbeitsbereich „Malplan“ (Projektformat 7): Maltechnik, Format in cm mit Presets und Zuschnitt, Formen/Farben; Analyse im Worker; Notan, Werteskizze, Wertskala, Warm-Kalt-Karte, Proportionsraster, Konturvorlage (Vektor); PNG je Hilfe                                                      |
 | 18.10. | „E2 Schritt 5: Material, Geometrie, Licht …“ | `paper`, `mosaic-glass`, `emboss-foil`, `kaleido` (inkl. Droste), `polar`, `god-rays`; alle 19 E2-Effekte fertig                                                                                                                                                                               |
@@ -146,6 +147,7 @@ Was die App kann:
 | S23 | Volle E2E-Suite: Tests „hängen“ genau 15 min, danach Folgefehler (Projekt öffnet nicht, `page.goto` läuft ab)      | Rechner im Ruhezustand (Akku, Deckel zu): nur alle 15 min ~45 s Dark Wake. `caffeinate -i` hilft im Akkubetrieb nicht. Kein Fehler in Code oder Chrome (Gegenprobe auf dem Stand vor E2/2 gleich)       | Lange Läufe nur bei wachem Rechner/Netzteil; nachts gezielte Tests. Erkennbar an `pmset -g log` (Sleep/DarkWake)        | –                                                                                    |
 | S24 | Datamosh: karierte Muster in fast allen Blöcken                                                                    | (a) verschobene Blöcke lasen über den Bildrand (Randklemmung → Streifen), (b) 8 × 8 Proben je großem Block ohne Vorfilter → Aliasing, Quantisierung verstärkt es                                        | Leseposition in der Leinwand halten; jede Probe mittelt ihre Teilzelle (2 × 2)                                          | `effects/datamosh/effect.wgsl`                                                       |
 | S25 | Obere Leiste lief bei 1440 px über (Seite waagerecht verschiebbar), nachdem der Arbeitsbereich-Umschalter hinzukam | Die Leiste ist eine Rasterzelle mit `min-width: auto` und wuchs auf ihre Inhaltsbreite                                                                                                                  | `.topbar { min-width: 0 }`, Projektname darf schrumpfen; im Malplan sind die Editor-Knöpfe ausgeblendet                 | `src/app/app.css`, `TopBar.tsx`                                                      |
+| S26 | PDF-Titel zeigte „Œ“ statt „–“                                                                                     | Dokumentinfos sind PDF-Textzeichenketten (PDFDocEncoding/UTF-16), nicht WinAnsi wie der Seitentext                                                                                                      | Infos als UTF-16BE mit BOM (`pdfTextString`)                                                                            | `src/io/pdf.ts`                                                                      |
 
 ---
 

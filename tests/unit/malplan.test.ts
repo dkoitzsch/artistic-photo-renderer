@@ -161,3 +161,31 @@ describe('Malplan-Analyse', () => {
     expect(components([1, 1, 2, 2, 1, 1], 3, 2).count).toBe(3);
   });
 });
+
+describe('Kachelung der Konturvorlage', () => {
+  it('wählt die Ausrichtung mit den wenigsten Blättern, Passmarken in der Überlappung', async () => {
+    const { tileLayout, tileOrigin, tileName } = await import('../../src/malplan/tiles');
+    // 60 × 80 cm auf A4 (bedruckbar 19 × 27,7 cm), 1 cm Überlappung
+    const t = tileLayout(60, 80, 'A4', 1);
+    expect(t.cols * t.rows).toBeLessThanOrEqual(16);
+    // jede Stelle des Formats liegt auf einem Blatt
+    for (let r = 0; r < t.rows; r++)
+      for (let c = 0; c < t.cols; c++) {
+        const [x, y] = tileOrigin(t, r, c);
+        expect(x).toBeLessThan(60);
+        expect(y).toBeLessThan(80);
+      }
+    const [lx, ly] = tileOrigin(t, t.rows - 1, t.cols - 1);
+    expect(lx + t.printable[0]).toBeGreaterThanOrEqual(60);
+    expect(ly + t.printable[1]).toBeGreaterThanOrEqual(80);
+    // Passmarke zwischen Spalte 0 und 1 liegt in beiden Blättern
+    const m = t.marksX[0] ?? 0;
+    expect(m).toBeGreaterThan(t.step[0]);
+    expect(m).toBeLessThan(t.printable[0]);
+    expect(tileName(1, 2)).toBe('C2');
+    // kleines Format: ein Blatt
+    const one = tileLayout(18, 24, 'A4', 1);
+    expect(one.cols * one.rows).toBe(1);
+    expect(one.marksX).toEqual([]);
+  });
+});

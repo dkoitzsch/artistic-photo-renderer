@@ -2285,3 +2285,25 @@ button:disabled {
   background: var(--accent, #3b82f6);
   cursor: nwse-resize;
 }
+
+.pdf-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: 100%;
+  margin-top: var(--space-2);
+  font-size: var(--font-size-sm);
+}
+
+.pdf-page {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.beamer-controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-items: flex-start;
+}
