@@ -553,7 +553,7 @@ export class Engine {
   async readMap(
     project: Project,
     layerId: string,
-    kind: 'luminance' | 'edges' | 'flow',
+    kind: 'luminance' | 'edges' | 'flow' | 'mask' | 'focus' | 'selection',
   ): Promise<Float32Array | null> {
     const { width: W, height: H } = project.canvas;
     const frame = new Frame(this.device, this.core.pool, 'read-map');

@@ -5,7 +5,11 @@ import type { GpuCore } from './core';
 import { dispatch2d, Frame, WORK_FORMAT } from './texturePool';
 
 const WORK_USAGE_PERSISTENT =
-  GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_SRC;
+  GPUTextureUsage.TEXTURE_BINDING |
+  GPUTextureUsage.STORAGE_BINDING |
+  GPUTextureUsage.COPY_SRC |
+  GPUTextureUsage.COPY_DST |
+  GPUTextureUsage.RENDER_ATTACHMENT;
 
 let halfTable: Uint16Array | null = null;
 

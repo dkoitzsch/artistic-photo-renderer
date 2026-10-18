@@ -30,6 +30,7 @@ import {
   stepNode,
   walkLayers,
   type BlendMode,
+  type BrushStroke,
   type Layer,
   type OriginalRef,
   type Transform,
@@ -346,6 +347,87 @@ export function setMaskEdgeCommand(layerId: string, patch: Partial<MaskEdge>, ge
     gesture ? `edge:${layerId}:${Object.keys(patch).join()}` : undefined,
   );
   if (!gesture) endGesture();
+}
+
+// ---------- Pinsel (Basis-Spec g) ----------
+
+export type PaintTarget = 'selection' | 'mask' | 'focus';
+
+/** Striche einer Ebene für ein Pinselziel. */
+export function strokesOf(layer: Layer, target: PaintTarget): BrushStroke[] {
+  if (target === 'mask') return layer.maskStrokes ?? [];
+  if (target === 'focus') return layer.focusMap?.strokes ?? [];
+  return layer.selection?.strokes ?? [];
+}
+
+function withStrokes(layer: Layer, target: PaintTarget, strokes: BrushStroke[]): Layer {
+  if (target === 'mask') return { ...layer, maskStrokes: strokes };
+  if (target === 'focus') return { ...layer, focusMap: { points: [], ...layer.focusMap, strokes } };
+  return { ...layer, selection: { base: layer.selection?.base ?? { kind: 'empty' }, strokes } };
+}
+
+let activeStroke: { id: number; layerId: string; target: PaintTarget } | null = null;
+let nextStrokeId = 1;
+
+/** Neue Strich-ID für einen Pinselzug (alle Aktualisierungen dieses Zugs ersetzen denselben Strich). */
+export function beginStroke(): number {
+  return nextStrokeId++;
+}
+
+const PAINT_LABEL: Record<PaintTarget, string> = {
+  selection: 'Markierung gemalt',
+  mask: 'Maske gemalt',
+  focus: 'Fokuskarte gemalt',
+};
+
+/**
+ * Pinselstrich setzen bzw. während des Malens aktualisieren (gleiche strokeId ersetzt den letzten Strich).
+ * gesture = true: läuft noch (ein History-Eintrag je Zug).
+ */
+export function paintStrokeCommand(
+  layerId: string,
+  target: PaintTarget,
+  stroke: BrushStroke,
+  strokeId: number,
+  gesture: boolean,
+): void {
+  const same =
+    activeStroke?.id === strokeId && activeStroke.layerId === layerId && activeStroke.target === target;
+  commit(
+    PAINT_LABEL[target],
+    (p) =>
+      updateLayer(p, layerId, (l) => {
+        const list = strokesOf(l, target);
+        const next = same ? [...list.slice(0, -1), stroke] : [...list, stroke];
+        return { ...withStrokes(l, target, next), maskSource: target === 'mask' ? 'brush' : l.maskSource };
+      }),
+    gesture ? `paint:${strokeId}` : undefined,
+  );
+  activeStroke = { id: strokeId, layerId, target };
+  if (!gesture) {
+    activeStroke = null;
+    endGesture();
+  }
+}
+
+/** Alle Striche eines Ziels entfernen (Markierung: auch die Grundauswahl). */
+export function clearPaintCommand(layerId: string, target: PaintTarget): void {
+  commit(target === 'selection' ? 'Markierung gelöscht' : 'Striche entfernt', (p) =>
+    updateLayer(p, layerId, (l) => {
+      if (target === 'selection') {
+        const { selection: _s, ...rest } = l;
+        return rest;
+      }
+      return withStrokes(l, target, []);
+    }),
+  );
+}
+
+/** Markierung auf die ganze Ebene setzen. */
+export function selectAllCommand(layerId: string): void {
+  commit('Alles markiert', (p) =>
+    updateLayer(p, layerId, (l) => ({ ...l, selection: { base: { kind: 'full' }, strokes: [] } })),
+  );
 }
 
 export function setHoleFillCommand(layerId: string, holeFill: boolean): void {

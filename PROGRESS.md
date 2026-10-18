@@ -17,13 +17,13 @@ Arbeitsschritt aktualisiert, spätestens vor jedem Commit. Neueste Einträge ste
 
 ## 1. Aktueller Stand
 
-| Bereich                                                                                    | Stand                                                                                                                           |
-| ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
-| Basis-Spec ([SPEC-artistic-photo-renderer.md](SPEC-artistic-photo-renderer.md))            | Phasen 0–4 abgeschlossen. Phase 5 (Pinsel, SAM) folgt nach E2 und vor E3 (DECISIONS „Reihenfolge“).                             |
-| Erweiterung ([docs/spec-effekte-und-malvorlagen.md](docs/spec-effekte-und-malvorlagen.md)) | **E1 und E2 abgeschlossen** (E2: [docs/abnahme-E2.md](docs/abnahme-E2.md)). Nächste: alte Phase 5, dann E3–E5 (Freigabe nötig). |
-| Danach                                                                                     | [docs/spec-ml-fotobearbeitung.md](docs/spec-ml-fotobearbeitung.md) (M0–M3), erst nach E5. Die Datei bleibt unverändert.         |
-| Tests                                                                                      | 101 Unit-Tests (Vitest), 22 Dienst-Tests (pytest), 100 E2E- und Golden-Tests (Playwright, echtes Chrome mit WebGPU)             |
-| Branch                                                                                     | alles auf `main`, nach jedem Schritt gepusht (`origin` = github.com/dkoitzsch/artistic-photo-renderer)                          |
+| Bereich                                                                                    | Stand                                                                                                                   |
+| ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| Basis-Spec ([SPEC-artistic-photo-renderer.md](SPEC-artistic-photo-renderer.md))            | Phasen 0–4 abgeschlossen. **Phase 5 (Pinsel, SAM) in Arbeit** ([docs/plan-P5.md](docs/plan-P5.md), freigegeben 18.10.). |
+| Erweiterung ([docs/spec-effekte-und-malvorlagen.md](docs/spec-effekte-und-malvorlagen.md)) | **E1 und E2 abgeschlossen** ([docs/abnahme-E2.md](docs/abnahme-E2.md)). Nach Phase 5 folgt **E3** (freigegeben 18.10.). |
+| Danach                                                                                     | [docs/spec-ml-fotobearbeitung.md](docs/spec-ml-fotobearbeitung.md) (M0–M3), erst nach E5. Die Datei bleibt unverändert. |
+| Tests                                                                                      | 101 Unit-Tests (Vitest), 22 Dienst-Tests (pytest), 100 E2E- und Golden-Tests (Playwright, echtes Chrome mit WebGPU)     |
+| Branch                                                                                     | alles auf `main`, nach jedem Schritt gepusht (`origin` = github.com/dkoitzsch/artistic-photo-renderer)                  |
 
 Was die App kann:
 
@@ -50,23 +50,23 @@ Was die App kann:
 
 ## 2. Offene Punkte (nach Priorität)
 
-| Prio   | Punkt                                                                                                                                                                           | Bezug                          |
-| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
-| **P1** | Freigabe für die alte **Phase 5** (Pinsel für Masken und Fokuskarte, SAM „objekttreu“) einholen, dann umsetzen                                                                  | DECISIONS 17.10. „Reihenfolge“ |
-| **P1** | Manuell prüfen: Kachelblatt der Malmappe mit „Tatsächliche Größe“ drucken, 5-cm-Kontrollmaß nachmessen; Beamer an echtem Projektor                                              | Abnahme E2                     |
-| **P1** | Manuell im echten Chrome prüfen: Browser-Kürzel ⌘0/⌘E/⌘O/⌘S (nur in Playwright getestet)                                                                                        | CLAUDE.md „Bekannte Grenzen“   |
-| **P1** | Manuell prüfen: Low-Poly-Export in 24 MP über die App. Der Dienst allein braucht 14 s. Playwright kann den 192-MB-Upload nicht abbilden, deshalb gibt es keinen E2E-Test dafür. | Stolperstein S1                |
-| P2     | Upload an den Dienst verkleinern (16-Bit-PNG/zstd oder Original per Hash im Dienst)                                                                                             | Optimierungen 1.10             |
-| P2     | Ölbild (Kuwahara) beim Ziehen in halber Auflösung, damit auch große Radien unter 33 ms bleiben                                                                                  | Optimierungen 1.2              |
-| P2     | Kachelgleichheit ±1 beseitigen: alte Unschärfen auf `sample_src_canvas` umstellen, Halbton ganzzahlig rechnen                                                                   | Optimierungen 2.1              |
-| P2     | CPU-Effekte parallel oder gekachelt rechnen (Pixel-Sorting zeilenweise auf mehreren Workern)                                                                                    | Optimierungen 1.1              |
-| P2     | Mehrfachauswahl: löschen, verschieben, ein- und ausblenden für mehrere Ebenen                                                                                                   | Optimierungen 3.1              |
-| P2     | Lizenzprüfung der E3-Modelle an der Quelle (SAM 2.1, U²-Net, MediaPipe Face; AdaIN/VGG) vor Beginn von E3                                                                       | DECISIONS 17.10. „Modelle“     |
-| P3     | Ausschnitt in voller Auflösung auch mit Worker- und Dienst-Ergebnissen, eigener Cache für den Ausschnitt                                                                        | Optimierungen 1.4/1.5          |
-| P3     | PSD „Effekte als eigene Ebenen“ schneller (Zwischenstände einmal durchlaufen)                                                                                                   | Optimierungen 1.7              |
-| P3     | Gruppenmaske nicht in jedem Frame neu berechnen                                                                                                                                 | Optimierungen 1.3              |
-| P3     | E2E-Suite gegen `vite preview` laufen lassen (stabiler, schneller)                                                                                                              | Optimierungen 1.9              |
-| P3     | RMBG-2.0 im Dienst braucht `HF_TOKEN`. Bei Bedarf dokumentieren oder Zugang einrichten.                                                                                         | CLAUDE.md                      |
+| Prio   | Punkt                                                                                                                                                                           | Bezug                        |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| **P1** | **Phase 5** umsetzen ([docs/plan-P5.md](docs/plan-P5.md)), danach **E3**                                                                                                        | Freigabe 18.10.              |
+| **P1** | Manuell prüfen: Kachelblatt der Malmappe mit „Tatsächliche Größe“ drucken, 5-cm-Kontrollmaß nachmessen; Beamer an echtem Projektor                                              | Abnahme E2                   |
+| **P1** | Manuell im echten Chrome prüfen: Browser-Kürzel ⌘0/⌘E/⌘O/⌘S (nur in Playwright getestet)                                                                                        | CLAUDE.md „Bekannte Grenzen“ |
+| **P1** | Manuell prüfen: Low-Poly-Export in 24 MP über die App. Der Dienst allein braucht 14 s. Playwright kann den 192-MB-Upload nicht abbilden, deshalb gibt es keinen E2E-Test dafür. | Stolperstein S1              |
+| P2     | Upload an den Dienst verkleinern (16-Bit-PNG/zstd oder Original per Hash im Dienst)                                                                                             | Optimierungen 1.10           |
+| P2     | Ölbild (Kuwahara) beim Ziehen in halber Auflösung, damit auch große Radien unter 33 ms bleiben                                                                                  | Optimierungen 1.2            |
+| P2     | Kachelgleichheit ±1 beseitigen: alte Unschärfen auf `sample_src_canvas` umstellen, Halbton ganzzahlig rechnen                                                                   | Optimierungen 2.1            |
+| P2     | CPU-Effekte parallel oder gekachelt rechnen (Pixel-Sorting zeilenweise auf mehreren Workern)                                                                                    | Optimierungen 1.1            |
+| P2     | Mehrfachauswahl: löschen, verschieben, ein- und ausblenden für mehrere Ebenen                                                                                                   | Optimierungen 3.1            |
+| P2     | Lizenzprüfung der E3-Modelle an der Quelle (SAM 2.1, U²-Net, MediaPipe Face; AdaIN/VGG) vor Beginn von E3                                                                       | DECISIONS 17.10. „Modelle“   |
+| P3     | Ausschnitt in voller Auflösung auch mit Worker- und Dienst-Ergebnissen, eigener Cache für den Ausschnitt                                                                        | Optimierungen 1.4/1.5        |
+| P3     | PSD „Effekte als eigene Ebenen“ schneller (Zwischenstände einmal durchlaufen)                                                                                                   | Optimierungen 1.7            |
+| P3     | Gruppenmaske nicht in jedem Frame neu berechnen                                                                                                                                 | Optimierungen 1.3            |
+| P3     | E2E-Suite gegen `vite preview` laufen lassen (stabiler, schneller)                                                                                                              | Optimierungen 1.9            |
+| P3     | RMBG-2.0 im Dienst braucht `HF_TOKEN`. Bei Bedarf dokumentieren oder Zugang einrichten.                                                                                         | CLAUDE.md                    |
 
 ---
 
@@ -74,6 +74,7 @@ Was die App kann:
 
 | Datum  | Commit                                       | Inhalt                                                                                                                                                                                                                                                                                         |
 | ------ | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 18.10. | „Phase 5 Schritte 0–1 …“                     | Plan `docs/plan-P5.md`, DECISIONS „Phase 5“; Projektformat 8: Striche als Vektordaten auf Maske, Markierung, Fokuskarte; Maskenart `empty`; GPU-Rasterung (`paint.wgsl`)                                                                                                                       |
 | 18.10. | „E2 Schritt 11: Abnahme …“                   | Abnahme E2 (`acceptanceE2.spec.ts`), Messwerte, Demo-Liste `docs/abnahme-E2.md`, Spec abgehakt                                                                                                                                                                                                 |
 | 18.10. | „E2 Schritt 10: PDF-Malmappe …“              | eigener PDF-Schreiber (`src/io/pdf.ts`); Malmappe mit Deckblatt, Werteskizze + Wertskala, Notan, Warm-Kalt, Raster, Rasterblatt, Konturvorlage in Originalgröße gekachelt (Übersicht, Passmarken, 5-cm-Kontrollmaß); pypdf-Prüfung strikt fehlerfrei                                           |
 | 18.10. | „E2 Schritt 9: Beamer-Modus …“               | eigenes Fenster `beamer.html` (BroadcastChannel), Vollbild mit F, Trapezkorrektur als Homographie (CSS matrix3d), Ecken im Projekt                                                                                                                                                             |

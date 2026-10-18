@@ -10,6 +10,30 @@ Abweichungen von der Spec und Festlegungen bei unklaren Anforderungen. Neueste o
 - **Betrifft:** (Spec-Abschnitt / Phase)
 -->
 
+## 2026-10-18 – Phase 5: Pinsel und Smarte Auswahl
+
+- **Freigabe:** Der Nutzer hat Phase 5 und danach E3 am 18.10.2026 freigegeben.
+- **Striche als Vektordaten (Abweichung vom Plan „Maskenversionen mit Kachel-Deltas“, Datenmodell/Phase 1):** Jeder
+  Pinselstrich wird mit Punkten (Ebenen-px), Druck, Größe, Weichheit, Fluss und Modus im Projekt gespeichert und auf der
+  GPU als Folge weicher Tupfer gerastert (Reihenfolge = Malreihenfolge). Vorteile: winzige Projektdateien, Undo über die
+  bestehende History, auflösungsunabhängig, Export in voller Auflösung ohne Treppen. Gerastert wird im Ebenenraum und
+  gecacht (Schlüssel aus den Strichen).
+- **Drei Ziele des Pinsels:** _Markierung_ (je Ebene, Farbschleier; Grundlage für Hervorheben/Extrahieren), _Maske_
+  (verfeinert die bestehende Ebenenmaske, Striche wirken nach dem Kantenübergang) und _Fokuskarte_ (schärfer = hinzufügen,
+  unschärfer = entfernen, verrechnet mit den Fokuspunkten).
+- **Neue Maskenart `empty`:** leere Grundmaske, z. B. für hervorgehobene Ebenen aus einer gemalten Markierung.
+- **Smarte Auswahl:** SAM 2.1 Hiera Tiny (Meta, Apache-2.0; ONNX-Export onnx-community, fp16, 78 MB) im Browser über
+  ONNX Runtime/WebGPU. Bild auf 1024 × 1024 gestreckt (wie das Preprocessing des Modells), Bildmerkmale je Original
+  zwischengespeichert, Klicks (positiv/negativ, Alt = negativ) liefern eine 256er-Maske, die mit dem Guided Filter auf
+  Maskenauflösung gebracht und als unveränderliche Maske gespeichert wird. Ergebnis ist die Grundlage der Markierung; der
+  Pinsel verfeinert sie. Kommerziell nutzbar, daher in beiden Lizenzmodi.
+- **Hervorheben:** neue Ebene direkt über der Quelle (gleiches Original und gleiche Transformation, Maske = Markierung,
+  keine Effekte, damit sie scharf ist). Optional füllt die Quelle die markierte Stelle per Lochfüllung auf.
+  **Extrahieren:** die Maske der Ebene wird zur Markierung (vorherige Maske bleibt für „Zurücksetzen“ erhalten).
+- **Zurücksetzen:** jede Ebene merkt sich beim Anlegen ihren Ausgangszustand (Maske, Kantenübergang, Lochfüllung); fehlt
+  er, gilt „ganze Fläche ohne Effekte“.
+- **Betrifft:** Basis-Spec g, Datenmodell, Phase 5; Plan [docs/plan-P5.md](docs/plan-P5.md)
+
 ## 2026-10-17 – E2: Grundsatzentscheidungen
 
 - **Freigabe:** Der Nutzer hat E2 am 17.10.2026 freigegeben („E2 umsetzen“). Laut Entscheidung „Reihenfolge“ (E1) folgt

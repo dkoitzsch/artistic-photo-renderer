@@ -6,7 +6,9 @@ export const WORK_USAGE =
   GPUTextureUsage.TEXTURE_BINDING |
   GPUTextureUsage.STORAGE_BINDING |
   GPUTextureUsage.COPY_SRC |
-  GPUTextureUsage.COPY_DST;
+  GPUTextureUsage.COPY_DST |
+  // Pinseltupfer werden per Render-Pass gezeichnet (core.paintDabs)
+  GPUTextureUsage.RENDER_ATTACHMENT;
 
 const BYTES_PER_PIXEL = 8;
 
@@ -81,6 +83,15 @@ export class Frame {
   uniform(data: ArrayBuffer | ArrayBufferView<ArrayBuffer>): GPUBuffer {
     const size = Math.max(16, Math.ceil(data.byteLength / 16) * 16);
     const buf = this.device.createBuffer({ size, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+    this.device.queue.writeBuffer(buf, 0, data);
+    this.buffers.push(buf);
+    return buf;
+  }
+
+  /** Puffer beliebiger Verwendung (z. B. Vertex), nach dem Frame freigegeben. */
+  buffer(data: ArrayBufferView<ArrayBuffer>, usage: number, label = 'frame-buffer'): GPUBuffer {
+    const size = Math.max(16, Math.ceil(data.byteLength / 4) * 4);
+    const buf = this.device.createBuffer({ label, size, usage: usage | GPUBufferUsage.COPY_DST });
     this.device.queue.writeBuffer(buf, 0, data);
     this.buffers.push(buf);
     return buf;

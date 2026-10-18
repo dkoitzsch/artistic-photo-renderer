@@ -58,20 +58,31 @@ function checkProvenance(v: unknown, where: string): void {
     fail(`${where}.provenance unvollständig`);
 }
 
-function checkLayer(n: Record<string, unknown>, where: string, originals: Record<string, unknown>): void {
-  if (!isStr(n.originalId) || !(n.originalId in originals))
-    fail(`${where} verweist auf ein fehlendes Original`);
-  const mask = n.mask;
-  if (!isObj(mask) || !isObj(n.transform)) fail(`${where}.mask/transform fehlt`);
-  const t = n.transform;
-  if (!isNum(t.x) || !isNum(t.y) || !isNum(t.scale) || !isNum(t.rotation) || !(t.scale > 0))
-    fail(`${where}.transform unvollständig`);
-  for (const k of ['flipX', 'flipY'] as const)
-    if (t[k] !== undefined && typeof t[k] !== 'boolean')
-      fail(`${where}.transform.${k} ist kein Wahrheitswert`);
+/** Pinselstriche (Projektformat 8) */
+function checkStrokes(v: unknown, where: string): void {
+  if (v === undefined) return;
+  if (!Array.isArray(v)) fail(`${where} muss eine Liste sein`);
+  v.forEach((st: unknown, i) => {
+    if (
+      !isObj(st) ||
+      (st.mode !== 'add' && st.mode !== 'remove') ||
+      !isNum(st.size) ||
+      !isNum(st.softness) ||
+      !isNum(st.flow) ||
+      typeof st.pressure !== 'boolean' ||
+      !Array.isArray(st.points) ||
+      st.points.length % 3 !== 0 ||
+      !st.points.every(isNum)
+    )
+      fail(`${where}[${i}] unvollständig`);
+  });
+}
+
+function checkMaskRef(mask: unknown, where: string): void {
+  if (!isObj(mask)) fail(`${where} fehlt`);
   if (mask.kind === 'stored') {
-    if (!isStr(mask.id) || !isNum(mask.width) || !isNum(mask.height)) fail(`${where}.mask unvollständig`);
-    checkProvenance(mask.provenance, `${where}.mask`);
+    if (!isStr(mask.id) || !isNum(mask.width) || !isNum(mask.height)) fail(`${where} unvollständig`);
+    checkProvenance(mask.provenance, where);
   } else if (mask.kind === 'depth') {
     if (
       !isStr(mask.depthId) ||
@@ -80,8 +91,36 @@ function checkLayer(n: Record<string, unknown>, where: string, originals: Record
       !isNum(mask.overlap) ||
       !isNum(mask.fillBelow)
     )
-      fail(`${where}.mask (Tiefenband) unvollständig`);
-  } else if (mask.kind !== 'full') fail(`${where}.mask.kind unbekannt`);
+      fail(`${where} (Tiefenband) unvollständig`);
+  } else if (mask.kind !== 'full' && mask.kind !== 'empty') fail(`${where}.kind unbekannt`);
+}
+
+function checkPainted(v: unknown, where: string): void {
+  if (v === undefined) return;
+  if (!isObj(v)) fail(`${where} unvollständig`);
+  checkMaskRef(v.base, `${where}.base`);
+  checkStrokes(v.strokes, `${where}.strokes`);
+}
+
+function checkLayer(n: Record<string, unknown>, where: string, originals: Record<string, unknown>): void {
+  if (!isStr(n.originalId) || !(n.originalId in originals))
+    fail(`${where} verweist auf ein fehlendes Original`);
+  const mask = n.mask;
+  if (!isObj(mask) || !isObj(n.transform)) fail(`${where}.mask/transform fehlt`);
+  checkStrokes(n.maskStrokes, `${where}.maskStrokes`);
+  checkPainted(n.selection, `${where}.selection`);
+  checkPainted(n.holeMask, `${where}.holeMask`);
+  if (n.initial !== undefined) {
+    if (!isObj(n.initial)) fail(`${where}.initial unvollständig`);
+    checkMaskRef(n.initial.mask, `${where}.initial.mask`);
+  }
+  const t = n.transform;
+  if (!isNum(t.x) || !isNum(t.y) || !isNum(t.scale) || !isNum(t.rotation) || !(t.scale > 0))
+    fail(`${where}.transform unvollständig`);
+  for (const k of ['flipX', 'flipY'] as const)
+    if (t[k] !== undefined && typeof t[k] !== 'boolean')
+      fail(`${where}.transform.${k} ist kein Wahrheitswert`);
+  checkMaskRef(mask, `${where}.mask`);
   if (n.depthMap !== undefined) {
     const d = n.depthMap;
     if (!isObj(d) || !isStr(d.id) || !isNum(d.width) || !isNum(d.height))
@@ -98,6 +137,7 @@ function checkLayer(n: Record<string, unknown>, where: string, originals: Record
       if (!isObj(p) || !isStr(p.id) || !isNum(p.x) || !isNum(p.y) || !isNum(p.radius))
         fail(`${where}.focusMap.points[${i}] unvollständig`);
     });
+    checkStrokes(fm.strokes, `${where}.focusMap.strokes`);
   }
   if (n.shadow !== undefined) {
     const sh = n.shadow;
@@ -134,6 +174,8 @@ function migrate(raw: Record<string, unknown>): Record<string, unknown> {
   if (v.formatVersion === 5) v = { ...v, formatVersion: 6 };
   // 6 → 7: optionale Malplan-Einstellungen
   if (v.formatVersion === 6) v = { ...v, formatVersion: 7 };
+  // 7 → 8: optionale Pinselstriche, Markierung, Lochbereich, Ausgangszustand; Maskenart „empty“
+  if (v.formatVersion === 7) v = { ...v, formatVersion: 8 };
   return v;
 }
 

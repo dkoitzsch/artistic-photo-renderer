@@ -5,7 +5,7 @@ import type { ParamValue } from '../effects/manifest';
 
 import type { MalplanSettings } from '../malplan/model';
 
-export const PROJECT_FORMAT_VERSION = 7;
+export const PROJECT_FORMAT_VERSION = 8;
 
 export type BlendMode =
   'normal' | 'multiply' | 'screen' | 'overlay' | 'soft-light' | 'lighten' | 'darken' | 'difference';
@@ -23,6 +23,8 @@ export type Provenance = { modelId: string; commercialUse: boolean; createdAt: s
  */
 export type MaskRef =
   | { kind: 'full' }
+  /** leer (nichts sichtbar) – Grundlage gemalter Masken und Markierungen */
+  | { kind: 'empty' }
   | { kind: 'stored'; id: string; width: number; height: number; inverted: boolean; provenance: Provenance }
   | DepthBandMask;
 
@@ -67,7 +69,28 @@ export type FocusPoint = {
   enabled: boolean;
 };
 
-export type FocusMapSpec = { points: FocusPoint[]; provenance?: Provenance };
+/**
+ * Pinselstrich (Basis-Spec g) als Vektordaten: Punkte [x, y, Druck, …] in Ebenen-px, Durchmesser in Ebenen-px,
+ * Weichheit 0 (hart) … 1 (weich), Fluss = Deckkraft je Tupfer, Modus hinzufügen/entfernen. Gerastert auf der GPU.
+ */
+export type BrushStroke = {
+  mode: 'add' | 'remove';
+  size: number;
+  softness: number;
+  flow: number;
+  pressure: boolean;
+  points: number[];
+};
+
+/** Maske aus Grundmaske und Pinselstrichen darüber (Markierung, Lochbereich). */
+export type PaintedMask = { base: MaskRef; strokes: BrushStroke[] };
+
+export type FocusMapSpec = {
+  points: FocusPoint[];
+  provenance?: Provenance;
+  /** gemalt: hinzufügen = schärfer, entfernen = unschärfer (Projektformat 8) */
+  strokes?: BrushStroke[];
+};
 
 /** Verknüpfter Schatten-Layer direkt unter seiner Ebene; Bild erzeugt das Plugin "shadow". */
 export type ShadowLayer = {
@@ -147,6 +170,14 @@ export type Layer = {
   visible: boolean;
   locked: boolean;
   effects: EffectInstance[];
+  /** Pinselstriche auf der Ebenenmaske, nach dem Kantenübergang (Projektformat 8) */
+  maskStrokes?: BrushStroke[];
+  /** Markierung der Ebene (Pinsel, Smarte Auswahl) – Grundlage für Hervorheben und Extrahieren */
+  selection?: PaintedMask;
+  /** Lochbereich aus einer Markierung (Hervorheben mit Lochfüllung) statt aus der Maske */
+  holeMask?: PaintedMask;
+  /** Ausgangszustand für „Layer auf Original zurücksetzen“ */
+  initial?: { mask: MaskRef; maskEdge: MaskEdge; holeFill: boolean };
 };
 
 export type Group = {

@@ -3,6 +3,7 @@
 
 import { defaultParams } from '../effects/manifest';
 import { getPlugin } from '../effects/pluginStore';
+import { strokesKey, strokesToDabs } from '../brush/dabs';
 import { effectReach } from '../effects/reach';
 import {
   findNode,
@@ -10,8 +11,11 @@ import {
   type BlendMode,
   type EffectInstance,
   type EffectMask,
+  type BrushStroke,
   type Group,
   type Layer,
+  type MaskEdge,
+  type MaskRef,
   type OriginalRef,
   type Project,
   type SceneNode,
@@ -137,6 +141,9 @@ type Geometry = {
 
 /** Reichweite einer Kantenmaske (wie EDGE_MAP_REACH in effects/reach.ts). */
 const EDGE_MASK_REACH = 8;
+
+/** Markierungen ohne Kantenübergang (nur leichte Glättung wie beim Laden einer Maske) */
+const NO_EDGE: MaskEdge = { hardness: 0, offset: 0, curve: 'linear' };
 
 const IDENTITY_AFFINE: Affine = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
 
@@ -456,7 +463,7 @@ export class Compositor {
     frame: Frame,
     project: Project,
     layerId: string,
-    kind: 'mask' | 'focus' | 'depth' | 'luminance' | 'edges' | 'flow',
+    kind: 'mask' | 'focus' | 'depth' | 'luminance' | 'edges' | 'flow' | 'selection',
     opts: RenderOptions,
   ): { tex: GPUTexture; owned: boolean } | null {
     this.use(project);
@@ -495,10 +502,20 @@ export class Compositor {
       if (!m) return { tex: this.core.white, owned: false };
       return keep(`${m.key}${geo.key}${regionKey}`, () => this.place(frame, geo, m.tex, opts, 'mask-view'));
     }
-    const points = this.focusPoints(layer, geo);
-    return keep(JSON.stringify(points.map((p) => [p.x, p.y, p.radius])) + regionKey, () => {
+    if (kind === 'selection') {
+      const m = this.selectionMask(frame, layer, geo, opts);
+      if (!m) return { tex: this.core.black, owned: false };
+      return keep(`${m.key}${geo.key}${regionKey}`, () =>
+        this.place(frame, geo, m.tex, opts, 'selection-view'),
+      );
+    }
+    const pts = this.focusPoints(layer, geo);
+    const focusKey = `focus${JSON.stringify(pts.map((p) => [p.x, p.y, p.radius]))}|${strokesKey(layer.focusMap?.strokes)}`;
+    return keep(focusKey + geo.key + regionKey, () => {
+      const f = this.focusTexture(frame, layer, geo, opts);
+      if (f) return f;
       const tex = this.core.pool.acquire(opts.region.width, opts.region.height, 'focus-view');
-      this.core.focusMap(frame, points, tex, [opts.region.x, opts.region.y], opts.scale);
+      this.core.fill(frame, tex, [0, 0, 0, 1]);
       return { tex, owned: true };
     });
   }
@@ -536,22 +553,58 @@ export class Compositor {
     return layer.effects.filter((fx) => fx.enabled).reduce((s, fx) => s + effectReach(fx, canvas), 0);
   }
 
-  /** Aufbereitete Maske einer Ebene in Ebenengröße (Kantenübergang angewendet), gecacht. */
+  /** Aufbereitete Maske einer Ebene in Ebenengröße (Kantenübergang angewendet, Pinselstriche darüber), gecacht. */
   private processedMask(
     frame: Frame,
     layer: Layer,
     geo: Geometry,
     opts: RenderOptions,
   ): { tex: GPUTexture; key: string } | null {
-    const m = layer.mask;
+    const base = this.baseMask(frame, layer, layer.mask, geo, opts, true);
+    return this.withStrokes(frame, layer, base, layer.maskStrokes, geo, 1);
+  }
+
+  /** Markierung einer Ebene (Pinsel, Smarte Auswahl) in Ebenengröße, oder null ohne Markierung. */
+  private selectionMask(
+    frame: Frame,
+    layer: Layer,
+    geo: Geometry,
+    opts: RenderOptions,
+  ): { tex: GPUTexture; key: string } | null {
+    const sel = layer.selection;
+    if (!sel) return null;
+    const base = this.baseMask(frame, layer, sel.base, geo, opts, false);
+    return this.withStrokes(frame, layer, base, sel.strokes, geo, 1);
+  }
+
+  /**
+   * Grundmaske in Ebenengröße (null = ganze Fläche). edge: Kantenübergang der Ebene anwenden (nur für die Ebenenmaske,
+   * nicht für Markierungen).
+   */
+  private baseMask(
+    frame: Frame,
+    layer: Layer,
+    m: MaskRef,
+    geo: Geometry,
+    opts: RenderOptions,
+    edge: boolean,
+  ): { tex: GPUTexture; key: string } | null {
     if (m.kind === 'full') return null;
     const [cw, ch] = geo.local;
     const px = geo.pxScale;
-    const edgeKey = `${JSON.stringify(layer.maskEdge)}|${px}`;
+    if (m.kind === 'empty') {
+      const key = `empty@${cw}x${ch}`;
+      const tex = this.sources.derive(key, cw, ch, (out) => {
+        this.core.fill(frame, out, [0, 0, 0, 0]);
+      });
+      return { tex, key };
+    }
+    const maskEdge = edge ? layer.maskEdge : NO_EDGE;
+    const edgeKey = `${JSON.stringify(maskEdge)}|${px}`;
     if (m.kind === 'stored') {
       const key = `mask|${m.id}@${cw}x${ch}|${m.inverted ? 'inv' : ''}|${edgeKey}`;
       const tex = this.sources.derive(key, cw, ch, (out) => {
-        this.core.processMask(frame, this.sources.mask(m.id), m.inverted, layer.maskEdge, px, out);
+        this.core.processMask(frame, this.sources.mask(m.id), m.inverted, maskEdge, px, out);
       });
       return { tex, key };
     }
@@ -566,21 +619,64 @@ export class Compositor {
     const tex = this.sources.derive(key, cw, ch, (out) => {
       const band = this.core.pool.acquire(cw, ch, 'band');
       this.core.depthBand(frame, this.sources.mask(m.depthId), m.near, m.far, overlapPx, band);
-      this.core.processMask(frame, band, false, layer.maskEdge, px, out);
+      this.core.processMask(frame, band, false, maskEdge, px, out);
       this.core.pool.release(band);
     });
     return { tex, key };
   }
 
   /**
-   * Lochgefülltes Original, gecacht. Loch: bei gespeicherter Maske der ausgeblendete Bereich,
-   * bei Tiefenbändern alles, was näher als fillBelow liegt (Inhalte vorderer Ebenen); leicht erweitert.
+   * Pinselstriche über einer Maske (base null = ganze Fläche) in Ebenengröße. neutral: Wert ohne Grundmaske
+   * (1 = sichtbar; 0,5 für die Fokuskarte, auf der hinzufügen schärfer und entfernen unschärfer bedeutet).
    */
-  private filledSource(frame: Frame, layer: Layer, geo: Geometry): { tex: GPUTexture; key: string } | null {
-    const m = layer.mask;
-    if (m.kind === 'full') return null;
-    if (m.kind === 'depth' && m.fillBelow <= 0) return null;
+  private withStrokes(
+    frame: Frame,
+    layer: Layer,
+    base: { tex: GPUTexture; key: string } | null,
+    strokes: readonly BrushStroke[] | undefined,
+    geo: Geometry,
+    neutral: number,
+  ): { tex: GPUTexture; key: string } | null {
+    if (!strokes || strokes.length === 0) return base;
     const [cw, ch] = geo.local;
+    const o = this.originals[layer.originalId];
+    const scale = o ? cw / o.width : 1;
+    const key = `${base?.key ?? `full${neutral}`}+strokes${strokesKey(strokes)}@${cw}x${ch}`;
+    const tex = this.sources.derive(key, cw, ch, (out) => {
+      if (base) frame.encoder.copyTextureToTexture({ texture: base.tex }, { texture: out }, [cw, ch]);
+      else this.core.fill(frame, out, [neutral, neutral, neutral, 1]);
+      this.core.paintDabs(frame, out, strokesToDabs(strokes, scale));
+    });
+    return { tex, key };
+  }
+
+  /**
+   * Lochgefülltes Original, gecacht. Loch: bei gespeicherter Maske der ausgeblendete Bereich, bei Tiefenbändern alles,
+   * was näher als fillBelow liegt (Inhalte vorderer Ebenen), oder ein gemalter Lochbereich (Hervorheben); leicht erweitert.
+   */
+  private filledSource(
+    frame: Frame,
+    layer: Layer,
+    geo: Geometry,
+    opts: RenderOptions,
+  ): { tex: GPUTexture; key: string } | null {
+    const [cw, ch] = geo.local;
+    if (layer.holeMask) {
+      const holeBase = this.baseMask(frame, layer, layer.holeMask.base, geo, opts, false);
+      const hole = this.withStrokes(frame, layer, holeBase, layer.holeMask.strokes, geo, 1);
+      if (!hole) return null;
+      const key = `fill|${layer.originalId}+${hole.key}`;
+      const tex = this.sources.derive(key, cw, ch, (out) => {
+        const grown = this.core.pool.acquire(cw, ch, 'hole-grown');
+        this.core.dilateMask(frame, hole.tex, grown, Math.max(2, 0.004 * Math.max(cw, ch)));
+        this.core.holeFill(frame, this.sources.at(frame, layer.originalId, cw, ch), grown, out);
+        this.core.pool.release(grown);
+      });
+      return { tex, key };
+    }
+    const m = layer.mask;
+    if (m.kind === 'full' || m.kind === 'empty') return null;
+    if (m.kind === 'depth' && m.fillBelow <= 0) return null;
     const holeId = m.kind === 'stored' ? m.id : m.depthId;
     const holeKey = m.kind === 'stored' ? (m.inverted ? 'inv' : '') : `below${m.fillBelow}`;
     const key = `fill|${layer.originalId}+${holeId}@${cw}x${ch}|${holeKey}`;
@@ -599,6 +695,34 @@ export class Compositor {
       this.core.pool.release(grown);
     });
     return { tex, key };
+  }
+
+  /**
+   * Fokuskarte einer Ebene als Leinwand-Ausschnitt: Fokuspunkte, verrechnet mit gemalten Bereichen (hinzufügen =
+   * schärfer, entfernen = unschärfer). null, wenn die Ebene keine Fokuskarte hat.
+   */
+  private focusTexture(
+    frame: Frame,
+    layer: Layer,
+    geo: Geometry,
+    opts: RenderOptions,
+  ): { tex: GPUTexture; owned: boolean; key: string } | null {
+    const points = this.focusPoints(layer, geo);
+    const strokes = layer.focusMap?.strokes;
+    if (points.length === 0 && !strokes?.length) return null;
+    const tex = this.core.pool.acquire(opts.region.width, opts.region.height, 'focus');
+    this.core.focusMap(frame, points, tex, [opts.region.x, opts.region.y], opts.scale);
+    const key = `focus${JSON.stringify(points.map((p) => [p.x, p.y, p.radius]))}|${strokesKey(strokes)}`;
+    const paint = this.withStrokes(frame, layer, null, strokes, geo, 0.5);
+    if (paint) {
+      const placed = this.place(frame, geo, paint.tex, opts, 'focus-paint');
+      const out = this.core.pool.acquire(opts.region.width, opts.region.height, 'focus-combined');
+      this.core.combineFocus(frame, tex, placed.tex, out);
+      if (placed.owned) this.core.pool.release(placed.tex);
+      this.core.pool.release(tex);
+      return { tex: out, owned: true, key };
+    }
+    return { tex, owned: true, key };
   }
 
   /** Tiefenkarte einer Ebene in Ebenengröße (für Effekte und die Ansicht „Tiefe“), gecacht. */
@@ -622,6 +746,8 @@ export class Compositor {
     opts: RenderOptions,
   ): AuxProvider {
     const points = this.focusPoints(layer, geo);
+    const focusStrokes = layer.focusMap?.strokes;
+    const hasFocus = points.length > 0 || (focusStrokes?.length ?? 0) > 0;
     const owned: GPUTexture[] = [];
     let aux: Aux | null = null;
     // Analysekarten der Ebene (aus dem Original, im Ebenenraum gecacht) bei Bedarf platzieren
@@ -637,7 +763,9 @@ export class Compositor {
     };
     return {
       key:
-        (points.length ? `focus${JSON.stringify(points.map((p) => [p.x, p.y, p.radius]))}` : 'nofocus') +
+        (hasFocus
+          ? `focus${JSON.stringify(points.map((p) => [p.x, p.y, p.radius]))}|${strokesKey(focusStrokes)}`
+          : 'nofocus') +
         (depthTex ? `|depth${layer.depthMap?.id ?? ''}` : '') +
         geo.key,
       get: (need) => {
@@ -652,10 +780,12 @@ export class Compositor {
           mask = r.tex;
         }
         let focus = this.core.black;
-        if (points.length) {
-          focus = this.core.pool.acquire(opts.region.width, opts.region.height, 'focus');
-          owned.push(focus);
-          this.core.focusMap(frame, points, focus, [opts.region.x, opts.region.y], opts.scale);
+        if (hasFocus) {
+          const f = this.focusTexture(frame, layer, geo, opts);
+          if (f) {
+            if (f.owned) owned.push(f.tex);
+            focus = f.tex;
+          }
         }
         let depth = this.core.black;
         if (depthTex) {
@@ -663,7 +793,7 @@ export class Compositor {
           if (r.owned) owned.push(r.tex);
           depth = r.tex;
         }
-        aux = { mask, focus, depth, hasFocus: points.length > 0 };
+        aux = { mask, focus, depth, hasFocus };
         addMaps(aux, need);
         return aux;
       },
@@ -684,7 +814,7 @@ export class Compositor {
     // Aufbereitung im Raum der Ebene, danach Platzierung auf der Leinwand (Transform)
     const geo = this.geometry(layer, opts);
     const [lw, lh] = geo.local;
-    const filled = layer.holeFill ? this.filledSource(frame, layer, geo) : null;
+    const filled = layer.holeFill ? this.filledSource(frame, layer, geo, opts) : null;
     const base = filled?.tex ?? this.sources.at(frame, layer.originalId, lw, lh);
     const baseKey = (filled?.key ?? `${layer.originalId}@${lw}x${lh}`) + geo.key;
     // Gespeicherte Maske + Lochfüllung: Ebene wird deckend (Hintergrund). Tiefenband: gefüllt UND maskiert.

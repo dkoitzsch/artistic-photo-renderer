@@ -2,6 +2,9 @@
 
 import type { BlendMode, MaskEdge } from '../state/project';
 import { FLOW_SIGMA_FAR, FLOW_SIGMA_NEAR } from '../effects/maps';
+import { DAB_FLOATS } from '../brush/dabs';
+import focusCombineWgsl from './shaders/focuscombine.wgsl?raw';
+import paintWgsl from './shaders/paint.wgsl?raw';
 import analysisWgsl from './shaders/analysis.wgsl?raw';
 import blendWgsl from './shaders/blend.wgsl?raw';
 import blendModesWgsl from './shaders/blendmodes.wgsl?raw';
@@ -107,6 +110,8 @@ export class GpuCore {
   private readonly pushPull: ModulePipelines;
   private readonly warpPipelines: ModulePipelines;
   private readonly analysis: ModulePipelines;
+  private readonly paintPipeline: GPURenderPipeline;
+  private readonly focusCombinePipeline: GPUComputePipeline;
 
   constructor(readonly device: GPUDevice) {
     this.pool = new TexturePool(device);
@@ -124,6 +129,43 @@ export class GpuCore {
     this.fillPipeline = compute(fillWgsl, 'fill');
     this.focusPipeline = compute(focusmapWgsl, 'focusmap');
     this.maskApplyPipeline = compute(maskapplyWgsl, 'maskapply');
+    this.focusCombinePipeline = compute(focusCombineWgsl, 'focuscombine');
+    const paintModule = device.createShaderModule({ label: 'paint', code: paintWgsl });
+    this.paintPipeline = device.createRenderPipeline({
+      label: 'paint',
+      layout: 'auto',
+      vertex: {
+        module: paintModule,
+        entryPoint: 'vs',
+        buffers: [
+          {
+            arrayStride: DAB_FLOATS * 4,
+            stepMode: 'instance',
+            attributes: [
+              { shaderLocation: 0, offset: 0, format: 'float32x2' },
+              { shaderLocation: 1, offset: 8, format: 'float32' },
+              { shaderLocation: 2, offset: 12, format: 'float32' },
+              { shaderLocation: 3, offset: 16, format: 'float32' },
+              { shaderLocation: 4, offset: 20, format: 'float32' },
+            ],
+          },
+        ],
+      },
+      fragment: {
+        module: paintModule,
+        entryPoint: 'fs',
+        targets: [
+          {
+            format: WORK_FORMAT,
+            blend: {
+              color: { srcFactor: 'src-alpha', dstFactor: 'one-minus-src-alpha', operation: 'add' },
+              alpha: { srcFactor: 'zero', dstFactor: 'one', operation: 'add' },
+            },
+          },
+        ],
+      },
+      primitive: { topology: 'triangle-strip' },
+    });
     this.gauss = new ModulePipelines(
       device,
       'gauss',
@@ -193,6 +235,36 @@ export class GpuCore {
       layout: pipeline.getBindGroupLayout(0),
       entries: resources.map((resource, binding) => ({ binding, resource })),
     });
+  }
+
+  /**
+   * Zeichnet Pinseltupfer (src/brush/dabs.ts) in Malreihenfolge auf dst (r-Kanal, Mischung „über“). Bestehender Inhalt
+   * bleibt erhalten; Tupfer-Koordinaten in Pixeln von dst.
+   */
+  paintDabs(frame: Frame, dst: GPUTexture, dabs: Float32Array): void {
+    if (dabs.length === 0) return;
+    const vb = frame.buffer(dabs as Float32Array<ArrayBuffer>, GPUBufferUsage.VERTEX, 'dabs');
+    const bg = this.device.createBindGroup({
+      layout: this.paintPipeline.getBindGroupLayout(0),
+      entries: [
+        { binding: 0, resource: { buffer: frame.uniform(new Float32Array([dst.width, dst.height, 0, 0])) } },
+      ],
+    });
+    const pass = frame.encoder.beginRenderPass({
+      label: 'paint',
+      colorAttachments: [{ view: dst.createView(), loadOp: 'load', storeOp: 'store' }],
+    });
+    pass.setPipeline(this.paintPipeline);
+    pass.setBindGroup(0, bg);
+    pass.setVertexBuffer(0, vb);
+    pass.draw(4, dabs.length / DAB_FLOATS);
+    pass.end();
+  }
+
+  /** Fokuskarte aus Punkten (a) und gemalten Bereichen (b, 0,5 = neutral) verrechnen. */
+  combineFocus(frame: Frame, a: GPUTexture, b: GPUTexture, dst: GPUTexture): void {
+    const bg = this.bind(this.focusCombinePipeline, [a.createView(), b.createView(), dst.createView()]);
+    dispatch2d(frame, this.focusCombinePipeline, bg, dst.width, dst.height, 'focuscombine');
   }
 
   fill(frame: Frame, dst: GPUTexture, rgba: number[]): void {
