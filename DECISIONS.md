@@ -10,6 +10,43 @@ Abweichungen von der Spec und Festlegungen bei unklaren Anforderungen. Neueste o
 - **Betrifft:** (Spec-Abschnitt / Phase)
 -->
 
+## 2026-10-18 – E3: Analysekarten, Segmente, Stil
+
+- **Modelle (Spec 13.3, an der Quelle geprüft 18.10.2026):**
+  - `depth`: Depth Anything V2 Small (Apache-2.0, Browser und Dienst) im Modus „Kommerziell“, im Modus „Alle“ wahlweise
+    Large (CC BY-NC 4.0, Dienst) – wie bei den Tiefenebenen.
+  - `saliency`: **U²-Net-p** (xuebinqin/U-2-Net, Code und Gewichte Apache-2.0; ONNX aus der rembg-Veröffentlichung, MIT),
+    4,6 MB, im Browser. Das volle U²-Net (176 MB) bringt für eine weiche Aufmerksamkeitskarte keinen sichtbaren Gewinn.
+  - `faces`: MediaPipe Face Landmarker (Apache-2.0, vorhanden) – Gesichtsfläche = Hülle der Landmarken, weich gezeichnet.
+  - `segmentation`: SAM 2.1 Tiny (vorhanden) per Klick, dazu der Vordergrund aus BiRefNet/RMBG (Lizenzmodus wie bisher).
+  - `style-transfer`: **AdaIN** (Huang & Belongie 2017; PyTorch-Gewichte naoto0804/pytorch-AdaIN, Code MIT). Für die
+    Gewichte (Decoder, normalisiertes VGG-19) ist keine Lizenz angegeben, der Decoder wurde mit WikiArt-Bildern trainiert →
+    **nur nicht-kommerziell** (Modus „Alle“), im Dienst (PyTorch/MPS). Kommerzieller Ersatz: eigener Effekt `style-match`
+    (klassische Stilübertragung ohne Modell: Farbstatistik in Oklab und Detail-Statistik je Frequenzband einer
+    Laplace-Pyramide, nach Heeger & Bergen 1995 / Reinhard 2001), Browser-CPU.
+- **Analysekarten je Original, nicht im Verlauf:** Karten sind abgeleitete Daten eines Originals (wie ein Cache), keine
+  Bearbeitung. Sie liegen in `Project.analysis[originalId]` (Projektformat 9) und werden in **alle** Verlaufseinträge
+  geschrieben – Undo entfernt sie nicht, ein erneutes Berechnen nach Undo entfällt. Berechnet wird automatisch, sobald ein
+  sichtbarer Effekt (`requires`) oder eine Effekt-/Gruppenmaske eine fehlende Karte braucht; bis dahin bekommt der Effekt
+  eine neutrale Karte. Eine Karte aus einem NC-Modell zählt für die Exportwarnung wie eine NC-Maske und wird im Modus
+  „Kommerziell“ durch eine kommerzielle ersetzt. Die Tiefenkarte einer Ebene (`Layer.depthMap`, Tiefenebenen) hat Vorrang
+  vor der Analysekarte des Originals – Tiefenebenen, Parallax und Tiefeneffekte nutzen dieselbe Karte.
+- **`normals`** aus der Tiefe auf der GPU (geglätteter Gradient, Ebenenraum, gecacht); Bindung 12 `map_normals`
+  (xyz Normale, w = 1 gültig), Bindung 13 `map_semantic` (r Salienz, g Gesichter). Segmente sind keine Bindung, sondern
+  Masken (Effektmaske, Ebenenmaske über „Stil je Bereich“).
+- **Segmente** (`Project.segments`, im Verlauf): benannte Masken eines Originals (Grundmaske + Pinselstriche wie die
+  Markierung). Effekt- und Gruppenmasken bekommen die Art `segment` (mit Umkehren).
+- **`style-per-region` ist kein Plugin**, sondern ein Befehl „Stil je Bereich“: Er baut aus einer Ebene eine Gruppe mit einer
+  Ebene je Bereich (Rest/Hintergrund unten, dann Segmente oder Tiefenbereiche als Ebenenmasken) und gibt jeder Ebene den
+  gewählten Effekt bzw. das gewählte Stapel-Preset. Grund: Ein Plugin kann keine Effektstapel enthalten; über Ebenen bleiben
+  Stapel, Masken, PSD-Export (Ebenen) und Parallax (Tiefe je Bereichsebene) ohne Sonderfälle nutzbar.
+- **Ausführungsorte:** `linocut`, `cut-paper`, `depth-bokeh` laufen auf der GPU (Spec: P bzw. B/P), `gouache-flat`,
+  `textile`, `flow-lines`, `tsp-art` im Browser-Worker (Spec: P) – gemäß Grundsatz „Simulationen bevorzugt WebGPU,
+  sequenzielle Verfahren auf der CPU“; der Dienst ist dafür nicht nötig. Nur `style-transfer` braucht den Dienst.
+- **Punkt-Parameter ziehen:** Effekte mit Parametern vom Typ `point` (z. B. Lichtquelle von `relight`, `god-rays`) zeigen
+  auf der Leinwand einen ziehbaren Griff, solange ihre Effektkarte aufgeklappt ist.
+- **Betrifft:** Analysekarten, Effekte, Masken, Projektformat 9, Dienst (Downloads mit festen URLs + SHA-256)
+
 ## 2026-10-18 – Phase 5: Pinsel und Smarte Auswahl
 
 - **Freigabe:** Der Nutzer hat Phase 5 und danach E3 am 18.10.2026 freigegeben.

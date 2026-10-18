@@ -23,6 +23,8 @@ class ServiceModel:
     size: int
     mean: tuple[float, float, float]
     std: tuple[float, float, float]
+    # Dateien mit fester URL und SHA-256 (statt eines Hugging-Face-Repos): (Name, URL, SHA-256, Größe)
+    files: tuple[tuple[str, str, str, int], ...] = ()
 
 
 def load_registry(path: Path = REGISTRY_PATH) -> dict[str, ServiceModel]:
@@ -39,12 +41,13 @@ def load_registry(path: Path = REGISTRY_PATH) -> dict[str, ServiceModel]:
             task=m["task"],
             license=m["license"],
             commercial_use=bool(m["commercialUse"]),
-            hf_repo=m["hfRepo"],
+            hf_repo=m.get("hfRepo", ""),
             revision=m["revision"],
             gated=bool(m.get("gated", False)),
             size=int(inp.get("size", 1024)),
             mean=tuple(inp.get("mean", (0.485, 0.456, 0.406))),
             std=tuple(inp.get("std", (0.229, 0.224, 0.225))),
+            files=tuple((f["name"], f["url"], f["sha256"], int(f["size"])) for f in m.get("files", [])),
         )
     return out
 

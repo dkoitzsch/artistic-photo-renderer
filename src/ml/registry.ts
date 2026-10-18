@@ -3,7 +3,15 @@
 import registry from '../../models/registry.json';
 import type { LicenseMode } from '../state/project';
 
-export type ModelTask = 'foreground' | 'landmarks' | 'depth' | 'points' | 'objects' | 'inpaint';
+export type ModelTask =
+  | 'foreground'
+  | 'landmarks'
+  | 'depth'
+  | 'points'
+  | 'objects'
+  | 'inpaint'
+  | 'saliency'
+  | 'style';
 export type Runtime = 'browser' | 'service';
 
 export type ModelFile = { name: string; url: string; sha256: string; size: number };
@@ -21,6 +29,8 @@ export type ModelEntry = {
   files?: ModelFile[];
   input?: { size: number; mean: number[]; std: number[] };
   output?: 'logits' | 'probability-minmax' | 'disparity';
+  /** Index der Modellausgabe (Standard: letzte) */
+  outputIndex?: number;
   gated?: boolean;
   checkedAt: string;
 };

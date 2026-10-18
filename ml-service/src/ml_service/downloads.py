@@ -44,6 +44,8 @@ FileList = list[tuple[str, int]]  # (Dateiname im Repo, Größe)
 
 
 def hf_file_list(model: ServiceModel, token: str | None) -> FileList:
+    if model.files:
+        return [(name, size) for name, _url, _sha, size in model.files]
     from huggingface_hub import HfApi
 
     info = HfApi().model_info(model.hf_repo, revision=model.revision, files_metadata=True, token=token)
@@ -54,6 +56,13 @@ def hf_open(model: ServiceModel, name: str, offset: int, token: str | None):
     """Öffnet eine Datei des Repos als Stream ab offset (Range)."""
     import urllib.request
 
+    direct = next((url for n, url, _sha, _size in model.files if n == name), None)
+    if direct:
+        req = urllib.request.Request(direct)
+        if offset:
+            req.add_header("Range", f"bytes={offset}-")
+        return urllib.request.urlopen(req, timeout=60)  # noqa: S310 (feste URL aus dem Register)
+
     from huggingface_hub import hf_hub_url
 
     req = urllib.request.Request(hf_hub_url(model.hf_repo, name, revision=model.revision))
@@ -62,6 +71,16 @@ def hf_open(model: ServiceModel, name: str, offset: int, token: str | None):
     if offset:
         req.add_header("Range", f"bytes={offset}-")
     return urllib.request.urlopen(req, timeout=60)  # noqa: S310 (feste HF-URL)
+
+
+def _sha256(path: Path) -> str:
+    import hashlib
+
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(CHUNK), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 
 class Downloader:
@@ -172,6 +191,10 @@ class Downloader:
                             st.loaded = done_bytes + offset
                 if size and offset != size:
                     raise RuntimeError(f"{name}: unvollständig ({offset} von {size} Byte)")
+                expected = next((sha for n, _url, sha, _size in model.files if n == name), None)
+                if expected and _sha256(part) != expected:
+                    part.unlink(missing_ok=True)
+                    raise RuntimeError(f"{name}: Prüfsumme stimmt nicht")
                 part.rename(target)
                 done_bytes += size
                 st.loaded = done_bytes

@@ -166,6 +166,34 @@
       "$note": "ONNX-Export (fp16, externe Gewichte) von facebook/sam2.1-hiera-tiny (Apache-2.0, Code und Gewichte). Bild auf 1024 × 1024 gestreckt; Klickpunkte im 1024er-Raum; Ausgabe 3 Masken 256 × 256 (Logits) mit IoU-Schätzung."
     },
     {
+      "id": "u2netp",
+      "family": "u2net",
+      "name": "U²-Net-p (Salienz)",
+      "task": "saliency",
+      "runtime": "browser",
+      "license": "Apache-2.0",
+      "commercialUse": true,
+      "source": "https://github.com/xuebinqin/U-2-Net",
+      "revision": "rembg-v0.0.0",
+      "files": [
+        {
+          "name": "u2netp.onnx",
+          "url": "https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2netp.onnx",
+          "sha256": "309c8469258dda742793dce0ebea8e6dd393174f89934733ecc8b14c76f4ddd8",
+          "size": 4574861
+        }
+      ],
+      "input": {
+        "size": 320,
+        "mean": [0.485, 0.456, 0.406],
+        "std": [0.229, 0.224, 0.225]
+      },
+      "output": "probability-minmax",
+      "outputIndex": 0,
+      "checkedAt": "2026-10-18",
+      "$note": "U²-Net-p (salient object detection, DUTS-TR) von xuebinqin/U-2-Net (Apache-2.0, Code und Gewichte); ONNX-Export aus der Veröffentlichung v0.0.0 von danielgatis/rembg (MIT). Ausgabe d0 (fusioniert, Sigmoid), min-max-normiert."
+    },
+    {
       "id": "birefnet",
       "family": "birefnet",
       "name": "BiRefNet (voll)",
@@ -239,6 +267,38 @@
       },
       "output": "disparity",
       "checkedAt": "2026-10-14"
+    },
+    {
+      "id": "adain",
+      "family": "adain",
+      "name": "AdaIN (Style-Transfer)",
+      "task": "style",
+      "runtime": "service",
+      "license": "Gewichte ohne Lizenzangabe (Decoder mit WikiArt trainiert) – nur nicht-kommerziell",
+      "commercialUse": false,
+      "source": "https://github.com/naoto0804/pytorch-AdaIN",
+      "revision": "v0.0.0",
+      "files": [
+        {
+          "name": "decoder.pth",
+          "url": "https://github.com/naoto0804/pytorch-AdaIN/releases/download/v0.0.0/decoder.pth",
+          "sha256": "379ca41d59f3a37eed3599bbbc2560c19da5c458870a5ffd3a9dd41aa88f9472",
+          "size": 14023458
+        },
+        {
+          "name": "vgg_normalised.pth",
+          "url": "https://github.com/naoto0804/pytorch-AdaIN/releases/download/v0.0.0/vgg_normalised.pth",
+          "sha256": "804ca2835ecf7539f0cd2a7ac3c18ce81e6f8468969ae7117ac0c148d286bb4a",
+          "size": 80102481
+        }
+      ],
+      "input": {
+        "size": 512,
+        "mean": [0, 0, 0],
+        "std": [1, 1, 1]
+      },
+      "checkedAt": "2026-10-18",
+      "$note": "Code MIT (naoto0804/pytorch-AdaIN, Original xunhuang1995/AdaIN-style MIT). Für die Gewichte ist keine Lizenz angegeben; der Decoder ist mit MS-COCO und WikiArt (Kaggle „Painter by Numbers“) trainiert, das VGG-19 normalisiert (Gatys et al.). Daher nur im Modus „Alle“."
     }
   ],
   "libraries": [

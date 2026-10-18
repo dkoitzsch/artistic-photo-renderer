@@ -130,3 +130,29 @@ def test_endpoints_control_downloads_and_respect_license(tmp_path):
     # NC-Modell im Modus „Kommerziell“: auch kein Download
     assert client.post("/models/rmbg-2.0/download?license_mode=commercial").status_code == 403
     assert client.delete("/models/birefnet").json()["status"] == "missing"
+
+
+def test_direct_files_are_checked_by_sha256(tmp_path):
+    import dataclasses
+    import hashlib
+
+    from ml_service.downloads import hf_file_list
+
+    adain = load_registry()["adain"]
+    assert not adain.commercial_use and [f[0] for f in adain.files] == ["decoder.pth", "vgg_normalised.pth"]
+    good = b"weights" * 100
+    model = dataclasses.replace(
+        adain, files=(("w.pth", "https://example.invalid/w.pth", hashlib.sha256(good).hexdigest(), len(good)),)
+    )
+    assert hf_file_list(model, None) == [("w.pth", len(good))]
+    for data, status in ((b"x" * len(good), "error"), (good, "done")):
+        d = Downloader(
+            tmp_path / status,
+            list_files=hf_file_list,
+            open_file=lambda m, n, o, t, data=data: SlowStream(data[o:], None),
+        )
+        d.start(model)
+        d.wait(model)
+        assert d.state(model).status == status
+        if status == "error":
+            assert "Prüfsumme" in (d.state(model).error or "")

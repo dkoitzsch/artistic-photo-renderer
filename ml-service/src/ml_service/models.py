@@ -120,11 +120,15 @@ def remove_legacy(model: ServiceModel) -> None:
     """Entfernt eine ältere Kopie aus dem Hugging-Face-Cache."""
     import shutil
 
+    if not model.hf_repo:
+        return
     shutil.rmtree(CACHE_DIR / "hf" / f"models--{model.hf_repo.replace('/', '--')}", ignore_errors=True)
 
 
 def legacy_snapshot(model: ServiceModel) -> str | None:
     """Ordner eines früher per Hugging-Face-Cache geladenen Modells (falls vorhanden)."""
+    if not model.hf_repo:
+        return None
     try:
         from huggingface_hub import snapshot_download
 
