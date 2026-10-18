@@ -401,11 +401,12 @@ Jede Phase endet mit: lauffähigem Stand, grünen Tests, kurzer Änderungsnotiz,
 ✅ Abgenommen am 17.10.2026 – siehe [abnahme-E1.md](abnahme-E1.md).
 
 ### Phase E2 – Effektbreite & Malplan-Grundlagen
-- Analysekarte `flow`
-- Restliche Effekte mit Phase E2 aus Abschnitt 5
-- Malplan-Arbeitsbereich mit: Untergrundformat, Vereinfachungsgrad, Notan, Werteskizze, Wertskala, Warm-Kalt-Karte, Proportionsraster, Konturvorlage (gekachelt), Beamer-Modus
-- PDF-Malmappe (mit den bis dahin verfügbaren Seiten)
+- [x] Analysekarte `flow`
+- [x] Restliche Effekte mit Phase E2 aus Abschnitt 5
+- [x] Malplan-Arbeitsbereich mit: Untergrundformat, Vereinfachungsgrad, Notan, Werteskizze, Wertskala, Warm-Kalt-Karte, Proportionsraster, Konturvorlage (gekachelt), Beamer-Modus
+- [x] PDF-Malmappe (mit den bis dahin verfügbaren Seiten)
 **Abnahme:** Aus einem Foto entsteht eine druckbare PDF-Malmappe mit Werteskizze, Raster und gekachelter Konturvorlage im korrekten Maßstab.
+✅ Abgenommen am 18.10.2026 – siehe [abnahme-E2.md](abnahme-E2.md).
 
 ### Phase E3 – Tiefe, Semantik & Stil
 - Analysekarten `depth`, `normals`, `segmentation`, `saliency`, `faces` (mit Lizenzprüfung und Modellwahl je Modus)

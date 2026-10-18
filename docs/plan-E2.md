@@ -18,4 +18,4 @@ Jeder Schritt endet lauffähig, mit grünen Tests, aktueller `PROGRESS.md`, Comm
 - [x] 9. Beamer-Modus (eigenes Fenster, Vollbild, Trapezkorrektur)
 - [x] 10. PDF-Malmappe (eigener PDF-Schreiber): Deckblatt, Werteskizze + Wertskala, Notan, Warm-Kalt, Raster,
       Konturvorlage gekachelt A4/A3 mit Überlappung und Passmarken; Seiten wählbar
-- [ ] 11. Abnahme (Foto → druckbare Malmappe im korrekten Maßstab), Demo-Liste, Spec abhaken, CLAUDE.md
+- [x] 11. Abnahme (Foto → druckbare Malmappe im korrekten Maßstab), Demo-Liste, Spec abhaken, CLAUDE.md

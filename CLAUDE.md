@@ -13,10 +13,10 @@ Abgeschlossen: **Phase 0 – Gerüst**, **Phase 1 – Ganzes Bild**, **Phase 2 �
 **Phase 3 – Tiefenebenen und Gruppen**, **Phase 4 – Weitere Bilder**. Erledigte Punkte werden in der Spec abgehakt.
 
 **Erweiterung „Effekte & Malvorlagen“** ([docs/spec-effekte-und-malvorlagen.md](docs/spec-effekte-und-malvorlagen.md)):
-**Phase E1 abgeschlossen** ([docs/plan-E1.md](docs/plan-E1.md), Abnahme und Demo-Liste: [docs/abnahme-E1.md](docs/abnahme-E1.md),
-Ideen für später: [docs/optimierungen-und-varianten.md](docs/optimierungen-und-varianten.md)).
-**Phase E2 in Arbeit** ([docs/plan-E2.md](docs/plan-E2.md)). Danach alte Phase 5 (Pinsel, SAM), dann E3 … E5
-(Reihenfolge laut DECISIONS.md). Danach `docs/spec-ml-fotobearbeitung.md` (nicht anfassen).
+**Phasen E1 und E2 abgeschlossen** ([docs/plan-E1.md](docs/plan-E1.md), [docs/plan-E2.md](docs/plan-E2.md); Abnahme und
+Demo-Listen: [docs/abnahme-E1.md](docs/abnahme-E1.md), [docs/abnahme-E2.md](docs/abnahme-E2.md); Ideen für später:
+[docs/optimierungen-und-varianten.md](docs/optimierungen-und-varianten.md)).
+Nächste (wartet auf Freigabe): alte Phase 5 (Pinsel, SAM), dann E3 … E5 (Reihenfolge laut DECISIONS.md). Danach `docs/spec-ml-fotobearbeitung.md` (nicht anfassen).
 Nach jedem Schritt: Tests, [PROGRESS.md](PROGRESS.md) nachführen (Stand, offene Punkte, Logbuch, Stolpersteine, Messwerte), Commit, Push.
 
 ## Ordnerstruktur (✓ = existiert)
@@ -85,7 +85,7 @@ Node ≥ 22.12 (`.nvmrc`). Dev-Server auf **Port 5317** (5173 ist auf diesem Rec
 Phasen-Abschluss: `npm run lint && npm run typecheck && npm test && npm run test:service && npm run build && npm run test:e2e`
 (E2E mit Modellen braucht einmalig `npm run models:fetch`, sonst werden diese Tests übersprungen.)
 
-## Architektur (Stand E1)
+## Architektur (Stand E2)
 
 **Datenfluss:** UI → Befehl (`state/commands.ts`) → History (`state/history.ts`, unveränderliche Schnappschüsse) →
 Zustand-Store → `CanvasView` ruft pro Frame `Engine.present()` → Compositor rendert nur Geändertes → Anzeige.
@@ -176,6 +176,21 @@ Autosave (`io/autosave.ts`) beobachtet den Store und schreibt ins OPFS.
 - Test-Effekte in `tests/effects/` (nur Dev mit `localStorage['bls.testEffects']='1'`), Test-Dienst auf Port 8766
   (`TEST_SERVICE_URL`), Golden-Helfer `tests/e2e/effectGolden.ts` + Fälle `effectCases.ts`, Abnahme `acceptanceE1.spec.ts`.
 
+**Erweiterung E2 (Effektbreite & Malplan):**
+
+- Analysekarte `flow` (Richtungsfeld): `core.flowMap` (Shader `analysis.wgsl` Einstieg `flow`, J(σ=6) + ¼·J(σ=24)),
+  `cpuAnalysis.flow`, Dienst `analysis.flow`; Konstanten `src/effects/maps.ts`; Bindung 11 (`flow_tangent`, …).
+- Kern: Parametertyp `text` (Uniform = Zeichenzahl), Glyphen-Atlas `ctx.glyphs` (`render/glyphs.ts`); Reichweite ≥ halbe
+  Leinwand → Export am Stück (globale Effekte), Ausschnitt in voller Auflösung entfällt dann.
+- 19 Effekte unter `effects/` (alle GPU, `stipple` im Worker).
+- Malplan (`src/malplan/`): `model.ts` (Einstellungen `project.malplan`, Projektformat 7, Formate, Zuschnitt, Raster),
+  `analysis.ts` (Glättung, k-Means in Oklab, Flächen verschmelzen, Tonwerte, Notan, Wärme, Konturen als Vektoren),
+  `worker.ts` + `store.ts` (Ablauf rendern → analysieren → ableiten; `Engine.renderRegionImage`), `render.ts` (Hilfen als
+  Canvas), `tiles.ts` (Kachelung), `pdfBook.ts` (Malmappe), `homography.ts` + `beamerChannel.ts` (Beamer).
+  Oberfläche `app/components/MalplanWorkspace.tsx`, `MalplanBeamer.tsx`, `MalplanPdf.tsx`; Store `workspace`, `malplanHelp`.
+- Beamer-Fenster: eigene Seite `beamer.html` / `src/beamer.tsx` (BroadcastChannel, Trapezkorrektur per CSS matrix3d).
+- PDF: eigener Schreiber `src/io/pdf.ts` (PDF 1.4, Helvetica/WinAnsi, Bilder, Vektorpfade).
+
 **Neuen Effekt anlegen:** siehe [effects/README.md](effects/README.md) – nur einen Ordner unter `effects/` anlegen.
 
 ## Referenz-Hardware
@@ -213,3 +228,6 @@ Eine neue Phase beginnt nur nach ausdrücklicher Freigabe durch den Nutzer.
   Leinwand-px. Die Leinwandgröße ist die des ersten Bildes und lässt sich nicht ändern.
 - Kürzel ⌘] / ⌘[ werden nach dem Zeichen erkannt: auf deutscher Mac-Tastatur ⌘⌥6 / ⌘⌥5 (oder die Pfeil-Knöpfe der Ebenenliste).
 - Browser-Kürzel (⌘0, ⌘E, ⌘O, ⌘S) werden per `preventDefault` abgefangen; in Playwright getestet, im echten Chrome manuell zu prüfen.
+- Malplan: Werte- und Farbhilfen sind Rasterbilder (lange Kante 1600 px), nur die Konturvorlage ist Vektor. Die Maltechnik
+  wirkt erst mit dem Schichtplan (E4). Beamer-Ecken beziehen sich auf das Beamer-Fenster.
+- Lange Testläufe brauchen einen wachen Rechner: im Akkubetrieb mit geschlossenem Deckel schläft der Mac (Stolperstein S23).
