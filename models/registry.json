@@ -122,6 +122,50 @@
       "checkedAt": "2026-10-14"
     },
     {
+      "id": "sam2.1-tiny",
+      "family": "sam2",
+      "name": "SAM 2.1 Hiera Tiny",
+      "task": "points",
+      "runtime": "browser",
+      "license": "Apache-2.0",
+      "commercialUse": true,
+      "source": "https://huggingface.co/onnx-community/sam2.1-hiera-tiny-ONNX",
+      "revision": "814a066640debee5a91e70aa401fb8e17e030503",
+      "files": [
+        {
+          "name": "sam2.1-tiny-vision_encoder_fp16.onnx",
+          "url": "https://huggingface.co/onnx-community/sam2.1-hiera-tiny-ONNX/resolve/814a066640debee5a91e70aa401fb8e17e030503/onnx/vision_encoder_fp16.onnx",
+          "sha256": "7773e79d589dada8e1e630cc7eb18b17b2c5b4faeb1eaab5ebf9df618ecbd50a",
+          "size": 314925
+        },
+        {
+          "name": "sam2.1-tiny-vision_encoder_fp16.onnx_data",
+          "url": "https://huggingface.co/onnx-community/sam2.1-hiera-tiny-ONNX/resolve/814a066640debee5a91e70aa401fb8e17e030503/onnx/vision_encoder_fp16.onnx_data",
+          "sha256": "a4dd3759e9b6a476d991fb3493787992e78777e51462695e1bede71ae258103e",
+          "size": 67005504
+        },
+        {
+          "name": "sam2.1-tiny-prompt_encoder_mask_decoder_fp16.onnx",
+          "url": "https://huggingface.co/onnx-community/sam2.1-hiera-tiny-ONNX/resolve/814a066640debee5a91e70aa401fb8e17e030503/onnx/prompt_encoder_mask_decoder_fp16.onnx",
+          "sha256": "00ac7200451f246e8307aa1a1648113f47dc45625738406403a0e6b86c69fc55",
+          "size": 229799
+        },
+        {
+          "name": "sam2.1-tiny-prompt_encoder_mask_decoder_fp16.onnx_data",
+          "url": "https://huggingface.co/onnx-community/sam2.1-hiera-tiny-ONNX/resolve/814a066640debee5a91e70aa401fb8e17e030503/onnx/prompt_encoder_mask_decoder_fp16.onnx_data",
+          "sha256": "027b457a53f5bd76bb401c59555448451d04b4eab6d2f6a6758406b40133ee2c",
+          "size": 10454016
+        }
+      ],
+      "input": {
+        "size": 1024,
+        "mean": [0.485, 0.456, 0.406],
+        "std": [0.229, 0.224, 0.225]
+      },
+      "checkedAt": "2026-10-18",
+      "$note": "ONNX-Export (fp16, externe Gewichte) von facebook/sam2.1-hiera-tiny (Apache-2.0, Code und Gewichte). Bild auf 1024 × 1024 gestreckt; Klickpunkte im 1024er-Raum; Ausgabe 3 Masken 256 × 256 (Logits) mit IoU-Schätzung."
+    },
+    {
       "id": "birefnet",
       "family": "birefnet",
       "name": "BiRefNet (voll)",

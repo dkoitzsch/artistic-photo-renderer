@@ -113,6 +113,12 @@ export function BrushPanel() {
           />
         </>
       )}
+      {tool === 'smart' && (
+        <p className="section-note">
+          Klick auf ein Objekt = dazu, Alt-Klick = nicht dazu, ⇧-Klick = neues Objekt. Danach mit dem Pinsel
+          (B) verfeinern.
+        </p>
+      )}
       {(brush.target === 'selection' || tool === 'smart') && (
         <>
           <ColorControl

@@ -40,6 +40,7 @@ import {
   type FocusPoint,
   type LicenseMode,
   type MaskEdge,
+  type MaskRef,
   type Project,
 } from './project';
 import { getProject, newHistory, useAppStore } from './store';
@@ -421,6 +422,16 @@ export function clearPaintCommand(layerId: string, target: PaintTarget): void {
       }
       return withStrokes(l, target, []);
     }),
+  );
+}
+
+/** Markierung setzen (z. B. Ergebnis der Smarten Auswahl); Striche bleiben erhalten. */
+export function setSelectionCommand(layerId: string, base: MaskRef, clicks: number[], label: string): void {
+  commit(label, (p) =>
+    updateLayer(p, layerId, (l) => ({
+      ...l,
+      selection: { base, strokes: l.selection?.strokes ?? [], clicks },
+    })),
   );
 }
 

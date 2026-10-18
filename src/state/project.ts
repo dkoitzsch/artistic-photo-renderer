@@ -83,7 +83,12 @@ export type BrushStroke = {
 };
 
 /** Maske aus Grundmaske und Pinselstrichen darüber (Markierung, Lochbereich). */
-export type PaintedMask = { base: MaskRef; strokes: BrushStroke[] };
+export type PaintedMask = {
+  base: MaskRef;
+  strokes: BrushStroke[];
+  /** Klicks der Smarten Auswahl [x, y, 1 = dazu / 0 = nicht dazu, …] in Ebenen-px; base ist ihr Ergebnis */
+  clicks?: number[];
+};
 
 export type FocusMapSpec = {
   points: FocusPoint[];

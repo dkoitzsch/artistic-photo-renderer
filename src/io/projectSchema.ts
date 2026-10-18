@@ -100,6 +100,11 @@ function checkPainted(v: unknown, where: string): void {
   if (!isObj(v)) fail(`${where} unvollständig`);
   checkMaskRef(v.base, `${where}.base`);
   checkStrokes(v.strokes, `${where}.strokes`);
+  if (
+    v.clicks !== undefined &&
+    (!Array.isArray(v.clicks) || v.clicks.length % 3 !== 0 || !v.clicks.every(isNum))
+  )
+    fail(`${where}.clicks unvollständig`);
 }
 
 function checkLayer(n: Record<string, unknown>, where: string, originals: Record<string, unknown>): void {

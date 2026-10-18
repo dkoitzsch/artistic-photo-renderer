@@ -133,6 +133,13 @@ const SHORTCUTS: Shortcut[] = [
     },
   },
   {
+    key: 'w',
+    meta: false,
+    run: () => {
+      useAppStore.getState().setTool('smart');
+    },
+  },
+  {
     key: 'b',
     meta: false,
     run: () => {

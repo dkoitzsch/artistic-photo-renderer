@@ -9,7 +9,7 @@ Nutzer am 18.10.2026 („Phase 5 und dann E3 umsetzen“). Push nach Abschluss d
       `empty`; Rasterisierung der Striche auf der GPU (Tupfer mit Weichheit, Fluss, Druck), im Ebenenraum gecacht
 - [x] 2. Pinsel-Werkzeug (B): Ziel Markierung/Maske/Fokuskarte, Größe 1–800 px ([ ]), Weichheit, Fluss,
       Hinzufügen/Entfernen (Alt), Glättung, Stiftdruck; Farbschleier (Farbe, ~40 %), Pinselkreis
-- [ ] 3. Smarte Auswahl (SAM 2.1 tiny im Browser): Positiv-/Negativ-Klicks, Ergebnis als Markierung, danach mit dem
+- [x] 3. Smarte Auswahl (SAM 2.1 tiny im Browser): Positiv-/Negativ-Klicks, Ergebnis als Markierung, danach mit dem
       Pinsel verfeinern; Modell im Register und in MODELS.md
 - [ ] 4. Aktionen: Hervorheben (neue Ebene darüber, optional Lochfüllung im Quell-Layer), Extrahieren, Markierung
       löschen/umkehren, „Layer auf Original zurücksetzen“

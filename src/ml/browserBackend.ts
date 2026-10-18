@@ -62,7 +62,10 @@ function request(
   const id = nextId++;
   return new Promise((resolve, reject) => {
     pending.set(id, { resolve, reject, onProgress });
-    getWorker().postMessage({ ...req, id, mirror: modelMirror() }, 'image' in req ? [req.image] : []);
+    getWorker().postMessage(
+      { ...req, id, mirror: modelMirror() },
+      'image' in req && req.image instanceof ImageBitmap ? [req.image] : [],
+    );
   });
 }
 
@@ -106,4 +109,26 @@ export async function browserDownload(cmd: DownloadCommand, modelId?: string): P
     () => undefined,
   );
   if (res.type !== 'done') throw new Error('Unerwartete Antwort des ML-Workers.');
+}
+
+/**
+ * Smarte Auswahl (SAM) im Browser: Maske 0..1 (256 × 256 über das gestreckte Bild) zu Klickpunkten (normiert,
+ * Kennung 1/0). Bildmerkmale je key bleiben im Worker; fehlen sie, wird image() einmal angefordert.
+ */
+export async function browserSam(
+  model: ModelEntry,
+  key: string,
+  image: () => Promise<ImageBitmap>,
+  points: [number, number, number][],
+  licenseMode: LicenseMode,
+  onProgress: (p: Progress) => void,
+): Promise<{ mask: Float32Array; width: number; height: number; ms: number }> {
+  let res = await request({ type: 'sam', modelId: model.id, licenseMode, key, points }, onProgress);
+  if (res.type === 'sam-need-image')
+    res = await request(
+      { type: 'sam', modelId: model.id, licenseMode, key, points, image: await image() },
+      onProgress,
+    );
+  if (res.type !== 'sam-result') throw new Error('Unerwartete Antwort des ML-Workers.');
+  return res;
 }

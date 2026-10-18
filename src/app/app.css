@@ -2348,3 +2348,40 @@ button:disabled {
   max-height: calc(100% - 2 * var(--space-4));
   overflow: auto;
 }
+
+.smart-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  cursor: crosshair;
+}
+
+.smart-overlay.busy {
+  cursor: progress;
+}
+
+.smart-mark {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1;
+  color: #fff;
+  box-shadow:
+    0 0 0 2px rgb(255 255 255 / 0.9),
+    0 1px 4px rgb(0 0 0 / 0.5);
+  pointer-events: none;
+}
+
+.smart-mark.positive {
+  background: #22a35a;
+}
+
+.smart-mark.negative {
+  background: #d23b3b;
+}

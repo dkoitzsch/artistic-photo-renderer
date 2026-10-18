@@ -233,6 +233,117 @@ async function segment(
   return { mask, width: W, height: H };
 }
 
+// ---------- Smarte Auswahl (SAM 2.1) ----------
+
+type SamPair = { encoder: ort.InferenceSession; decoder: ort.InferenceSession };
+const samSessions = new Map<string, Promise<SamPair>>();
+/** Bildmerkmale je Schlüssel (wenige, sie sind groß: ≈ 10 MB je Bild) */
+const samEmbeddings = new Map<string, ort.Tensor[]>();
+const SAM_EMBEDDINGS_MAX = 3;
+
+/** Datei eines Modells nach dem Namensende (z. B. „vision_encoder_fp16.onnx“) */
+function samFile(model: ModelEntry, suffix: string): ModelFile {
+  const f = model.files?.find((x) => x.name.endsWith(suffix));
+  if (!f) throw new Error(`${model.name}: Datei ${suffix} fehlt im Register.`);
+  return f;
+}
+
+function samPair(model: ModelEntry, onProgress: (p: Progress) => void): Promise<SamPair> {
+  let s = samSessions.get(model.id);
+  if (!s) {
+    s = (async () => {
+      const load = async (name: string) => {
+        const graph = await fetchModelFile(samFile(model, `${name}.onnx`), onProgress);
+        const data = await fetchModelFile(samFile(model, `${name}.onnx_data`), onProgress);
+        onProgress({ stage: 'load', label: model.name, loaded: 0, total: 1 });
+        await prepareOrtDevice();
+        // externe Gewichte unter dem Namen, auf den das Modell verweist
+        return ort.InferenceSession.create(graph, {
+          executionProviders: ['webgpu'],
+          graphOptimizationLevel: 'all',
+          logSeverityLevel: 3,
+          externalData: [{ path: `${name}.onnx_data`, data }],
+        });
+      };
+      const encoder = await load('vision_encoder_fp16');
+      const decoder = await load('prompt_encoder_mask_decoder_fp16');
+      onProgress({ stage: 'load', label: model.name, loaded: 1, total: 1 });
+      return { encoder, decoder };
+    })();
+    s.catch(() => samSessions.delete(model.id));
+    samSessions.set(model.id, s);
+  }
+  return s;
+}
+
+async function samEncode(model: ModelEntry, pair: SamPair, image: ImageBitmap): Promise<ort.Tensor[]> {
+  const input = model.input;
+  if (!input) throw new Error(`${model.name}: Eingabeformat fehlt im Register.`);
+  const S = input.size;
+  const canvas = new OffscreenCanvas(S, S);
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) throw new Error('2D-Kontext im Worker nicht verfügbar.');
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(image, 0, 0, S, S);
+  const px = ctx.getImageData(0, 0, S, S).data;
+  const chw = new Float32Array(3 * S * S);
+  const [m0 = 0, m1 = 0, m2 = 0] = input.mean;
+  const [s0 = 1, s1 = 1, s2 = 1] = input.std;
+  for (let i = 0; i < S * S; i++) {
+    chw[i] = ((px[i * 4] ?? 0) / 255 - m0) / s0;
+    chw[S * S + i] = ((px[i * 4 + 1] ?? 0) / 255 - m1) / s1;
+    chw[2 * S * S + i] = ((px[i * 4 + 2] ?? 0) / 255 - m2) / s2;
+  }
+  const out = await pair.encoder.run({ pixel_values: new ort.Tensor('float32', chw, [1, 3, S, S]) });
+  const e = ['image_embeddings.0', 'image_embeddings.1', 'image_embeddings.2'].map((n) => out[n]);
+  if (e.some((t) => !t)) throw new Error(`${model.name}: Bildmerkmale fehlen.`);
+  return e as ort.Tensor[];
+}
+
+async function samDecode(
+  model: ModelEntry,
+  pair: SamPair,
+  emb: ort.Tensor[],
+  points: [number, number, number][],
+): Promise<{ mask: Float32Array; width: number; height: number }> {
+  const S = model.input?.size ?? 1024;
+  const n = Math.max(1, points.length);
+  const coords = new Float32Array(n * 2);
+  const labels = new BigInt64Array(n);
+  points.forEach(([x, y, l], i) => {
+    coords[i * 2] = x * S;
+    coords[i * 2 + 1] = y * S;
+    labels[i] = BigInt(l);
+  });
+  const [e0, e1, e2] = emb;
+  if (!e0 || !e1 || !e2) throw new Error('Bildmerkmale unvollständig.');
+  const out = await pair.decoder.run({
+    input_points: new ort.Tensor('float32', coords, [1, 1, n, 2]),
+    input_labels: new ort.Tensor('int64', labels, [1, 1, n]),
+    input_boxes: new ort.Tensor('float32', new Float32Array(0), [1, 0, 4]),
+    'image_embeddings.0': e0,
+    'image_embeddings.1': e1,
+    'image_embeddings.2': e2,
+  });
+  const iou = out.iou_scores;
+  const masks = out.pred_masks;
+  if (!iou || !masks) throw new Error(`${model.name}: keine Maske.`);
+  const scores = tensorToFloat32(iou);
+  let best = 0;
+  for (let i = 1; i < scores.length; i++) if ((scores[i] ?? 0) > (scores[best] ?? 0)) best = i;
+  const dims = masks.dims;
+  const h = dims[dims.length - 2] ?? 256;
+  const w = dims[dims.length - 1] ?? 256;
+  const raw = tensorToFloat32(masks);
+  const mask = new Float32Array(w * h);
+  const off = best * w * h;
+  for (let i = 0; i < w * h; i++) mask[i] = 1 / (1 + Math.exp(-(raw[off + i] ?? 0)));
+  iou.dispose();
+  masks.dispose();
+  out.object_score_logits?.dispose();
+  return { mask, width: w, height: h };
+}
+
 // ---------- Tiefe (Depth Anything) ----------
 
 /**
@@ -394,6 +505,7 @@ async function handleDownloads(req: Extract<WorkerRequest, { type: 'downloads' }
         break;
       case 'delete':
         sessions.delete(model.id);
+        samSessions.delete(model.id);
         await downloads.remove(f.name);
         break;
     }
@@ -416,6 +528,39 @@ self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
     post({ type: 'progress', id: req.id, progress });
   };
   const t0 = performance.now();
+  if (req.type === 'sam') {
+    try {
+      const model = modelById(req.modelId);
+      if (!model || model.runtime !== 'browser')
+        throw new Error(`Unbekanntes Browser-Modell ${req.modelId}.`);
+      assertAllowed(model, req.licenseMode);
+      const pair = await samPair(model, onProgress);
+      let emb = samEmbeddings.get(req.key);
+      if (!emb) {
+        if (!req.image) {
+          post({ type: 'sam-need-image', id: req.id });
+          return;
+        }
+        onProgress({ stage: 'infer', label: model.name, loaded: 0, total: 1 });
+        emb = await samEncode(model, pair, req.image);
+        samEmbeddings.set(req.key, emb);
+        while (samEmbeddings.size > SAM_EMBEDDINGS_MAX) {
+          const oldest = samEmbeddings.keys().next().value;
+          if (oldest === undefined) break;
+          for (const t of samEmbeddings.get(oldest) ?? []) t.dispose();
+          samEmbeddings.delete(oldest);
+        }
+      }
+      const r = await samDecode(model, pair, emb, req.points);
+      onProgress({ stage: 'infer', label: model.name, loaded: 1, total: 1 });
+      post({ type: 'sam-result', id: req.id, ...r, ms: performance.now() - t0 }, [r.mask.buffer]);
+    } catch (err) {
+      post({ type: 'error', id: req.id, message: err instanceof Error ? err.message : String(err) });
+    } finally {
+      req.image?.close();
+    }
+    return;
+  }
   try {
     if (req.type === 'segment' || req.type === 'depth') {
       const model = modelById(req.modelId);

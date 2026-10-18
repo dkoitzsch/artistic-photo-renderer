@@ -8,6 +8,7 @@ import type { BrushSettings } from '../../state/store';
 import { paintLayerOf } from './BrushOverlay';
 import { BrushOverlay } from './BrushOverlay';
 import { BrushPanel } from './BrushPanel';
+import { SmartSelectOverlay } from './SmartSelectOverlay';
 import { getEngine } from '../../render/runtime';
 import { useAppStore, useProject } from '../../state/store';
 import { panBy, zoomBy } from '../../state/viewActions';
@@ -283,6 +284,7 @@ export function CanvasView({ theme }: { theme: 'light' | 'dark' }) {
       <TransformOverlay />
       <FocusOverlay />
       <BrushOverlay />
+      <SmartSelectOverlay />
       <BrushPanel />
       <ParallaxPanel />
       <AnalysisPanel />
