@@ -1,6 +1,6 @@
 // Erzeugt den passenden Regler aus einer Parameterbeschreibung des Manifests.
 
-import type { ParamSpec, ParamValue, Rgb } from '../../effects/manifest';
+import { DEFAULT_TEXT_LENGTH, type ParamSpec, type ParamValue, type Rgb } from '../../effects/manifest';
 import { paletteOf } from '../../effects/layout';
 import { ImageControl } from './ImageControl';
 import { PaletteControl } from './PaletteControl';
@@ -9,6 +9,7 @@ import { ColorControl } from './ColorControl';
 import { EnumControl } from './EnumControl';
 import { PointControl } from './PointControl';
 import { Slider } from './Slider';
+import { TextControl } from './TextControl';
 import { Toggle } from './Toggle';
 
 export function ParamControl({
@@ -127,6 +128,18 @@ export function ParamControl({
           }}
           testId={`param-${spec.key}`}
           {...(extractPalette ? { extract: extractPalette } : {})}
+        />
+      );
+    case 'text':
+      return (
+        <TextControl
+          label={spec.label}
+          value={typeof v === 'string' ? v : spec.default}
+          maxLength={spec.maxLength ?? DEFAULT_TEXT_LENGTH}
+          onChange={(t) => {
+            onChange(t, false);
+          }}
+          testId={`param-${spec.key}`}
         />
       );
     case 'image':

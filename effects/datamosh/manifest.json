@@ -1,0 +1,95 @@
+{
+  "id": "datamosh",
+  "name": "Datamosh",
+  "version": "1.0.0",
+  "category": "Digital & Glitch",
+  "description": "JPEG- und Block-Korruption: echte 8×8-DCT mit grober Quantisierung, verschobene Blöcke wie fehlende Videobilder, Farbfehler.",
+  "inputs": ["source"],
+  "passes": 3,
+  "implementations": { "preview": "webgpu", "final": "webgpu" },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung; Quantisierungstabellen aus ITU-T T.81 (JPEG), Anhang K."
+  },
+  "cost": "realtime",
+  "randomized": true,
+  "requires": [],
+  "params": [
+    {
+      "key": "blockSize",
+      "label": "Blockgröße",
+      "type": "float",
+      "min": 4,
+      "max": 128,
+      "default": 16,
+      "step": 1,
+      "unit": "px",
+      "scale": "log"
+    },
+    {
+      "key": "quality",
+      "label": "JPEG-Qualität",
+      "hint": "Qualität für alle Blöcke – niedrig = deutliche Blockartefakte",
+      "type": "float",
+      "min": 1,
+      "max": 100,
+      "default": 35,
+      "step": 1
+    },
+    {
+      "key": "amount",
+      "label": "Betroffene Blöcke",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 25,
+      "unit": "%"
+    },
+    {
+      "key": "smear",
+      "label": "Verschiebung",
+      "hint": "Betroffene Blöcke zeigen Inhalt von anderer Stelle (wie fehlende Schlüsselbilder im Video)",
+      "type": "float",
+      "min": 0,
+      "max": 400,
+      "default": 48,
+      "step": 1,
+      "unit": "px",
+      "scale": "log"
+    },
+    {
+      "key": "crush",
+      "label": "Zerstörung",
+      "hint": "Wie grob betroffene Blöcke quantisiert werden",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 70,
+      "unit": "%"
+    },
+    {
+      "key": "colorGlitch",
+      "label": "Farbfehler",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 35,
+      "unit": "%"
+    }
+  ],
+  "reach": "blockSize * 2 + smear + 4",
+  "presets": [
+    {
+      "name": "Kaputte JPEG-Datei",
+      "values": { "blockSize": 16, "quality": 12, "amount": 15, "smear": 0, "crush": 85, "colorGlitch": 60 }
+    },
+    {
+      "name": "Datamosh-Video",
+      "values": { "blockSize": 24, "quality": 40, "amount": 45, "smear": 120, "crush": 50, "colorGlitch": 25 }
+    },
+    {
+      "name": "Leichte Kompression",
+      "values": { "blockSize": 8, "quality": 20, "amount": 0, "smear": 0, "crush": 0, "colorGlitch": 0 }
+    }
+  ]
+}

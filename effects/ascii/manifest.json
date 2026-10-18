@@ -1,0 +1,151 @@
+{
+  "id": "ascii",
+  "name": "ASCII- & Text-Art",
+  "version": "1.0.0",
+  "category": "Digital & Glitch",
+  "description": "Setzt das Bild aus Zeichen zusammen – nach Helligkeit gewählt oder als fortlaufender eigener Text, einfarbig oder in Bildfarben.",
+  "inputs": ["source"],
+  "passes": 1,
+  "implementations": { "preview": "webgpu", "final": "webgpu" },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung. Glyphen aus Inter (OFL-1.1, mitgeliefert) bzw. Systemschriften gerendert."
+  },
+  "cost": "realtime",
+  "randomized": false,
+  "requires": [],
+  "params": [
+    {
+      "key": "charset",
+      "label": "Zeichensatz",
+      "type": "enum",
+      "options": [
+        { "value": "standard", "label": "Standard" },
+        { "value": "fine", "label": "Fein (70 Zeichen)" },
+        { "value": "blocks", "label": "Blöcke" },
+        { "value": "binary", "label": "0 und 1" },
+        { "value": "dots", "label": "Punkte" },
+        { "value": "text", "label": "Eigener Text" }
+      ],
+      "default": "standard"
+    },
+    { "key": "text", "label": "Text", "type": "text", "default": "BLUR & LAYER STUDIO · ", "maxLength": 400 },
+    {
+      "key": "cellSize",
+      "label": "Zeichengröße",
+      "hint": "Zeilenhöhe; die Zeichenbreite ist 60 % davon",
+      "type": "float",
+      "min": 4,
+      "max": 96,
+      "default": 12,
+      "step": 0.5,
+      "unit": "px",
+      "scale": "log"
+    },
+    {
+      "key": "colorMode",
+      "label": "Farbe",
+      "type": "enum",
+      "options": [
+        { "value": "mono", "label": "Einfarbig" },
+        { "value": "image", "label": "Bildfarben" }
+      ],
+      "default": "mono"
+    },
+    { "key": "ink", "label": "Schriftfarbe", "type": "color", "default": [0.08, 0.08, 0.08] },
+    { "key": "paper", "label": "Hintergrund", "type": "color", "default": [0.97, 0.96, 0.93] },
+    {
+      "key": "invert",
+      "label": "Hell auf dunkel",
+      "hint": "Helle Bildstellen bekommen dichte Zeichen (für dunklen Hintergrund)",
+      "type": "bool",
+      "default": false
+    },
+    {
+      "key": "font",
+      "label": "Schrift",
+      "type": "enum",
+      "options": [
+        { "value": "mono", "label": "Monospace" },
+        { "value": "sans", "label": "Inter" },
+        { "value": "serif", "label": "Serif" }
+      ],
+      "default": "mono"
+    },
+    {
+      "key": "contrast",
+      "label": "Kontrast",
+      "type": "float",
+      "min": -100,
+      "max": 100,
+      "default": 20,
+      "unit": "%"
+    },
+    {
+      "key": "weight",
+      "label": "Strichstärke",
+      "type": "enum",
+      "options": [
+        { "value": "400", "label": "Normal" },
+        { "value": "700", "label": "Fett" }
+      ],
+      "default": "400",
+      "group": "Erweitert"
+    }
+  ],
+  "visibleIf": { "text": "charset=text", "ink": "colorMode=mono" },
+  "reach": "cellSize + 2",
+  "presets": [
+    {
+      "name": "Klassisch",
+      "values": {
+        "charset": "standard",
+        "cellSize": 12,
+        "colorMode": "mono",
+        "ink": [0.08, 0.08, 0.08],
+        "paper": [0.97, 0.96, 0.93],
+        "invert": false,
+        "font": "mono",
+        "contrast": 20
+      }
+    },
+    {
+      "name": "Terminal",
+      "values": {
+        "charset": "fine",
+        "cellSize": 10,
+        "colorMode": "mono",
+        "ink": [0.25, 1, 0.4],
+        "paper": [0.02, 0.04, 0.03],
+        "invert": true,
+        "font": "mono",
+        "contrast": 30
+      }
+    },
+    {
+      "name": "Farbiger Text",
+      "values": {
+        "charset": "text",
+        "cellSize": 14,
+        "colorMode": "image",
+        "paper": [0.04, 0.04, 0.05],
+        "invert": true,
+        "font": "sans",
+        "contrast": 10
+      }
+    },
+    {
+      "name": "Matrix",
+      "values": {
+        "charset": "binary",
+        "cellSize": 11,
+        "colorMode": "mono",
+        "ink": [0.3, 0.95, 0.35],
+        "paper": [0, 0, 0],
+        "invert": true,
+        "font": "mono",
+        "contrast": 35
+      }
+    }
+  ]
+}

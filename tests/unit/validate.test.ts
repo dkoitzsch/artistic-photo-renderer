@@ -142,6 +142,31 @@ describe('validateManifest', () => {
     expect(r.manifest.requires).toEqual(['edges']);
   });
 
+  it('prüft Text-Parameter (Länge, maxLength)', () => {
+    const ok = validateManifest(
+      { ...base(), params: [{ key: 'text', label: 'Text', type: 'text', default: 'ÄÖÜ ✓', maxLength: 5 }] },
+      'echo-offset',
+    );
+    expect(ok.ok).toBe(true);
+    const bad = validateManifest(
+      {
+        ...base(),
+        params: [
+          { key: 't1', label: 'T', type: 'text', default: 'zu lang', maxLength: 3 },
+          { key: 't2', label: 'T', type: 'text', default: 3 },
+          { key: 't3', label: 'T', type: 'text', default: '', maxLength: 0 },
+        ],
+      },
+      'echo-offset',
+    );
+    expect(bad.ok).toBe(false);
+    if (bad.ok) return;
+    const msg = bad.errors.join('\n');
+    expect(msg).toMatch(/länger als 3 Zeichen/);
+    expect(msg).toMatch(/"default" muss ein Text sein/);
+    expect(msg).toMatch(/"maxLength" muss eine ganze Zahl/);
+  });
+
   it('lehnt WGSL-Schlüsselwörter als Parameternamen ab', () => {
     const r = validateManifest(
       { ...base(), params: [{ key: 'smooth', label: 'Glätten', type: 'float', min: 0, max: 1, default: 0 }] },

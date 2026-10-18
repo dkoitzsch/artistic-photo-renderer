@@ -1,6 +1,7 @@
 // Führt Effekt-Plugins auf der GPU aus: Kompilierung (mit Fehlermeldungen fürs UI),
 // Uniforms aus dem Manifest, ein- und mehrstufige Pässe, Mischung nach strength/region.
 
+import { GlyphCache } from './glyphs';
 import type { EffectContext, PassOptions } from '../effects/api';
 import { packUniforms, shaderValue } from '../effects/layout';
 import type { ParamValue } from '../effects/manifest';
@@ -49,8 +50,10 @@ export class EffectRunner {
   private readonly compiled = new Map<string, Compiled>();
   private readonly bindGroupLayout: GPUBindGroupLayout;
   private readonly pipelineLayout: GPUPipelineLayout;
+  private readonly glyphCache: GlyphCache;
 
   constructor(private readonly core: GpuCore) {
+    this.glyphCache = new GlyphCache(core.device);
     const tex = (binding: number): GPUBindGroupLayoutEntry => ({
       binding,
       visibility: GPUShaderStage.COMPUTE,
@@ -229,6 +232,7 @@ export class EffectRunner {
           temps.push(t);
           return t;
         },
+        glyphs: (chars, font, weight) => this.glyphCache.get(chars, font, weight),
         run: runPass,
       };
       try {

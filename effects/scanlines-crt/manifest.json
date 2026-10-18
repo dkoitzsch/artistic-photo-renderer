@@ -1,0 +1,150 @@
+{
+  "id": "scanlines-crt",
+  "name": "Röhrenbild & VHS",
+  "version": "1.0.0",
+  "category": "Digital & Glitch",
+  "description": "Röhrenmonitor oder Videokassette: Zeilen, Lochmaske, gewölbte Scheibe, Farbbluten, Rauschen und Spurfehler.",
+  "inputs": ["source"],
+  "passes": 1,
+  "implementations": { "preview": "webgpu", "final": "webgpu" },
+  "license": { "commercialUse": true, "notes": "Eigene Implementierung." },
+  "cost": "realtime",
+  "randomized": true,
+  "requires": [],
+  "params": [
+    {
+      "key": "lineSpacing",
+      "label": "Zeilenabstand",
+      "type": "float",
+      "min": 1.5,
+      "max": 24,
+      "default": 4,
+      "step": 0.1,
+      "unit": "px",
+      "scale": "log"
+    },
+    {
+      "key": "lineStrength",
+      "label": "Zeilen",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 45,
+      "unit": "%"
+    },
+    {
+      "key": "maskStrength",
+      "label": "Lochmaske",
+      "hint": "Feine senkrechte Rot-Grün-Blau-Streifen wie bei einer Bildröhre",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 25,
+      "unit": "%"
+    },
+    {
+      "key": "curvature",
+      "label": "Wölbung",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 20,
+      "unit": "%"
+    },
+    {
+      "key": "bleed",
+      "label": "Farbbluten",
+      "hint": "Farbe verläuft waagerecht, Helligkeit bleibt scharf (wie bei Video)",
+      "type": "float",
+      "min": 0,
+      "max": 60,
+      "default": 4,
+      "step": 0.1,
+      "unit": "px",
+      "scale": "log"
+    },
+    {
+      "key": "noise",
+      "label": "Rauschen",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 12,
+      "unit": "%"
+    },
+    {
+      "key": "tracking",
+      "label": "Spurfehler",
+      "hint": "Waagerecht verschobene Streifen wie bei einer abgenutzten Videokassette",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 0,
+      "unit": "%"
+    },
+    {
+      "key": "vignette",
+      "label": "Vignette",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 35,
+      "unit": "%"
+    },
+    {
+      "key": "glow",
+      "label": "Leuchten",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 20,
+      "unit": "%",
+      "group": "Erweitert"
+    }
+  ],
+  "reach": "curvature / 100 * 0.5 * max(canvasWidth, canvasHeight) + bleed * 3 + tracking / 100 * 0.04 * canvasWidth + lineSpacing + 4",
+  "presets": [
+    {
+      "name": "Röhrenmonitor",
+      "values": {
+        "lineSpacing": 4,
+        "lineStrength": 45,
+        "maskStrength": 30,
+        "curvature": 25,
+        "bleed": 2,
+        "noise": 8,
+        "tracking": 0,
+        "vignette": 40,
+        "glow": 25
+      }
+    },
+    {
+      "name": "VHS-Kassette",
+      "values": {
+        "lineSpacing": 3,
+        "lineStrength": 20,
+        "maskStrength": 0,
+        "curvature": 0,
+        "bleed": 14,
+        "noise": 30,
+        "tracking": 45,
+        "vignette": 15,
+        "glow": 10
+      }
+    },
+    {
+      "name": "Nur Zeilen",
+      "values": {
+        "lineSpacing": 5,
+        "lineStrength": 60,
+        "maskStrength": 0,
+        "curvature": 0,
+        "bleed": 0,
+        "noise": 0,
+        "tracking": 0,
+        "vignette": 0,
+        "glow": 0
+      }
+    }
+  ]
+}

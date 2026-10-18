@@ -14,6 +14,7 @@ export const PARAM_TYPES = [
   'seed',
   'palette',
   'image',
+  'text',
 ] as const;
 export type ParamType = (typeof PARAM_TYPES)[number];
 
@@ -80,6 +81,11 @@ export type SeedParam = ParamBase & { type: 'seed'; default: number };
 export type PaletteParam = ParamBase & { type: 'palette'; default: Rgb[] };
 /** Zweitbild: ID eines Originals im Projekt ("" = keins); im Shader u32 (1 = vorhanden), Textur = src_b. */
 export type ImageParam = ParamBase & { type: 'image'; default: '' };
+/** Freier Text (z. B. für ASCII-Kunst); im Shader u32 = Anzahl Zeichen, der Text selbst über ctx.raw in effect.ts. */
+export type TextParam = ParamBase & { type: 'text'; default: string; maxLength?: number };
+
+/** Höchstlänge eines Text-Parameters ohne eigene Angabe. */
+export const DEFAULT_TEXT_LENGTH = 200;
 
 export type ParamSpec =
   | NumberParam
@@ -90,7 +96,8 @@ export type ParamSpec =
   | PointParam
   | SeedParam
   | PaletteParam
-  | ImageParam;
+  | ImageParam
+  | TextParam;
 
 export type Preset = { name: string; values: Record<string, ParamValue> };
 

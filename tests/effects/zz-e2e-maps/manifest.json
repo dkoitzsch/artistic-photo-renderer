@@ -3,15 +3,9 @@
   "name": "E2E Karten",
   "version": "1.0.0",
   "category": "Test",
-  "inputs": [
-    "source"
-  ],
+  "inputs": ["source"],
   "passes": 1,
-  "requires": [
-    "luminance",
-    "edges",
-    "flow"
-  ],
+  "requires": ["luminance", "edges", "flow"],
   "params": [
     {
       "key": "show",

@@ -156,4 +156,11 @@ describe('Manifest v2: Seed, Palette, Zweitbild', () => {
     if (!image) throw new Error('Parameter fehlt');
     expect(shaderValue(image, '', 1)).toBe(0);
   });
+
+  it('Text-Parameter: u32 mit der Anzahl Zeichen (Unicode-Zeichen, nicht UTF-16-Einheiten)', () => {
+    const spec = { key: 'text', label: 'Text', type: 'text', default: '' } as const;
+    expect(shaderValue(spec, 'Grüße ✓', 1)).toBe(7);
+    expect(shaderValue(spec, '😀a', 1)).toBe(2);
+    expect(shaderValue(spec, undefined, 1)).toBe(0);
+  });
 });

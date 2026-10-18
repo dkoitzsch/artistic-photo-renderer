@@ -14,6 +14,19 @@ export type PassOptions = {
   srcB?: GPUTexture;
 };
 
+export type GlyphFont = 'mono' | 'sans' | 'serif';
+
+/** Glyphen-Atlas: Zeichen in festen Zellen (Zeile für Zeile, `columns` je Zeile); r = Deckung 0..1. */
+export type GlyphAtlas = {
+  texture: GPUTexture;
+  count: number;
+  columns: number;
+  /** Zellgröße einer Glyphe im Atlas in px (Breite, Höhe) */
+  cell: readonly [number, number];
+  /** mittlere Deckung je Glyphe 0..1 (zum Sortieren nach Dichte) */
+  coverage: number[];
+};
+
 export interface EffectContext {
   /** Größe der Ausgabe in px */
   readonly width: number;
@@ -40,6 +53,11 @@ export interface EffectContext {
   texture(width: number, height: number): GPUTexture;
   /** Kern-Gauß (σ = radius / 3, Pyramide für große Radien); dst gleich groß wie src. */
   gaussian(src: GPUTexture, dst: GPUTexture, radius: number, edge?: 'mirror' | 'clamp' | 'transparent'): void;
+  /**
+   * Glyphen-Atlas für Text- und ASCII-Effekte (gecacht). Im Pass als `srcB` übergeben und mit
+   * textureSampleLevel(src_b, linear_sampler, uv, 0.0).r lesen.
+   */
+  glyphs(chars: string, font?: GlyphFont, weight?: number): GlyphAtlas;
   /** Führt einen Compute-Einstiegspunkt aus effect.wgsl aus. */
   run(entryPoint: string, options: PassOptions): void;
 }

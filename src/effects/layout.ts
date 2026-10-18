@@ -46,6 +46,7 @@ function kindOf(p: ParamSpec): FieldKind {
     case 'enum':
     case 'seed':
     case 'image':
+    case 'text':
       return 'u32';
     case 'color':
       return 'vec3f';
@@ -95,6 +96,8 @@ function describe(p: ParamSpec): string {
       return `${p.label} (linear RGB, max. ${MAX_PALETTE})`;
     case 'image':
       return `${p.label} (1 = Zweitbild in src_b)`;
+    case 'text':
+      return `${p.label} (Anzahl Zeichen; Text über ctx.raw)`;
     case 'int':
     case 'float':
       return p.unit === 'px' ? `${p.label} (px, skaliert)` : p.label;
@@ -124,6 +127,8 @@ export function shaderValue(p: ParamSpec, raw: ParamValue | undefined, scale: nu
       return Math.max(0, Math.floor(Number(v))) >>> 0;
     case 'image':
       return typeof v === 'string' && v !== '' ? 1 : 0;
+    case 'text':
+      return typeof v === 'string' ? Array.from(v).length : 0;
     case 'palette':
       return paletteOf(v, p.default).flatMap((c) => [...c.map((x) => srgbToLinear(x)), 1]);
     case 'int':

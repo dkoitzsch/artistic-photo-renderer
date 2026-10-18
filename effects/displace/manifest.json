@@ -1,0 +1,109 @@
+{
+  "id": "displace",
+  "name": "Verschiebung & Slit-Scan",
+  "version": "1.0.0",
+  "category": "Digital & Glitch",
+  "description": "Verschiebt Pixel nach einer Steuerkarte (Helligkeit, Kanten, Tiefe, Richtungsfeld, Rauschen oder ein Zweitbild) – frei oder in Streifen wie beim Slit-Scan.",
+  "inputs": ["source", "depth"],
+  "passes": 1,
+  "implementations": { "preview": "webgpu", "final": "webgpu" },
+  "license": { "commercialUse": true, "notes": "Eigene Implementierung." },
+  "cost": "realtime",
+  "randomized": true,
+  "requires": ["luminance", "edges", "flow"],
+  "params": [
+    {
+      "key": "source",
+      "label": "Steuerkarte",
+      "type": "enum",
+      "options": [
+        { "value": "luminance", "label": "Helligkeit" },
+        { "value": "edges", "label": "Kanten" },
+        { "value": "depth", "label": "Tiefe" },
+        { "value": "flow", "label": "Richtungsfeld" },
+        { "value": "noise", "label": "Rauschen" },
+        { "value": "image", "label": "Zweitbild" }
+      ],
+      "default": "luminance"
+    },
+    { "key": "image", "label": "Zweitbild", "type": "image", "default": "" },
+    {
+      "key": "strength",
+      "label": "Stärke",
+      "type": "float",
+      "min": 0,
+      "max": 600,
+      "default": 40,
+      "step": 0.5,
+      "unit": "px",
+      "scale": "log"
+    },
+    { "key": "angle", "label": "Richtung", "type": "angle", "default": 0 },
+    {
+      "key": "mode",
+      "label": "Modus",
+      "type": "enum",
+      "options": [
+        { "value": "free", "label": "Frei" },
+        { "value": "slit", "label": "Streifen (Slit-Scan)" }
+      ],
+      "default": "free"
+    },
+    {
+      "key": "stripeWidth",
+      "label": "Streifenbreite",
+      "type": "float",
+      "min": 1,
+      "max": 200,
+      "default": 12,
+      "step": 0.5,
+      "unit": "px",
+      "scale": "log"
+    },
+    {
+      "key": "noiseSize",
+      "label": "Rauschgröße",
+      "type": "float",
+      "min": 4,
+      "max": 1000,
+      "default": 120,
+      "step": 1,
+      "unit": "px",
+      "scale": "log"
+    },
+    {
+      "key": "centered",
+      "label": "Um die Mitte",
+      "hint": "An: mittlere Werte bleiben stehen, helle und dunkle verschieben sich gegensinnig. Aus: nur in eine Richtung.",
+      "type": "bool",
+      "default": true,
+      "group": "Erweitert"
+    },
+    { "key": "invert", "label": "Karte umkehren", "type": "bool", "default": false, "group": "Erweitert" }
+  ],
+  "visibleIf": {
+    "image": "source=image",
+    "stripeWidth": "mode=slit",
+    "noiseSize": "source=noise",
+    "angle": "source!=flow"
+  },
+  "reach": "strength + 2",
+  "presets": [
+    {
+      "name": "Schmelzen nach Helligkeit",
+      "values": { "source": "luminance", "strength": 60, "angle": 90, "mode": "free", "centered": false }
+    },
+    {
+      "name": "Slit-Scan",
+      "values": {
+        "source": "noise",
+        "strength": 120,
+        "angle": 0,
+        "mode": "slit",
+        "stripeWidth": 10,
+        "noiseSize": 300
+      }
+    },
+    { "name": "Wirbel entlang der Formen", "values": { "source": "flow", "strength": 30, "mode": "free" } }
+  ]
+}

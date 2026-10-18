@@ -8,6 +8,7 @@ import {
   EFFECT_INPUTS,
   IMPLEMENTATIONS,
   MAX_PALETTE,
+  DEFAULT_TEXT_LENGTH,
   PARAM_TYPES,
   type EffectManifest,
   type ParamSpec,
@@ -144,6 +145,16 @@ export function validateManifest(raw: unknown, folder?: string): ValidationResul
         case 'image':
           if (d !== '') errors.push(`${at}: "default" muss "" sein (kein Bild).`);
           break;
+        case 'text': {
+          const max = p.maxLength;
+          if (max !== undefined && (!isNum(max) || !Number.isInteger(max) || max < 1 || max > 2000))
+            errors.push(`${at}: "maxLength" muss eine ganze Zahl von 1 bis 2000 sein.`);
+          const limit = isNum(max) ? max : DEFAULT_TEXT_LENGTH;
+          if (!isStr(d)) errors.push(`${at}: "default" muss ein Text sein.`);
+          else if (Array.from(d).length > limit)
+            errors.push(`${at}: "default" ist länger als ${limit} Zeichen.`);
+          break;
+        }
         case 'enum': {
           const opts = p.options;
           if (

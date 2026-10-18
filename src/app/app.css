@@ -783,6 +783,7 @@ button:disabled {
 }
 
 .select,
+.text-input,
 .number-input,
 .search-input {
   height: 24px;
@@ -799,6 +800,11 @@ button:disabled {
 
 .number-input {
   width: 64px;
+}
+
+.text-control .text-input {
+  flex: 1;
+  min-width: 0;
 }
 
 .point-control {
