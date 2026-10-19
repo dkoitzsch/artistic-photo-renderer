@@ -409,11 +409,12 @@ Jede Phase endet mit: lauffähigem Stand, grünen Tests, kurzer Änderungsnotiz,
 ✅ Abgenommen am 18.10.2026 – siehe [abnahme-E2.md](abnahme-E2.md).
 
 ### Phase E3 – Tiefe, Semantik & Stil
-- Analysekarten `depth`, `normals`, `segmentation`, `saliency`, `faces` (mit Lizenzprüfung und Modellwahl je Modus)
-- Effekte mit Phase E3, inkl. `relight`, `depth-fog`, `depth-bokeh`, `style-transfer`, `style-per-region`
-- Masken aus Analysekarten und Segmentierung per Klick
-- Abstimmung mit Parallax-Vorschau
+- [x] Analysekarten `depth`, `normals`, `segmentation`, `saliency`, `faces` (mit Lizenzprüfung und Modellwahl je Modus)
+- [x] Effekte mit Phase E3, inkl. `relight`, `depth-fog`, `depth-bokeh`, `style-transfer`, `style-per-region`
+- [x] Masken aus Analysekarten und Segmentierung per Klick
+- [x] Abstimmung mit Parallax-Vorschau
 **Abnahme:** Person per Klick segmentieren, ihr einen anderen Stil geben als dem Hintergrund, Licht nachträglich verschieben, Ergebnis exportieren.
+✅ Abgenommen am 19.10.2026 – siehe [abnahme-E3.md](abnahme-E3.md).
 
 ### Phase E4 – Pigmente, Striche & Malplan komplett
 - Pigment-Engine (Abschnitt 6) mit Pigmentdatenbank

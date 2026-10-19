@@ -19,5 +19,5 @@ Entscheidungen in [DECISIONS.md](../DECISIONS.md) („E3: Analysekarten, Segment
       `style-match` (klassische Stilübertragung, kommerziell); Hinweis zu Stilbildern
 - [x] 7. `style-per-region` („Stil je Bereich“: Region → Effektstapel über das Ebenensystem); Abstimmung mit der
       Parallax-Vorschau (gleiche Tiefenkarte, Tiefe der Bereichsebenen)
-- [ ] 8. Abnahme (Person per Klick segmentieren, anderer Stil als der Hintergrund, Licht verschieben, exportieren),
+- [x] 8. Abnahme (Person per Klick segmentieren, anderer Stil als der Hintergrund, Licht verschieben, exportieren),
       Spec abhaken, CLAUDE.md

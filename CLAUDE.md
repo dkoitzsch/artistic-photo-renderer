@@ -13,10 +13,11 @@ Abgeschlossen: **Phase 0 – Gerüst**, **Phase 1 – Ganzes Bild**, **Phase 2 �
 **Phase 3 – Tiefenebenen und Gruppen**, **Phase 4 – Weitere Bilder**, **Phase 5 – Pinsel** ([docs/abnahme-P5.md](docs/abnahme-P5.md)). Erledigte Punkte werden in der Spec abgehakt.
 
 **Erweiterung „Effekte & Malvorlagen“** ([docs/spec-effekte-und-malvorlagen.md](docs/spec-effekte-und-malvorlagen.md)):
-**Phasen E1 und E2 abgeschlossen** ([docs/plan-E1.md](docs/plan-E1.md), [docs/plan-E2.md](docs/plan-E2.md); Abnahme und
-Demo-Listen: [docs/abnahme-E1.md](docs/abnahme-E1.md), [docs/abnahme-E2.md](docs/abnahme-E2.md); Ideen für später:
+**Phasen E1, E2 und E3 abgeschlossen** ([docs/plan-E1.md](docs/plan-E1.md), [docs/plan-E2.md](docs/plan-E2.md),
+[docs/plan-E3.md](docs/plan-E3.md); Abnahme und Demo-Listen: [docs/abnahme-E1.md](docs/abnahme-E1.md),
+[docs/abnahme-E2.md](docs/abnahme-E2.md), [docs/abnahme-E3.md](docs/abnahme-E3.md); Ideen für später:
 [docs/optimierungen-und-varianten.md](docs/optimierungen-und-varianten.md)).
-Nächste: **E3** (freigegeben 18.10.2026), danach E4, E5. Danach `docs/spec-ml-fotobearbeitung.md` (nicht anfassen).
+Nächste (wartet auf Freigabe): E4, danach E5. Danach `docs/spec-ml-fotobearbeitung.md` (nicht anfassen).
 Nach jedem Schritt: Tests, [PROGRESS.md](PROGRESS.md) nachführen (Stand, offene Punkte, Logbuch, Stolpersteine, Messwerte), Commit, Push.
 
 ## Ordnerstruktur (✓ = existiert)
@@ -203,7 +204,7 @@ Autosave (`io/autosave.ts`) beobachtet den Store und schreibt ins OPFS.
   `resetLayerCommand`; Anzeige: Überlagerung 7 = Farbschleier.
 - SAM: `ml/smartSelect.ts` → ML-Worker (`sam`-Anfrage, Bildmerkmale je Original gecacht) → `refineMask` → gespeicherte Maske.
 
-**Erweiterung E3 (Tiefe, Semantik & Stil, in Arbeit):**
+**Erweiterung E3 (Tiefe, Semantik & Stil):**
 
 - Analysekarten aus Modellen je Original: `Project.analysis[originalId]` = {depth, saliency, faces} (Projektformat 9,
   Speicher wie Tiefenkarten), in alle Verlaufseinträge geschrieben (`ml/analysis.ts` `setAnalysisMap`). `startAnalysisWatcher`
@@ -217,7 +218,14 @@ Autosave (`io/autosave.ts`) beobachtet den Store und schreibt ins OPFS.
   (Überlagerung 9), `SegmentSection.tsx`, `ml/segments.ts` (Vordergrund als Segment).
 - `PointHandles.tsx`: ziehbare Griffe für Parameter vom Typ `point` (Werkzeug „Verschieben“).
 - CPU-Effekt-Hilfen `src/effects/cpuHelpers.ts` (Oklab, Messraster, Wertrauschen, Linien zeichnen).
-- Tests: `debug.ts` `ml.injectMap` (synthetische Karten), Golden-Fälle mit `syntheticDepth`.
+- Zweitbild (`image`-Parameter) auch für Worker-/Dienst-Effekte: `ctx.imageB()` bzw. `ctx.image_b` (≤ 1024 px), Dienst-API
+  `imageB`; Hinweis beim Laden über `notice`. `style-match` (Browser-CPU, kommerziell), `style-transfer` (AdaIN im Dienst,
+  nur NC, Gewichte „adain“ mit fester URL + SHA-256 über den Download-Manager des Dienstes).
+- „Stil je Bereich“: `state/regions.ts` (`buildRegionGroup`, `regionDepths`), `styleRegionsCommand`, Dialog
+  `StyleRegionsDialog.tsx` (aus dem Inspektor-Abschnitt „Segmente“), `ml/styleRegions.ts` (Tiefe der Bereichsebenen per
+  `amendPresent`, kein eigener Verlaufsschritt).
+- Tests: `debug.ts` `ml.injectMap` (synthetische Karten), Golden-Fälle mit `syntheticDepth`, Abnahme `acceptanceE3.spec.ts`;
+  `npm run models:fetch` lädt auch die AdaIN-Gewichte (Test-Dienst).
 
 **Neuen Effekt anlegen:** siehe [effects/README.md](effects/README.md) – nur einen Ordner unter `effects/` anlegen.
 
@@ -249,8 +257,10 @@ Eine neue Phase beginnt nur nach ausdrücklicher Freigabe durch den Nutzer.
   Änderungen an bestehenden Plugin-Dateien laden ohne Neuladen nach. Ein Produktions-Build braucht für neue Plugins einen Neubau.
 - Die Anzeige zeigt die Vorschau (≤ 2048 px); beim Hineinzoomen folgt nach 150 ms Ruhe der sichtbare Ausschnitt in voller Auflösung (nicht bei Worker-/Dienst-Effekten und Parallax).
 - Ist der Dienst aus, meldet die Browser-Konsole alle 20 s einen fehlgeschlagenen `/health`-Aufruf (ML-Modus „Browser“ vermeidet das).
-- Tiefenebenen „objekttreu“ (SAM-Objekte) fehlt noch (folgt mit der Segmentierung in E3). Die Tiefe einer Ebene ist für
-  Parallax die Bandmitte.
+- Tiefenebenen „objekttreu“ (SAM-Objekte, Basis-Spec Phase 6) fehlt noch. Die Tiefe einer Ebene ist für Parallax die
+  Bandmitte bzw. bei „Stil je Bereich“ die mittlere Tiefe des Bereichs.
+- Analysekarten aus Modellen nutzen Depth Anything Small; Salienz ist eine weiche 320er-Karte. „Stil übertragen (KI)“ braucht
+  Dienst + AdaIN-Gewichte (nur Modus „Alle“). „Stil je Bereich“ legt Bereiche einmalig als Ebenen an.
 - Smarte Auswahl: ein Klick erfasst oft das ganze Objekt; mit Alt-Klicks und dem Pinsel eingrenzen. Kein „Markierung umkehren“.
 - PSD: 8 Bit sRGB; Ebenen enthalten ihre Effekte (nicht nachträglich änderbar), Masken nur als deaktivierte Ebenenmasken;
   Gruppen mit eigenen Effekten werden zu einer Ebene. An weichen Bandkanten mischen PSD-Programme minimal anders (8-Bit-sRGB).
