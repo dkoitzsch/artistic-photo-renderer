@@ -11,7 +11,7 @@ Jeder Schritt endet lauffähig, mit grünen Tests, aktueller `PROGRESS.md`, Comm
       Bleiche, Solarisation; Wachstum von Kanten, Dunkel oder Tiefe aus)
 - [x] 3. `aging` (Craquelé nach Schichtdicke, Firnis, Ausbleichen) und `memory` (Verblassen, Verschwimmen, Auflösen;
       Gesichter und Salientes bleiben)
-- [ ] 4. `cubist` (Mehrperspektive über die Tiefe, Fragmente wie Joiner, Lückenfüllung)
+- [x] 4. `cubist` (Mehrperspektive über die Tiefe, Fragmente wie Joiner, Lückenfüllung)
 - [ ] 5. `watercolor-sim` (Aquarell nach Curtis et al. 1997, vereinfacht: Lasuren, Wasserfluss, Randverdunkelung,
       Blüten, Granulation; Mischung mit der Pigment-Engine)
 - [ ] 6. 24 MP: Simulationsraster + volle Auflösung für Details, Messungen, Abnahme (alle Simulationseffekte mit

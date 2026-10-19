@@ -1,0 +1,90 @@
+{
+  "id": "cubist",
+  "name": "Kubistisch",
+  "version": "1.0.0",
+  "category": "Simulation",
+  "description": "Mehrere Blickwinkel zugleich: Fragmente des Bildes, je aus einer anderen Perspektive über die Tiefe neu projiziert – wie Splitter oder Hockney-Fotocollagen.",
+  "inputs": ["source", "depth"],
+  "passes": 2,
+  "implementations": { "preview": "webgpu", "final": "webgpu" },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung (Rückwärts-Verschiebung nach Tiefenkarte je Fragment, Voronoi-/Rechteckfragmente)."
+  },
+  "cost": "interactive",
+  "randomized": true,
+  "requires": ["depth"],
+  "reach": "strength * 1.5 + fragment * 2",
+  "params": [
+    { "key": "views", "label": "Anzahl Perspektiven", "type": "int", "min": 2, "max": 8, "default": 4 },
+    {
+      "key": "strength",
+      "label": "Versatzstärke",
+      "type": "float",
+      "min": 0,
+      "max": 200,
+      "default": 45,
+      "unit": "px",
+      "scale": "log"
+    },
+    {
+      "key": "shape",
+      "label": "Fragmentform",
+      "type": "enum",
+      "options": [
+        { "value": "shards", "label": "Splitter" },
+        { "value": "joiner", "label": "Fotos (Joiner)" }
+      ],
+      "default": "shards"
+    },
+    {
+      "key": "fragment",
+      "label": "Fragmentgröße",
+      "type": "float",
+      "min": 16,
+      "max": 400,
+      "default": 110,
+      "unit": "px",
+      "scale": "log"
+    },
+    {
+      "key": "tilt",
+      "label": "Drehung der Fotos",
+      "type": "float",
+      "min": 0,
+      "max": 20,
+      "default": 6,
+      "unit": "°",
+      "visibleIf": "shape=joiner"
+    },
+    {
+      "key": "fill",
+      "label": "Lückenfüllung",
+      "type": "enum",
+      "options": [
+        { "value": "inpaint", "label": "Aus der Umgebung" },
+        { "value": "flat", "label": "Farbfläche" },
+        { "value": "open", "label": "Offen lassen" }
+      ],
+      "default": "inpaint"
+    },
+    {
+      "key": "fillColor",
+      "label": "Farbe der Lücken",
+      "type": "color",
+      "default": [0.9, 0.87, 0.8],
+      "visibleIf": "fill=flat"
+    },
+    { "key": "lines", "label": "Fugen", "type": "float", "min": 0, "max": 100, "default": 45, "unit": "%" }
+  ],
+  "presets": [
+    {
+      "name": "Analytischer Kubismus",
+      "values": { "shape": "shards", "views": 5, "strength": 60, "fragment": 90, "lines": 70 }
+    },
+    {
+      "name": "Hockney-Joiner",
+      "values": { "shape": "joiner", "views": 4, "strength": 35, "fragment": 150, "tilt": 8, "fill": "flat" }
+    }
+  ]
+}

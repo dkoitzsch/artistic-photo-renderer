@@ -588,4 +588,20 @@ export const EFFECT_CASES: EffectCase[] = [
     flatBorder: false,
     tileTolerance: 1,
   },
+  {
+    name: 'cubist-shards-portrait',
+    fixture: 'portrait',
+    effectId: 'cubist',
+    preset: 'Analytischer Kubismus',
+    syntheticDepth: true,
+    flatBorder: false,
+  },
+  {
+    name: 'cubist-joiner-architecture',
+    fixture: 'architecture',
+    effectId: 'cubist',
+    preset: 'Hockney-Joiner',
+    syntheticDepth: true,
+    flatBorder: false,
+  },
 ];
