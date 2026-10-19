@@ -51,7 +51,18 @@ export const FORMAT_PRESETS: FormatPreset[] = [
 export type Rect01 = { x: number; y: number; width: number; height: number };
 
 export type HelpId =
-  'final' | 'notan' | 'values' | 'scale' | 'warmcold' | 'palette' | 'numbers' | 'edges' | 'grid' | 'contour';
+  | 'final'
+  | 'notan'
+  | 'values'
+  | 'scale'
+  | 'warmcold'
+  | 'palette'
+  | 'numbers'
+  | 'edges'
+  | 'steps'
+  | 'strokes'
+  | 'grid'
+  | 'contour';
 
 export const HELPS: { id: HelpId; label: string }[] = [
   { id: 'final', label: 'Endbild' },
@@ -62,6 +73,8 @@ export const HELPS: { id: HelpId; label: string }[] = [
   { id: 'palette', label: 'Reduzierte Palette' },
   { id: 'numbers', label: 'Farbfeld-Karte' },
   { id: 'edges', label: 'Kanten-Karte' },
+  { id: 'steps', label: 'Schichtplan' },
+  { id: 'strokes', label: 'Strichführung' },
   { id: 'grid', label: 'Proportionsraster' },
   { id: 'contour', label: 'Konturvorlage' },
 ];

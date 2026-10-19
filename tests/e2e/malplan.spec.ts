@@ -320,3 +320,55 @@ test('Malplan E4: Kanten-Karte – hart, weich, verloren; Schwellen wirken', asy
   const after = await counts();
   expect(after.hard).toBeGreaterThan(base.hard);
 });
+
+test('Malplan E4: Schichtplan je Maltechnik und Strichführung (Richtungsfeld bzw. Pinselstriche)', async ({
+  page,
+}) => {
+  test.setTimeout(150_000);
+  await openFixture(page, 'golden/portrait.png');
+  await page.getByTestId('workspace-malplan').click();
+  await ready(page);
+  await page.getByTestId('help-steps').click();
+  await expect(page.getByTestId('step-list').locator('li')).toHaveCount(6); // Acryl
+  await expect(page.getByTestId('step-0')).toContainText('Untermalung');
+  const imageOf = () =>
+    page.evaluate(() => {
+      const c = document.querySelector<HTMLCanvasElement>('[data-testid="malplan-image"]');
+      const d = c?.getContext('2d')?.getImageData(0, 0, c.width, c.height).data;
+      let magenta = 0;
+      let sum = 0;
+      if (d)
+        for (let i = 0; i < d.length; i += 4) {
+          if (d[i] === 200 && d[i + 1] === 30 && d[i + 2] === 160) magenta++;
+          sum += (d[i] ?? 0) + (d[i + 1] ?? 0) * 7 + (d[i + 2] ?? 0) * 13;
+        }
+      return { magenta, sum };
+    });
+  await page.getByTestId('step-2').click();
+  const s2 = await imageOf();
+  await page.getByTestId('step-5').click();
+  const s5 = await imageOf();
+  expect(s2.magenta).toBeGreaterThan(0);
+  expect(s5.sum).not.toBe(s2.sum);
+  // Aquarell: 5 Schritte, Vorzeichnung zuerst
+  await page.evaluate(() => {
+    window.__bls.commands.setMalplanCommand({ technique: 'watercolor' }, false);
+  });
+  await expect(page.getByTestId('step-list').locator('li')).toHaveCount(5);
+  await expect(page.getByTestId('step-0')).toContainText('Vorzeichnung');
+
+  // Strichführung: ohne Pinselstriche aus dem Richtungsfeld, drei Pinselgruppen mit mm-Angaben
+  await page.getByTestId('help-strokes').click();
+  await expect(page.getByTestId('guide-source')).toContainText('Richtungsfeld');
+  await expect(page.getByTestId('guide-legend').locator('li')).toHaveCount(3);
+  await expect(page.getByTestId('guide-legend')).toContainText('mm');
+  // mit Effekt „Pinselstriche“: dessen Strichdaten
+  await page.getByTestId('workspace-edit').click();
+  await page.evaluate(() => {
+    const l = window.__bls.getProject()?.root.children[0];
+    if (l) window.__bls.commands.addEffectCommand('stroke-paint', l.id);
+  });
+  await page.getByTestId('workspace-malplan').click();
+  await expect(page.getByTestId('guide-source')).toContainText('Pinselstriche', { timeout: 60_000 });
+  await expect(page.getByTestId('guide-legend').locator('li')).toHaveCount(3); // 3 Pinselgrößen (Standard)
+});

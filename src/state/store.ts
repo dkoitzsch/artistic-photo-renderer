@@ -152,6 +152,8 @@ type AppState = {
   workspace: 'edit' | 'malplan';
   brush: BrushSettings;
   malplanHelp: HelpId;
+  /** gewählter Schritt im Schichtplan (0 …) */
+  malplanStep: number;
   /** Zuschnitt auf der Malplan-Ansicht bearbeiten */
   malplanCropEdit: boolean;
 
@@ -191,6 +193,7 @@ type AppState = {
   setWorkspace: (w: AppState['workspace']) => void;
   setBrush: (patch: Partial<BrushSettings>) => void;
   setMalplanHelp: (h: HelpId) => void;
+  setMalplanStep: (step: number) => void;
   setMalplanCropEdit: (on: boolean) => void;
 };
 
@@ -242,6 +245,7 @@ export const useAppStore = create<AppState>()((set) => ({
   workspace: 'edit',
   brush: loadBrush(),
   malplanHelp: 'values',
+  malplanStep: 0,
   malplanCropEdit: false,
 
   setGpu: (gpu) => set({ gpu }),
@@ -295,6 +299,7 @@ export const useAppStore = create<AppState>()((set) => ({
       return { brush };
     }),
   setMalplanHelp: (malplanHelp) => set({ malplanHelp }),
+  setMalplanStep: (malplanStep) => set({ malplanStep }),
   setMalplanCropEdit: (malplanCropEdit) => set({ malplanCropEdit }),
 }));
 

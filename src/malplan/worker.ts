@@ -12,6 +12,10 @@ import {
   type Region,
 } from './analysis';
 import { blurL, measureEdges } from './edges';
+import type { StrokeOptions } from '../../effects/stroke-paint/strokes';
+import { buildPlan, type PlanStep } from './plan';
+import { guideFromFlow, guideFromStrokePaint, linearImage, type StrokeGuide } from './strokeGuide';
+import type { Technique } from './model';
 import { buildPalette, type PaletteEntry } from './palette';
 
 export type MalplanRequest =
@@ -26,7 +30,9 @@ export type MalplanRequest =
     }
   | { type: 'derive'; id: number; levels: number; minArea: number; threshold: number | null }
   | { type: 'palette'; id: number; count: number; myColors: string[] }
-  | { type: 'edges'; id: number };
+  | { type: 'edges'; id: number }
+  | { type: 'plan'; id: number; technique: Technique }
+  | { type: 'strokes'; id: number; strokePaint: StrokeOptions | null };
 
 export type MalplanResponse =
   | { type: 'progress'; id: number; progress: number }
@@ -49,11 +55,15 @@ export type MalplanResponse =
       labelPoints: Float32Array;
     }
   | { type: 'edges'; id: number; contrast: Float32Array; width: Float32Array }
+  | { type: 'plan'; id: number; steps: PlanStep[]; regionStep: Int8Array }
+  | { type: 'strokes'; id: number; guide: StrokeGuide }
   | { type: 'error'; id: number; message: string };
 
 let current: Analysis | null = null;
 /** Helligkeit (Oklab L, leicht geglättet) des analysierten Bildes – für die Kanten-Karte */
 let currentL: Float32Array | null = null;
+/** Bild der Analyse linear (für die Strichführung) */
+let currentImage: { data: Float32Array; width: number; height: number } | null = null;
 
 const post = (msg: MalplanResponse, transfer: Transferable[] = []) => {
   (self as unknown as Worker).postMessage(msg, transfer);
@@ -71,6 +81,11 @@ self.onmessage = (e: MessageEvent<MalplanRequest>) => {
       const L = new Float32Array(req.width * req.height);
       for (let i = 0; i < L.length; i++) L[i] = lab[i * 3] ?? 0;
       currentL = blurL(L, req.width, req.height);
+      currentImage = {
+        data: linearImage(req.rgba, req.width, req.height),
+        width: req.width,
+        height: req.height,
+      };
       const lines = contours(a.labels, a.width, a.height);
       const labels = a.labels.slice();
       post(
@@ -90,6 +105,22 @@ self.onmessage = (e: MessageEvent<MalplanRequest>) => {
     }
     if (!current) throw new Error('Noch keine Analyse vorhanden.');
     const a = current;
+    if (req.type === 'plan') {
+      const plan = buildPlan(a, req.technique);
+      post({ type: 'plan', id: req.id, steps: plan.steps, regionStep: plan.regionStep }, [
+        plan.regionStep.buffer,
+      ]);
+      return;
+    }
+    if (req.type === 'strokes') {
+      if (!currentImage) throw new Error('Noch keine Analyse vorhanden.');
+      const { data, width, height } = currentImage;
+      const guide = req.strokePaint
+        ? guideFromStrokePaint(data, width, height, req.strokePaint)
+        : guideFromFlow(a, data);
+      post({ type: 'strokes', id: req.id, guide });
+      return;
+    }
     if (req.type === 'edges') {
       if (!currentL) throw new Error('Noch keine Analyse vorhanden.');
       const m = measureEdges(a, currentL);

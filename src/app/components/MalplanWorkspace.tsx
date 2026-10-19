@@ -27,6 +27,7 @@ import { Slider } from '../controls/Slider';
 import { Section } from './LayerSections';
 import { BeamerButton, useBeamerSync } from './MalplanBeamer';
 import { MyColorsSection, RecipeList } from './MalplanColors';
+import { StepsSection, StrokesSection } from './MalplanPlan';
 import { PdfButton } from './MalplanPdf';
 
 function useSettings(): MalplanSettings | null {
@@ -91,14 +92,18 @@ function MalplanView() {
   const derived = useMalplanStore((s) => s.derived);
   const palette = useMalplanStore((s) => s.palette);
   const edges = useMalplanStore((s) => s.edges);
+  const plan = useMalplanStore((s) => s.plan);
+  const guide = useMalplanStore((s) => s.guide);
+  const step = useAppStore((s) => s.malplanStep);
   const status = useMalplanStore((s) => s.status);
   const progress = useMalplanStore((s) => s.progress);
   const error = useMalplanStore((s) => s.error);
   const settings = useSettings();
   const ref = useRef<HTMLCanvasElement>(null);
   const image = useMemo(
-    () => (settings ? renderHelp(help, result, derived, settings, palette, edges) : null),
-    [help, result, derived, settings, palette, edges],
+    () =>
+      settings ? renderHelp(help, result, derived, settings, { palette, edges, plan, guide, step }) : null,
+    [help, result, derived, settings, palette, edges, plan, guide, step],
   );
   useEffect(() => {
     const c = ref.current;
@@ -244,7 +249,10 @@ function MalplanPanel() {
   };
   const savePng = () => {
     const st = useMalplanStore.getState();
-    const c = renderHelp(help, result, derived, settings, st.palette, st.edges);
+    const c = renderHelp(help, result, derived, settings, {
+      ...st,
+      step: useAppStore.getState().malplanStep,
+    });
     if (!c) return;
     c.toBlob((blob) => {
       if (blob)
@@ -403,6 +411,10 @@ function HelpSettings({
   median: number | null;
 }) {
   switch (help) {
+    case 'steps':
+      return <StepsSection />;
+    case 'strokes':
+      return <StrokesSection settings={settings} />;
     case 'edges':
       return (
         <Section title="Kanten-Karte" testId="malplan-edges">

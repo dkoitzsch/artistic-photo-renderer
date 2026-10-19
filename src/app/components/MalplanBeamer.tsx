@@ -7,7 +7,7 @@ import { HELPS, normalizeMalplan, type HelpId } from '../../malplan/model';
 import { drawGrid, renderHelp } from '../../malplan/render';
 import { useMalplanStore } from '../../malplan/store';
 import { setMalplanCommand } from '../../state/commands';
-import { useProject } from '../../state/store';
+import { useAppStore, useProject } from '../../state/store';
 import { Toggle } from '../controls/Toggle';
 
 /** Hält das Beamer-Fenster aktuell (läuft, solange der Malplan offen ist). */
@@ -26,7 +26,7 @@ export function useBeamerSync(): void {
     let alive = true;
     const send = () => {
       const st = useMalplanStore.getState();
-      const c = renderHelp(help, result, derived, settings, st.palette, st.edges);
+      const c = renderHelp(help, result, derived, settings, { ...st, step: useAppStore.getState().malplanStep });
       if (!c) return;
       if (grid && help !== 'grid') {
         const g = c.getContext('2d');

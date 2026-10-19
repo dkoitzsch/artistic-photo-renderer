@@ -4,7 +4,9 @@
 import { linearFromOklab, srgbFromOklab, warmth } from './analysis';
 import { gridLines, type HelpId, type MalplanSettings } from './model';
 import { classify, type EdgeMeasures } from './edges';
+import { stepMasks, type LayerPlan } from './plan';
 import type { MalplanDerived, MalplanPalette, MalplanResult } from './store';
+import type { StrokeGuide } from './strokeGuide';
 
 /** Papier und Tusche der Hilfen (sRGB 0..255) */
 export const PAPER: [number, number, number] = [250, 248, 243];
@@ -293,19 +295,158 @@ export function renderEdges(r: MalplanResult, m: EdgeMeasures, s: MalplanSetting
   return c;
 }
 
+/** Untermalungston (Umbra) für Öl/Acryl/Gouache, nach Helligkeit L (Oklab) */
+function umberOfL(L: number): [number, number, number] {
+  const t = Math.min(1, Math.max(0, (L - 0.2) / 0.75));
+  return [Math.round(70 + 170 * t), Math.round(48 + 165 * t), Math.round(32 + 150 * t)];
+}
+
+/** Hervorhebung neuer Flächen im Schichtplan */
+export const NEW_COLOR: [number, number, number] = [200, 30, 160];
+
+/**
+ * Schichtplan, Schritt k: bisher bemalte Flächen in ihrer (Misch-)Farbe – Bleistift in Grautönen –, darunter Papier bzw.
+ * die Untermalung; neue Flächen dieses Schritts mit farbigem Umriss. Umriss-Schritte zeigen die Kontur.
+ */
+export function renderStep(
+  r: MalplanResult,
+  plan: LayerPlan,
+  k: number,
+  s: MalplanSettings,
+  pal: MalplanPalette | null,
+): HTMLCanvasElement {
+  const { width: w, height: h } = r;
+  const step = Math.min(Math.max(0, k), plan.steps.length - 1);
+  const kind = plan.steps[step]?.kind ?? 'paint';
+  const underpainted = plan.steps.some((st, i) => st.kind === 'underpainting' && i <= step);
+  const { done, added } = stepMasks(plan, step);
+  const colorOf = (reg: number): [number, number, number] => {
+    const region = r.regions[reg];
+    if (!region) return PAPER;
+    if (s.technique === 'pencil') {
+      const v = to8(grayOfL(region.lab[0]));
+      return [v, v, v];
+    }
+    const e = pal?.entries[pal.regionEntry[reg] ?? 0];
+    return (e?.mixed ?? region.rgb).map(to8) as [number, number, number];
+  };
+  const [c, g] = canvasOf(w, h);
+  const img = g.createImageData(w, h);
+  for (let p = 0; p < w * h; p++) {
+    const reg = r.labels[p] ?? 0;
+    let col: [number, number, number] = PAPER;
+    if (kind === 'underpainting' || (underpainted && !done[reg]))
+      col = umberOfL(r.regions[reg]?.lab[0] ?? 0.5);
+    if (done[reg] && kind !== 'underpainting') col = colorOf(reg);
+    img.data[p * 4] = col[0];
+    img.data[p * 4 + 1] = col[1];
+    img.data[p * 4 + 2] = col[2];
+    img.data[p * 4 + 3] = 255;
+  }
+  // neue Flächen: Rand hervorheben
+  if (kind === 'paint')
+    for (let y = 0; y < h; y++)
+      for (let x = 0; x < w; x++) {
+        const p = y * w + x;
+        const reg = r.labels[p] ?? 0;
+        if (!added[reg]) continue;
+        const edge =
+          x === 0 ||
+          y === 0 ||
+          x === w - 1 ||
+          y === h - 1 ||
+          r.labels[p - 1] !== reg ||
+          r.labels[p + 1] !== reg ||
+          r.labels[p - w] !== reg ||
+          r.labels[p + w] !== reg;
+        if (!edge) continue;
+        img.data[p * 4] = NEW_COLOR[0];
+        img.data[p * 4 + 1] = NEW_COLOR[1];
+        img.data[p * 4 + 2] = NEW_COLOR[2];
+      }
+  g.putImageData(img, 0, 0);
+  // Umrisse: im Umriss-Schritt kräftig, bei Aquarell/Bleistift danach zart sichtbar
+  const contourStep = plan.steps.findIndex((st) => st.kind === 'contour');
+  if (kind === 'contour') drawContours(g, r.contours, w, h, 1.2, `rgb(${INK.join(',')})`);
+  else if (contourStep >= 0 && contourStep < step)
+    drawContours(g, r.contours, w, h, 0.6, 'rgba(60,58,55,0.35)');
+  return c;
+}
+
+/** Farben der Pinselgruppen in der Strichführung (groß, mittel, klein, …) */
+export const GUIDE_COLORS: [number, number, number][] = [
+  [200, 40, 40],
+  [30, 110, 200],
+  [20, 150, 80],
+  [180, 110, 0],
+  [120, 60, 180],
+];
+
+/** Strichführung: aufgehelltes Endbild mit Pfeilen in Strichrichtung, Farbe je Pinselgruppe. */
+export function renderStrokes(r: MalplanResult, guide: StrokeGuide): HTMLCanvasElement {
+  const { width: w, height: h } = r;
+  const [c, g] = canvasOf(w, h);
+  g.putImageData(r.image, 0, 0);
+  g.fillStyle = 'rgba(250,248,243,0.62)';
+  g.fillRect(0, 0, w, h);
+  g.lineCap = 'round';
+  g.lineJoin = 'round';
+  const many = guide.strokes.length > 4000;
+  for (const st of guide.strokes) {
+    const col = GUIDE_COLORS[st.group % GUIDE_COLORS.length] ?? [0, 0, 0];
+    const pts = st.points;
+    if (pts.length < 4) continue;
+    g.strokeStyle = `rgba(${col.join(',')},0.85)`;
+    g.lineWidth = Math.max(1, Math.min(guide.source === 'flow' ? 2 : 3, st.width * (many ? 0.08 : 0.15)));
+    g.beginPath();
+    g.moveTo(pts[0] ?? 0, pts[1] ?? 0);
+    for (let i = 2; i < pts.length; i += 2) g.lineTo(pts[i] ?? 0, pts[i + 1] ?? 0);
+    g.stroke();
+    // Pfeilspitze am Ende
+    const n = pts.length;
+    const x1 = pts[n - 2] ?? 0;
+    const y1 = pts[n - 1] ?? 0;
+    const x0 = pts[n - 4] ?? 0;
+    const y0 = pts[n - 3] ?? 0;
+    const a = Math.atan2(y1 - y0, x1 - x0);
+    const len = Math.max(3, Math.min(10, st.width * 0.25));
+    g.beginPath();
+    g.moveTo(x1, y1);
+    g.lineTo(x1 - len * Math.cos(a - 0.45), y1 - len * Math.sin(a - 0.45));
+    g.moveTo(x1, y1);
+    g.lineTo(x1 - len * Math.cos(a + 0.45), y1 - len * Math.sin(a + 0.45));
+    g.stroke();
+  }
+  return c;
+}
+
+/** Weitere Ergebnisse, die manche Hilfen brauchen */
+export type HelpExtras = {
+  palette?: MalplanPalette | null;
+  edges?: EdgeMeasures | null;
+  plan?: LayerPlan | null;
+  guide?: StrokeGuide | null;
+  /** Schritt im Schichtplan */
+  step?: number;
+};
+
 /** Bild einer Hilfe (ohne Rasterüberlagerung) oder null, solange die Analyse fehlt. */
 export function renderHelp(
   help: HelpId,
   r: MalplanResult | null,
   d: MalplanDerived | null,
   s: MalplanSettings,
-  pal: MalplanPalette | null = null,
-  edges: EdgeMeasures | null = null,
+  x: HelpExtras = {},
 ): HTMLCanvasElement | null {
   if (!r) return null;
+  const pal = x.palette ?? null;
   switch (help) {
     case 'edges':
-      return edges ? renderEdges(r, edges, s) : null;
+      return x.edges ? renderEdges(r, x.edges, s) : null;
+    case 'steps':
+      return x.plan ? renderStep(r, x.plan, x.step ?? 0, s, pal) : null;
+    case 'strokes':
+      return x.guide ? renderStrokes(r, x.guide) : null;
     case 'palette':
       return pal ? renderPalette(r, pal) : null;
     case 'numbers':
