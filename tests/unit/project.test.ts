@@ -108,11 +108,11 @@ describe('parseProject', () => {
     expect(() => parseProject({ ...p, root: { ...p.root, kind: 'layer' } })).toThrow();
   });
 
-  it('migriert Format 2 → 8 und prüft Tiefenmasken und Transformation', () => {
+  it('migriert Format 2 → 9 und prüft Tiefenmasken und Transformation', () => {
     const p = createProjectFromImage(original);
     const v2 = JSON.parse(JSON.stringify({ ...p, formatVersion: 2 })) as Record<string, unknown>;
     const migrated = parseProject(v2);
-    expect(migrated.formatVersion).toBe(8);
+    expect(migrated.formatVersion).toBe(9);
     expect(migrated.root).toEqual(p.root);
 
     const layer = p.root.children[0];
@@ -155,7 +155,7 @@ describe('parseProject', () => {
 
   it('Format 5/6: Mischmodus und Maske je Effekt', () => {
     const p = addEffect(createProjectFromImage(original), createProjectFromImage(original).root.id, fx('m'));
-    expect(p.formatVersion).toBe(8);
+    expect(p.formatVersion).toBe(9);
     const withMix = {
       ...p,
       root: {
@@ -181,7 +181,7 @@ describe('parseProject', () => {
     ).toThrow(/Kartenbereich/);
     expect(() => parseProject(bad({ mask: { kind: 'brush' } }))).toThrow(/mask\.kind/);
     // altes Projekt (Format 4) wird ohne Änderung auf 6 gehoben
-    expect(parseProject({ ...JSON.parse(JSON.stringify(p)), formatVersion: 4 }).formatVersion).toBe(8);
+    expect(parseProject({ ...JSON.parse(JSON.stringify(p)), formatVersion: 4 }).formatVersion).toBe(9);
   });
 
   it('Format 6: Maske einer Gruppe', () => {

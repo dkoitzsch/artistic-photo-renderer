@@ -1,0 +1,105 @@
+{
+  "id": "depth-bokeh",
+  "name": "Tiefenschärfe (Bokeh)",
+  "version": "1.0.0",
+  "category": "Unschärfe",
+  "description": "Unschärfe wie bei einer offenen Blende: scharf in der Fokusebene, davor und dahinter zunehmend unscharf – aus der Tiefenkarte.",
+  "inputs": ["source", "depth"],
+  "passes": 3,
+  "implementations": { "preview": "webgpu", "final": "webgpu" },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung (Gather-Bokeh mit Zerstreuungskreis aus der Tiefenkarte, ohne Ausbluten scharfer Bereiche)."
+  },
+  "cost": "interactive",
+  "randomized": false,
+  "requires": ["depth"],
+  "reach": "radius",
+  "params": [
+    {
+      "key": "focus",
+      "label": "Fokusebene",
+      "hint": "Tiefe, die scharf bleibt (0 % = nah, 100 % = fern; Ansicht „Tiefe“ zeigt die Werte)",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 15,
+      "unit": "%"
+    },
+    {
+      "key": "range",
+      "label": "Schärfentiefe",
+      "hint": "Bereich um die Fokusebene, der scharf bleibt",
+      "type": "float",
+      "min": 0,
+      "max": 50,
+      "default": 6,
+      "unit": "%"
+    },
+    {
+      "key": "radius",
+      "label": "Blende (größte Unschärfe)",
+      "type": "float",
+      "min": 1,
+      "max": 200,
+      "default": 28,
+      "step": 0.1,
+      "unit": "px",
+      "scale": "log"
+    },
+    {
+      "key": "shape",
+      "label": "Bokeh-Form",
+      "type": "enum",
+      "options": [
+        { "value": "disc", "label": "Scheibe" },
+        { "value": "hexagon", "label": "Sechseck" },
+        { "value": "ring", "label": "Ring (Spiegelobjektiv)" }
+      ],
+      "default": "disc"
+    },
+    { "key": "rotation", "label": "Drehung", "type": "angle", "default": 0, "visibleIf": "shape=hexagon" },
+    {
+      "key": "nearBlur",
+      "label": "Vordergrund-Unschärfe",
+      "hint": "Anteil der Unschärfe vor der Fokusebene",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 100,
+      "unit": "%"
+    },
+    {
+      "key": "highlights",
+      "label": "Lichter",
+      "hint": "Hebt helle Stellen als Bokeh-Scheiben hervor",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 45,
+      "unit": "%",
+      "group": "Erweitert"
+    },
+    {
+      "key": "threshold",
+      "label": "Lichter ab",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 70,
+      "unit": "%",
+      "group": "Erweitert"
+    }
+  ],
+  "presets": [
+    { "name": "Porträt f/1.4", "values": { "focus": 12, "range": 5, "radius": 40, "shape": "disc" } },
+    {
+      "name": "Altglas Sechseck",
+      "values": { "focus": 20, "range": 8, "radius": 24, "shape": "hexagon", "highlights": 70 }
+    },
+    {
+      "name": "Spiegeltele",
+      "values": { "focus": 30, "range": 4, "radius": 30, "shape": "ring", "highlights": 80 }
+    }
+  ]
+}

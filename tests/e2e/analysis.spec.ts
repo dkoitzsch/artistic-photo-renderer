@@ -167,14 +167,15 @@ test('Ansicht „Karten“ (Taste 5) mit Kartenwahl und Deckkraft', async ({ pag
   await page.keyboard.press('5');
   await expect(page.getByTestId('analysis-panel')).toBeVisible();
   const edges = await canvasPixel(page, 0.6, 0.5);
-  await page.getByTestId('analysis-panel').getByRole('radio', { name: 'Helligkeit' }).click();
+  const mapSelect = page.getByTestId('analysis-panel').getByRole('combobox', { name: 'Karte' });
+  await mapSelect.selectOption('luminance');
   await page.getByTestId('analysis-opacity').getByLabel('Deckkraft Wert').fill('100');
   await page.keyboard.press('Enter');
   const lumView = await canvasPixel(page, 0.6, 0.5);
   // Helligkeit grau: r = g = b
   expect(Math.max(...lumView) - Math.min(...lumView)).toBeLessThanOrEqual(2);
   expect(edges).not.toEqual(before);
-  await page.getByTestId('analysis-panel').getByRole('radio', { name: 'Richtungsfeld' }).click();
+  await mapSelect.selectOption('flow');
   const flowView = await canvasPixel(page, 0.6, 0.5);
   expect(flowView).not.toEqual(lumView);
   await page.getByTestId('analysis-opacity').getByLabel('Deckkraft Wert').fill('0');

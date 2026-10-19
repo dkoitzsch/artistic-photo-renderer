@@ -309,6 +309,13 @@ export function ncLayers(project: Project): { id: string; name: string; modelId:
     else if (l.depthMap && !l.depthMap.provenance.commercialUse)
       out.push({ id: l.id, name: l.name, modelId: l.depthMap.provenance.modelId });
   }
+  // Analysekarten aus NC-Modellen (z. B. Tiefe aus Depth Anything Large), soweit Ebenen dieses Original zeigen
+  for (const [originalId, maps] of Object.entries(project.analysis ?? {}))
+    for (const ref of [maps.depth, maps.saliency, maps.faces]) {
+      if (!ref || ref.provenance.commercialUse) continue;
+      const l = [...walkLayers(project.root)].find((x) => x.visible && x.originalId === originalId);
+      if (l) out.push({ id: l.id, name: `${l.name} – Analysekarte`, modelId: ref.provenance.modelId });
+    }
   // Effekte, deren Verfahren/Modelle nur nicht-kommerziell nutzbar sind (Manifest license.commercialUse = false)
   for (const n of walk(project.root)) {
     if (!n.visible) continue;

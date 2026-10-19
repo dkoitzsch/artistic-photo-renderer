@@ -5,7 +5,7 @@ import type { ParamValue } from '../effects/manifest';
 
 import type { MalplanSettings } from '../malplan/model';
 
-export const PROJECT_FORMAT_VERSION = 8;
+export const PROJECT_FORMAT_VERSION = 9;
 
 export type BlendMode =
   'normal' | 'multiply' | 'screen' | 'overlay' | 'soft-light' | 'lighten' | 'darken' | 'difference';
@@ -44,6 +44,26 @@ export type DepthBandMask = {
 
 /** Tiefenkarte eines Originals (16 Bit, volle Größe; depth/<id>.png) */
 export type DepthMapRef = { id: string; width: number; height: number; provenance: Provenance };
+
+/** Analysekarten aus Modellen, die ein Original im Ganzen beschreiben (Spec „Effekte“ 4); Speicher wie Tiefenkarten. */
+export type AnalysisMaps = {
+  /** Tiefe 0 = nah, 1 = fern */
+  depth?: DepthMapRef;
+  /** Salienz 0…1 (wohin schaut das Auge?) */
+  saliency?: DepthMapRef;
+  /** Gesichtsflächen 0…1; faceCount = Anzahl erkannter Gesichter */
+  faces?: DepthMapRef & { faceCount: number };
+};
+export type AnalysisMapKind = keyof AnalysisMaps;
+
+/** Benanntes Segment eines Originals (Spec „Effekte“ 4, segmentation): Maske in Ebenen-px wie die Markierung. */
+export type Segment = {
+  id: string;
+  name: string;
+  originalId: string;
+  mask: PaintedMask;
+  color: [number, number, number];
+};
 
 /** Kantenübergang (Kern-Stufe, siehe DECISIONS.md). */
 export type MaskEdge = {
@@ -112,7 +132,7 @@ export type ShadowLayer = {
 export type EffectRegion = 'whole' | 'focus-weighted' | 'inverse-focus';
 
 /** Karten, deren Wertebereich als Effektmaske dient (0…1). */
-export type MaskMapId = 'luminance' | 'edges' | 'depth';
+export type MaskMapId = 'luminance' | 'edges' | 'depth' | 'saliency' | 'faces';
 
 /**
  * Eigene Maske eines Effekts (zusätzlich zur Ebenenmaske):
@@ -121,7 +141,9 @@ export type MaskMapId = 'luminance' | 'edges' | 'depth';
  */
 export type EffectMask =
   | { kind: 'map'; map: MaskMapId; from: number; to: number; feather: number; invert: boolean }
-  | { kind: 'layer'; layerId: string; invert: boolean };
+  | { kind: 'layer'; layerId: string; invert: boolean }
+  /** Segment des Projekts (Projektformat 9), z. B. die per Klick ausgewählte Person */
+  | { kind: 'segment'; segmentId: string; invert: boolean };
 
 export type EffectInstance = {
   instanceId: string;
@@ -220,6 +242,10 @@ export type Project = {
   licenseMode: LicenseMode;
   /** Malplan-Einstellungen (Projektformat 7); fehlen = Standardwerte */
   malplan?: MalplanSettings;
+  /** Analysekarten je Original (Projektformat 9) – abgeleitete Daten, in allen Verlaufseinträgen gleich */
+  analysis?: Record<string, AnalysisMaps>;
+  /** Segmente (Projektformat 9) */
+  segments?: Segment[];
 };
 
 export const newId = (): string => crypto.randomUUID();
@@ -416,6 +442,8 @@ export function depthIds(project: Project): Set<string> {
     if (l.depthMap) ids.add(l.depthMap.id);
     if (l.mask.kind === 'depth') ids.add(l.mask.depthId);
   }
+  for (const maps of Object.values(project.analysis ?? {}))
+    for (const ref of [maps.depth, maps.saliency, maps.faces]) if (ref) ids.add(ref.id);
   return ids;
 }
 
@@ -428,7 +456,17 @@ export function parentOf(root: Group, id: string): Group | undefined {
 /** IDs aller gespeicherten Masken eines Projekts. */
 export function maskIds(project: Project): Set<string> {
   const ids = new Set<string>();
-  for (const l of walkLayers(project.root)) if (l.mask.kind === 'stored') ids.add(l.mask.id);
+  const add = (m: MaskRef | undefined) => {
+    if (m?.kind === 'stored') ids.add(m.id);
+  };
+  for (const l of walkLayers(project.root)) {
+    add(l.mask);
+    // Markierung, Lochbereich und Ausgangszustand (Phase 5) verweisen ebenfalls auf gespeicherte Masken
+    add(l.selection?.base);
+    add(l.holeMask?.base);
+    add(l.initial?.mask);
+  }
+  for (const seg of project.segments ?? []) add(seg.mask.base);
   return ids;
 }
 

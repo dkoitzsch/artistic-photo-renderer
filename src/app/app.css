@@ -2393,3 +2393,52 @@ button:disabled {
   padding-top: var(--space-2);
   border-top: 1px solid var(--border);
 }
+
+/* Segmente (E3) */
+.segment-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0;
+}
+.segment-row .text-input {
+  flex: 1;
+  min-width: 0;
+}
+.segment-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex: none;
+}
+
+/* Griffe für Punkt-Parameter (E3) */
+.point-handles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  /* über dem Transform-Rahmen (dessen Eckgriffe liegen oft auf der Standardposition 0, 0) */
+  z-index: 2;
+}
+.point-handle {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 -13px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 15px;
+  color: #3a2a00;
+  background: rgba(255, 214, 90, 0.92);
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+  cursor: grab;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+}
+.point-handle.dragging {
+  cursor: grabbing;
+}

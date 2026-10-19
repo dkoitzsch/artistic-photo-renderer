@@ -17,6 +17,8 @@ export const BINDINGS = {
   luminance: 9,
   edges: 10,
   flow: 11,
+  normals: 12,
+  semantic: 13,
 } as const;
 
 const HELPERS = /* wgsl */ `
@@ -37,6 +39,8 @@ struct PassData {
 @group(0) @binding(9) var map_luminance: texture_2d<f32>; // Analysekarte "luminance" (r, 0..1); nur mit requires
 @group(0) @binding(10) var map_edges: texture_2d<f32>;    // Analysekarte "edges" (r Stärke, gb Tangente, a Kohärenz)
 @group(0) @binding(11) var map_flow: texture_2d<f32>;     // Analysekarte "flow" (r Feldstärke, gb Tangente, a Kohärenz)
+@group(0) @binding(12) var map_normals: texture_2d<f32>;  // Analysekarte "normals" (xyz Normale, w = 1 gültig)
+@group(0) @binding(13) var map_semantic: texture_2d<f32>; // r = Analysekarte "saliency", g = "faces" (je 0..1)
 
 fn src_size() -> vec2i {
   return vec2i(textureDimensions(src));
@@ -94,6 +98,25 @@ fn focus_sharpness(p: vec2i, softness: f32) -> f32 {
 }
 fn load_focus(p: vec2i) -> f32 { return aux_load(focus_tex, p); }
 fn load_depth(p: vec2i) -> f32 { return aux_load(depth_tex, p); }
+
+/**
+ * Oberflächennormale ("requires": ["normals"]): x rechts, y unten, z zum Betrachter; ohne Tiefenkarte (0, 0, 1).
+ */
+fn load_normal(p: vec2i) -> vec3f {
+  let s = vec2f(textureDimensions(map_normals));
+  let uv = (vec2f(p) + 0.5) / vec2f(src_size());
+  let n = textureLoad(map_normals, vec2i(clamp(uv * s, vec2f(0.0), s - 1.0)), 0).xyz;
+  let l = length(n);
+  return select(vec3f(0.0, 0.0, 1.0), n / l, l > 0.5);
+}
+/** Salienz 0..1 ("requires": ["saliency"]): wohin schaut das Auge? Ohne Karte 0. */
+fn load_saliency(p: vec2i) -> f32 { return aux_load(map_semantic, p); }
+/** Gesichtsfläche 0..1 ("requires": ["faces"]). Ohne Karte 0. */
+fn load_faces(p: vec2i) -> f32 {
+  let s = vec2f(textureDimensions(map_semantic));
+  let uv = (vec2f(p) + 0.5) / vec2f(src_size());
+  return textureLoad(map_semantic, vec2i(clamp(uv * s, vec2f(0.0), s - 1.0)), 0).g;
+}
 
 /** Helligkeit (wahrgenommen, 0..1) aus der Analysekarte "luminance" ("requires": ["luminance"]). */
 fn load_luminance(p: vec2i) -> f32 { return aux_load(map_luminance, p); }

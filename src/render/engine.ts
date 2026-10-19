@@ -15,7 +15,7 @@ import {
 import { getPlugin } from '../effects/pluginStore';
 import type { View } from '../state/viewMath';
 import { AsyncEffects } from './asyncEffects';
-import { Compositor, projectReach, ResultCache, type Rect } from './compositor';
+import { Compositor, projectReach, ResultCache, type OverlayKind, type Rect } from './compositor';
 import { GpuCore } from './core';
 import { EffectRunner } from './effectRunner';
 import { paddedBytesPerRow, unpadRows } from './readback';
@@ -39,7 +39,7 @@ export type FrameStats = { cpuMs: number; gpuMs: number; effectRuns: number };
 /** Prüfansicht über dem Ergebnis: Maske (rot = ausgeblendet) oder Fokuskarte */
 export type Overlay = {
   layerId: string;
-  kind: 'mask' | 'focus' | 'depth' | 'luminance' | 'edges' | 'flow' | 'selection';
+  kind: OverlayKind;
   /** Deckkraft der Analysekarten-Ansicht bzw. des Farbschleiers (0..1) */
   opacity?: number;
   /** Farbe des Schleiers der Markierung (linear) */
@@ -235,9 +235,19 @@ export class Engine {
         if (tex) {
           // mit Vorschau-Cache nie „owned“: der Cache hält die Textur bis zum nächsten Frame
           this.lastOverlay = tex.tex;
-          this.overlayKind = { mask: 1, focus: 2, depth: 3, luminance: 4, edges: 5, flow: 6, selection: 7 }[
-            overlay.kind
-          ];
+          this.overlayKind = {
+            mask: 1,
+            focus: 2,
+            depth: 3,
+            luminance: 4,
+            edges: 5,
+            flow: 6,
+            selection: 7,
+            normals: 8,
+            saliency: 4,
+            faces: 4,
+            segments: 9,
+          }[overlay.kind];
           this.overlayOpacity = overlay.opacity ?? 1;
           this.overlayColor = overlay.color ?? [1, 0.2, 0.3];
         }
@@ -557,11 +567,7 @@ export class Engine {
   }
 
   /** Analysekarte einer Ebene in voller Leinwandauflösung (Tests, Fehlersuche). */
-  async readMap(
-    project: Project,
-    layerId: string,
-    kind: 'luminance' | 'edges' | 'flow' | 'mask' | 'focus' | 'selection',
-  ): Promise<Float32Array | null> {
+  async readMap(project: Project, layerId: string, kind: OverlayKind): Promise<Float32Array | null> {
     const { width: W, height: H } = project.canvas;
     const frame = new Frame(this.device, this.core.pool, 'read-map');
     const res = this.compositor.overlay(frame, project, layerId, kind, {

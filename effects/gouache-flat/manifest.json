@@ -1,0 +1,95 @@
+{
+  "id": "gouache-flat",
+  "name": "Gouache (flach)",
+  "version": "1.0.0",
+  "category": "Malerei",
+  "description": "Flache Malerei: das Bild in deckende Farbflächen zerlegt (Superpixel, ähnliche zusammengefasst), mit unregelmäßigen, gemalten Rändern.",
+  "inputs": ["source"],
+  "passes": 1,
+  "implementations": { "preview": "browser-cpu", "final": "browser-cpu" },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung nach Achanta et al. (2012) SLIC-Superpixeln in Oklab, Zusammenfassen benachbarter ähnlicher Flächen (Verfahren, kein Fremdcode)."
+  },
+  "cost": "interactive",
+  "randomized": true,
+  "requires": [],
+  "params": [
+    {
+      "key": "segments",
+      "label": "Anzahl Flächen",
+      "type": "int",
+      "min": 30,
+      "max": 3000,
+      "default": 450,
+      "scale": "log"
+    },
+    {
+      "key": "merge",
+      "label": "Zusammenfassen",
+      "hint": "Ähnliche Nachbarflächen verschmelzen",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 35,
+      "unit": "%"
+    },
+    {
+      "key": "irregular",
+      "label": "Randunregelmäßigkeit",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 45,
+      "unit": "%"
+    },
+    {
+      "key": "compact",
+      "label": "Kompaktheit",
+      "type": "float",
+      "min": 1,
+      "max": 100,
+      "default": 30,
+      "unit": "%"
+    },
+    {
+      "key": "texture",
+      "label": "Pinselstruktur",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 30,
+      "unit": "%",
+      "group": "Erweitert"
+    },
+    {
+      "key": "saturation",
+      "label": "Farbkraft",
+      "type": "float",
+      "min": 0,
+      "max": 200,
+      "default": 115,
+      "unit": "%",
+      "group": "Erweitert"
+    },
+    {
+      "key": "rim",
+      "label": "Dunkle Ränder",
+      "hint": "Pigment sammelt sich an den Flächenrändern",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 25,
+      "unit": "%",
+      "group": "Erweitert"
+    }
+  ],
+  "presets": [
+    { "name": "Plakativ", "values": { "segments": 160, "merge": 55, "irregular": 30, "saturation": 135 } },
+    { "name": "Feine Studie", "values": { "segments": 1500, "merge": 15, "irregular": 55, "texture": 45 } },
+    {
+      "name": "Scherenschnitt-Farbe",
+      "values": { "segments": 80, "merge": 70, "irregular": 10, "texture": 5, "rim": 0 }
+    }
+  ]
+}

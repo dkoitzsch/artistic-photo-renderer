@@ -1,0 +1,113 @@
+{
+  "id": "linocut",
+  "name": "Linolschnitt",
+  "version": "1.0.0",
+  "category": "Zeichnung & Grafik",
+  "description": "Linol- oder Holzschnitt: volle Druckfarbe in den Schatten, Schnittspuren entlang der Bildrichtung in den Mitteltönen, Papier in den Lichtern.",
+  "inputs": ["source"],
+  "passes": 3,
+  "implementations": { "preview": "webgpu", "final": "webgpu" },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung (Tonwertschwelle + Schnittlinien entlang des Richtungsfelds)."
+  },
+  "cost": "realtime",
+  "randomized": true,
+  "requires": ["flow", "edges"],
+  "reach": "simplify * 3 + 12",
+  "params": [
+    {
+      "key": "threshold",
+      "label": "Schwellwert",
+      "hint": "Ab welcher Helligkeit das Papier stehen bleibt",
+      "type": "float",
+      "min": 5,
+      "max": 95,
+      "default": 50,
+      "unit": "%"
+    },
+    {
+      "key": "spacing",
+      "label": "Abstand der Schnitte",
+      "type": "float",
+      "min": 2,
+      "max": 40,
+      "default": 7,
+      "step": 0.1,
+      "unit": "px",
+      "scale": "log"
+    },
+    {
+      "key": "midtones",
+      "label": "Schnittspuren-Dichte",
+      "hint": "Breite des Mitteltonbereichs mit Schnittlinien",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 55,
+      "unit": "%"
+    },
+    {
+      "key": "direction",
+      "label": "Schnittrichtung",
+      "type": "enum",
+      "options": [
+        { "value": "flow", "label": "Entlang der Formen" },
+        { "value": "angle", "label": "Fester Winkel" }
+      ],
+      "default": "flow"
+    },
+    { "key": "angle", "label": "Winkel", "type": "angle", "default": 30, "visibleIf": "direction=angle" },
+    {
+      "key": "outline",
+      "label": "Konturen",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 40,
+      "unit": "%"
+    },
+    { "key": "ink", "label": "Druckfarbe", "type": "color", "default": [0.08, 0.07, 0.07] },
+    { "key": "paper", "label": "Papier", "type": "color", "default": [0.94, 0.91, 0.84] },
+    {
+      "key": "simplify",
+      "label": "Vereinfachung",
+      "type": "float",
+      "min": 0,
+      "max": 12,
+      "default": 2.5,
+      "step": 0.1,
+      "unit": "px",
+      "group": "Erweitert"
+    },
+    {
+      "key": "roughness",
+      "label": "Unruhe der Schnitte",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 35,
+      "unit": "%",
+      "group": "Erweitert"
+    },
+    {
+      "key": "grain",
+      "label": "Druckkorn",
+      "hint": "Papier scheint durch die Farbe",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 30,
+      "unit": "%",
+      "group": "Erweitert"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Holzschnitt",
+      "values": { "spacing": 5, "midtones": 70, "roughness": 60, "paper": [0.9, 0.84, 0.72] }
+    },
+    { "name": "Rotdruck", "values": { "ink": [0.7, 0.1, 0.08], "paper": [0.96, 0.94, 0.9], "outline": 60 } },
+    { "name": "Grobe Schnitte", "values": { "spacing": 14, "midtones": 45, "simplify": 5, "grain": 50 } }
+  ]
+}

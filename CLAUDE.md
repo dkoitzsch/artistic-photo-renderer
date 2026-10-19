@@ -203,6 +203,22 @@ Autosave (`io/autosave.ts`) beobachtet den Store und schreibt ins OPFS.
   `resetLayerCommand`; Anzeige: Überlagerung 7 = Farbschleier.
 - SAM: `ml/smartSelect.ts` → ML-Worker (`sam`-Anfrage, Bildmerkmale je Original gecacht) → `refineMask` → gespeicherte Maske.
 
+**Erweiterung E3 (Tiefe, Semantik & Stil, in Arbeit):**
+
+- Analysekarten aus Modellen je Original: `Project.analysis[originalId]` = {depth, saliency, faces} (Projektformat 9,
+  Speicher wie Tiefenkarten), in alle Verlaufseinträge geschrieben (`ml/analysis.ts` `setAnalysisMap`). `startAnalysisWatcher`
+  berechnet fehlende Karten automatisch (Bedarf: `ml/analysisNeeds.ts` aus `requires` und Masken). Tiefe = Depth Anything
+  Small, Salienz = U²-Net-p (ORT, Worker-Anfrage `segment` mit `outputIndex`), Gesichter = Hülle der MediaPipe-Landmarken
+  (Rückfall: Kopfpunkte der Pose). `normals` auf der GPU aus der Tiefe (`core.normalMap`, Shader `analysis.wgsl` `normals`).
+- Effekt-Bindungen 12 `map_normals`, 13 `map_semantic` (r Salienz, g Gesichter); Vorspiel `load_normal`, `load_saliency`,
+  `load_faces`. Gruppeneffekte bekommen die Karten der ersten sichtbaren Ebene.
+- Segmente: `Project.segments` (PaintedMask je Original), Befehle `saveSelectionAsSegmentCommand`, `selectSegmentCommand`,
+  `deleteSegmentCommand` …; `EffectMask` kind `segment`, Kartenmasken auch `saliency`/`faces`; Ansicht „Segmente“
+  (Überlagerung 9), `SegmentSection.tsx`, `ml/segments.ts` (Vordergrund als Segment).
+- `PointHandles.tsx`: ziehbare Griffe für Parameter vom Typ `point` (Werkzeug „Verschieben“).
+- CPU-Effekt-Hilfen `src/effects/cpuHelpers.ts` (Oklab, Messraster, Wertrauschen, Linien zeichnen).
+- Tests: `debug.ts` `ml.injectMap` (synthetische Karten), Golden-Fälle mit `syntheticDepth`.
+
 **Neuen Effekt anlegen:** siehe [effects/README.md](effects/README.md) – nur einen Ordner unter `effects/` anlegen.
 
 ## Referenz-Hardware

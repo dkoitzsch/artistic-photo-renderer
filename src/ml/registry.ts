@@ -4,14 +4,7 @@ import registry from '../../models/registry.json';
 import type { LicenseMode } from '../state/project';
 
 export type ModelTask =
-  | 'foreground'
-  | 'landmarks'
-  | 'depth'
-  | 'points'
-  | 'objects'
-  | 'inpaint'
-  | 'saliency'
-  | 'style';
+  'foreground' | 'landmarks' | 'depth' | 'points' | 'objects' | 'inpaint' | 'saliency' | 'style';
 export type Runtime = 'browser' | 'service';
 
 export type ModelFile = { name: string; url: string; sha256: string; size: number };

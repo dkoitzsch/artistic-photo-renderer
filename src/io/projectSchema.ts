@@ -30,7 +30,7 @@ function checkNodeMask(m: unknown, at: string): void {
   if (!isObj(m)) fail(`${at} ungültig`);
   if (m.kind === 'map') {
     if (
-      !['luminance', 'edges', 'depth'].includes(m.map as string) ||
+      !['luminance', 'edges', 'depth', 'saliency', 'faces'].includes(m.map as string) ||
       !isNum(m.from) ||
       !isNum(m.to) ||
       !isNum(m.feather) ||
@@ -39,6 +39,8 @@ function checkNodeMask(m: unknown, at: string): void {
       fail(`${at} (Kartenbereich) unvollständig`);
   } else if (m.kind === 'layer') {
     if (!isStr(m.layerId) || typeof m.invert !== 'boolean') fail(`${at} (Ebene) unvollständig`);
+  } else if (m.kind === 'segment') {
+    if (!isStr(m.segmentId) || typeof m.invert !== 'boolean') fail(`${at} (Segment) unvollständig`);
   } else fail(`${at}.kind unbekannt`);
 }
 
@@ -105,6 +107,41 @@ function checkPainted(v: unknown, where: string): void {
     (!Array.isArray(v.clicks) || v.clicks.length % 3 !== 0 || !v.clicks.every(isNum))
   )
     fail(`${where}.clicks unvollständig`);
+}
+
+function checkMapRef(v: unknown, where: string): void {
+  if (v === undefined) return;
+  if (!isObj(v) || !isStr(v.id) || !isNum(v.width) || !isNum(v.height)) fail(`${where} unvollständig`);
+  checkProvenance(v.provenance, where);
+}
+
+function checkAnalysis(v: unknown, originals: Record<string, unknown>): void {
+  if (v === undefined) return;
+  if (!isObj(v)) fail('analysis muss ein Objekt sein');
+  for (const [id, maps] of Object.entries(v)) {
+    const where = `analysis[${id.slice(0, 8)}]`;
+    if (!(id in originals)) fail(`${where} verweist auf ein fehlendes Original`);
+    if (!isObj(maps)) fail(`${where} ungültig`);
+    checkMapRef(maps.depth, `${where}.depth`);
+    checkMapRef(maps.saliency, `${where}.saliency`);
+    checkMapRef(maps.faces, `${where}.faces`);
+    if (maps.faces !== undefined && !isNum((maps.faces as Record<string, unknown>).faceCount))
+      fail(`${where}.faces.faceCount fehlt`);
+  }
+}
+
+function checkSegments(v: unknown, originals: Record<string, unknown>): void {
+  if (v === undefined) return;
+  if (!Array.isArray(v)) fail('segments muss eine Liste sein');
+  v.forEach((s: unknown, i) => {
+    const where = `segments[${i}]`;
+    if (!isObj(s) || !isStr(s.id) || !isStr(s.name) || !isStr(s.originalId)) fail(`${where} unvollständig`);
+    if (!(s.originalId in originals)) fail(`${where} verweist auf ein fehlendes Original`);
+    if (!Array.isArray(s.color) || s.color.length !== 3 || !s.color.every(isNum))
+      fail(`${where}.color ungültig`);
+    if (s.mask === undefined) fail(`${where}.mask fehlt`);
+    checkPainted(s.mask, `${where}.mask`);
+  });
 }
 
 function checkLayer(n: Record<string, unknown>, where: string, originals: Record<string, unknown>): void {
@@ -181,6 +218,8 @@ function migrate(raw: Record<string, unknown>): Record<string, unknown> {
   if (v.formatVersion === 6) v = { ...v, formatVersion: 7 };
   // 7 → 8: optionale Pinselstriche, Markierung, Lochbereich, Ausgangszustand; Maskenart „empty“
   if (v.formatVersion === 7) v = { ...v, formatVersion: 8 };
+  // 8 → 9: optionale Analysekarten je Original und Segmente
+  if (v.formatVersion === 8) v = { ...v, formatVersion: 9 };
   return v;
 }
 
@@ -210,6 +249,8 @@ export function parseProject(raw: unknown): Project {
       fail(`original ${id.slice(0, 8)} unvollständig`);
   if (!isObj(json.root) || json.root.kind !== 'group') fail('root muss eine Gruppe sein');
   checkNode(json.root, 'root', json.originals);
+  checkAnalysis(json.analysis, json.originals);
+  checkSegments(json.segments, json.originals);
   // Malplan: unvollständige oder fremde Werte auf gültige Einstellungen bringen
   if (json.malplan !== undefined) {
     if (!isObj(json.malplan)) fail('malplan muss ein Objekt sein');

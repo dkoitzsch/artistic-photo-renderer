@@ -14,6 +14,7 @@ import { useAppStore, useProject } from '../../state/store';
 import { panBy, zoomBy } from '../../state/viewActions';
 import { usePluginStore } from '../../effects/pluginStore';
 import { FocusOverlay } from './FocusOverlay';
+import { PointHandles } from './PointHandles';
 import { TransformOverlay } from './TransformOverlay';
 import { ParallaxPanel, parallaxVector } from './ParallaxPanel';
 import { AnalysisPanel } from './AnalysisPanel';
@@ -283,6 +284,7 @@ export function CanvasView({ theme }: { theme: 'light' | 'dark' }) {
       )}
       <TransformOverlay />
       <FocusOverlay />
+      <PointHandles />
       <BrushOverlay />
       <SmartSelectOverlay />
       <BrushPanel />

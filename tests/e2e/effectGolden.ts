@@ -29,6 +29,8 @@ export type EffectCase = {
    * die eine Fläche absichtlich ungleichmäßig machen (Korn, Raster, Vignette …).
    */
   flatBorder?: number | false;
+  /** synthetische Tiefenkarte (ohne Modell): unten nah, oben fern, mit einer nahen Scheibe in der Bildmitte */
+  syntheticDepth?: boolean;
 };
 
 const GOLDEN_DIR = new URL('../golden/effects/', import.meta.url).pathname;
@@ -47,6 +49,24 @@ export async function applyEffect(page: Page, c: EffectCase, fixtureFile: string
       { timeout: 15_000 },
     )
     .toBe('ok');
+  if (c.syntheticDepth)
+    await page.evaluate(async () => {
+      const p = window.__bls.getProject();
+      const o = p ? Object.values(p.originals)[0] : undefined;
+      if (!o) throw new Error('kein Original');
+      const w = 128;
+      const h = Math.max(1, Math.round((128 * o.height) / o.width));
+      const d = new Float32Array(w * h);
+      for (let y = 0; y < h; y++)
+        for (let x = 0; x < w; x++) {
+          const r = Math.hypot(x / w - 0.5, (y / h - 0.55) * 1.2);
+          const ramp = 1 - y / h;
+          // weicher Rand der Scheibe (echte Tiefenkarten haben keine harten Sprünge)
+          const disc = Math.min(1, Math.max(0, (0.22 - r) / 0.08));
+          d[y * w + x] = disc * 0.1 + (1 - disc) * (0.25 + 0.7 * ramp);
+        }
+      await window.__bls.ml.injectMap(o.id, 'depth', d, w, h);
+    });
   await page.evaluate(
     ({ effectId, preset, params }) => {
       const bls = window.__bls;

@@ -1,0 +1,23 @@
+{
+  "id": "zz-e2e-mlmaps",
+  "name": "E2E Modellkarten",
+  "version": "1.0.0",
+  "category": "Test",
+  "inputs": ["source", "depth"],
+  "passes": 1,
+  "requires": ["depth", "normals", "saliency", "faces"],
+  "params": [
+    {
+      "key": "show",
+      "label": "Karte",
+      "type": "enum",
+      "options": [
+        { "value": "depth", "label": "Tiefe" },
+        { "value": "normals", "label": "Normalen" },
+        { "value": "saliency", "label": "Salienz" },
+        { "value": "faces", "label": "Gesichter" }
+      ],
+      "default": "saliency"
+    }
+  ]
+}

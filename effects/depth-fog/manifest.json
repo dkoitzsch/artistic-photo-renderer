@@ -1,0 +1,88 @@
+{
+  "id": "depth-fog",
+  "name": "Nebel nach Tiefe",
+  "version": "1.0.0",
+  "category": "Licht & Atmosphäre",
+  "description": "Nebel, der mit der Entfernung dichter wird – aus der Tiefenkarte, optional mit Schwaden und Bodennebel.",
+  "inputs": ["source", "depth"],
+  "passes": 1,
+  "implementations": { "preview": "webgpu", "final": "webgpu" },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung (exponentieller Nebel über der Tiefenkarte)."
+  },
+  "cost": "realtime",
+  "randomized": true,
+  "requires": ["depth"],
+  "params": [
+    {
+      "key": "density",
+      "label": "Dichte",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 55,
+      "unit": "%"
+    },
+    {
+      "key": "start",
+      "label": "Beginnt ab",
+      "hint": "Tiefe, ab der Nebel entsteht (0 % = ganz nah)",
+      "type": "float",
+      "min": 0,
+      "max": 95,
+      "default": 20,
+      "unit": "%"
+    },
+    { "key": "color", "label": "Nebelfarbe", "type": "color", "default": [0.82, 0.85, 0.88] },
+    {
+      "key": "ground",
+      "label": "Bodennebel",
+      "hint": "Nebel sammelt sich unten im Bild",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 0,
+      "unit": "%"
+    },
+    {
+      "key": "wisps",
+      "label": "Schwaden",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 25,
+      "unit": "%"
+    },
+    {
+      "key": "wispSize",
+      "label": "Größe der Schwaden",
+      "type": "float",
+      "min": 20,
+      "max": 800,
+      "default": 220,
+      "unit": "px",
+      "scale": "log",
+      "group": "Erweitert"
+    },
+    {
+      "key": "glow",
+      "label": "Lichthof",
+      "hint": "Nebel hellt helle Bereiche dahinter etwas auf",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 20,
+      "unit": "%",
+      "group": "Erweitert"
+    }
+  ],
+  "presets": [
+    { "name": "Morgennebel", "values": { "density": 60, "start": 15, "ground": 45, "wisps": 35 } },
+    {
+      "name": "Dichte Suppe",
+      "values": { "density": 90, "start": 5, "wisps": 15, "color": [0.75, 0.77, 0.8] }
+    },
+    { "name": "Abenddunst", "values": { "density": 45, "start": 35, "color": [0.95, 0.75, 0.6], "glow": 50 } }
+  ]
+}

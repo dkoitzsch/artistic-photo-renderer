@@ -97,3 +97,25 @@ fn flow(@builtin(global_invocation_id) id: vec3u) {
   let strength = clamp(sqrt(max(l1, 0.0)) * 8.0, 0.0, 1.0);
   textureStore(dst, id.xy, vec4f(strength, 0.5 + 0.5 * t.x, 0.5 + 0.5 * t.y, coherence));
 }
+
+// normals: Oberflächennormale aus der (geglätteten) Tiefe in src (r: 0 = nah, 1 = fern).
+//   Höhe = 1 − Tiefe; a.px_scale = Reliefmaßstab in Texeln (Tiefe 0…1 entspricht so vielen Texeln).
+//   rgb = Normale (x rechts, y unten, z zum Betrachter), a = 1.
+@compute @workgroup_size(8, 8)
+fn normals(@builtin(global_invocation_id) id: vec3u) {
+  let size = textureDimensions(dst);
+  if (id.x >= size.x || id.y >= size.y) { return; }
+  let p = vec2i(id.xy);
+  let g = sobel(src, p) / a.px_scale; // sobel skaliert mit px_scale – hier ungewünscht
+  let n = normalize(vec3f(g.x * a.px_scale, g.y * a.px_scale, 1.0));
+  textureStore(dst, id.xy, vec4f(n, 1.0));
+}
+
+// pack: r aus src, g aus src_b (Salienz und Gesichter in einer Textur)
+@compute @workgroup_size(8, 8)
+fn pack(@builtin(global_invocation_id) id: vec3u) {
+  let size = textureDimensions(dst);
+  if (id.x >= size.x || id.y >= size.y) { return; }
+  let p = vec2i(id.xy);
+  textureStore(dst, id.xy, vec4f(lum(src, p), lum(src_b, p), 0.0, 1.0));
+}

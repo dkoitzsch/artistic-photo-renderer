@@ -8,6 +8,7 @@ import { effectReach } from '../effects/reach';
 import {
   findNode,
   walk,
+  type AnalysisMaps,
   type BlendMode,
   type EffectInstance,
   type EffectMask,
@@ -18,6 +19,7 @@ import {
   type MaskRef,
   type OriginalRef,
   type Project,
+  type Segment,
   type SceneNode,
 } from '../state/project';
 import { isGestureActive } from '../state/commands';
@@ -107,14 +109,23 @@ function findFirstLayer(project: Project, id: string): Layer | undefined {
   return undefined;
 }
 
+/** Hat die Ebene eine Tiefenkarte (eigene, Tiefenband oder Analysekarte des Originals)? */
+function layerHasDepth(project: { analysis?: Record<string, AnalysisMaps> }, l: Layer): boolean {
+  return !!l.depthMap || l.mask.kind === 'depth' || !!project.analysis?.[l.originalId]?.depth;
+}
+
 /** Ebene mit Tiefenkarte: die Ebene selbst oder (bei einer Gruppe) die erste Unterebene mit Tiefenkarte. */
 function findDepthLayer(project: Project, id: string): Layer | undefined {
   const n = findNode(project.root, id);
   if (!n) return undefined;
   if (n.kind === 'layer') return n;
-  for (const c of walk(n)) if (c.kind === 'layer' && c.depthMap) return c;
+  for (const c of walk(n)) if (c.kind === 'layer' && layerHasDepth(project, c)) return c;
   return undefined;
 }
+
+/** Karten aus Modellen (Analysekarten je Original) */
+const ML_MAPS = ['depth', 'normals', 'saliency', 'faces'] as const;
+const needsMlMaps = (need: readonly string[]) => ML_MAPS.some((m) => need.includes(m));
 
 const isWhole = (r: Rect, [w, h]: [number, number]) =>
   r.x === 0 && r.y === 0 && r.width === w && r.height === h;
@@ -155,10 +166,28 @@ type Aux = {
   luminance?: GPUTexture;
   edges?: GPUTexture;
   flow?: GPUTexture;
+  /** Analysekarte „normals“ (xyz) */
+  normals?: GPUTexture;
+  /** r = Salienz, g = Gesichter */
+  semantic?: GPUTexture;
 };
 
 /** Karten, die als Effektmaske bzw. Effekt-Eingang aus einer Ebene entstehen. */
-type MapId = 'luminance' | 'edges' | 'flow' | 'depth';
+type MapId = 'luminance' | 'edges' | 'flow' | 'depth' | 'normals' | 'saliency' | 'faces';
+
+/** Prüfansichten einer Ebene */
+export type OverlayKind =
+  | 'mask'
+  | 'focus'
+  | 'depth'
+  | 'luminance'
+  | 'edges'
+  | 'flow'
+  | 'selection'
+  | 'normals'
+  | 'saliency'
+  | 'faces'
+  | 'segments';
 
 /**
  * Lazy Zusatz-Eingänge einer Ebene: werden erst erzeugt, wenn ein Effekt wirklich rechnen muss.
@@ -173,6 +202,8 @@ export class Compositor {
   /** Leinwand und Originale des gerade gerenderten Projekts (für die Lage der Ebenen) */
   private canvas: { width: number; height: number } = { width: 1, height: 1 };
   private originals: Record<string, OriginalRef> = {};
+  private analysis: Record<string, AnalysisMaps> = {};
+  private segments: Segment[] = [];
   private root: Group | null = null;
 
   /** Asynchrone Effekte, deren Ergebnis in diesem Durchlauf noch fehlte (Schlüssel) */
@@ -188,6 +219,8 @@ export class Compositor {
   private use(project: Project): void {
     this.canvas = project.canvas;
     this.originals = project.originals;
+    this.analysis = project.analysis ?? {};
+    this.segments = project.segments ?? [];
     this.root = project.root;
   }
 
@@ -200,6 +233,24 @@ export class Compositor {
   ): { tex: GPUTexture; key: string } | null {
     if (map === 'depth') return this.depthTexture(frame, layer, geo);
     const [lw, lh] = geo.local;
+    if (map === 'normals') {
+      const d = this.depthTexture(frame, layer, geo);
+      if (!d) return null;
+      const key = `normals|${d.key}`;
+      const tex = this.sources.derive(key, lw, lh, (out) => {
+        this.core.normalMap(frame, d.tex, out);
+      });
+      return { tex, key };
+    }
+    if (map === 'saliency' || map === 'faces') {
+      const ref = this.analysis[layer.originalId]?.[map];
+      if (!ref || !this.sources.hasMask(ref.id)) return null;
+      const key = `${map}|${ref.id}@${lw}x${lh}`;
+      const tex = this.sources.derive(key, lw, lh, (out) => {
+        this.core.loadMask(frame, this.sources.mask(ref.id), out);
+      });
+      return { tex, key };
+    }
     const lumaKey = `luma|${layer.originalId}@${lw}x${lh}`;
     const luma = this.sources.derive(lumaKey, lw, lh, (out) => {
       this.core.luma(frame, this.sources.at(frame, layer.originalId, lw, lh), out);
@@ -255,21 +306,22 @@ export class Compositor {
   ): { key: string; get: () => { tex: GPUTexture; owned: boolean } } | null {
     if (!mask) return null;
     if (mask.kind === 'map' && !host && source) {
-      if (mask.map === 'depth') {
-        // Tiefe: von der ersten Ebene der Gruppe mit Tiefenkarte
-        let depthLayer: Layer | undefined;
+      if (mask.map === 'depth' || mask.map === 'saliency' || mask.map === 'faces') {
+        // Tiefe, Salienz, Gesichter: von der ersten Ebene der Gruppe mit dieser Karte
+        const kind = mask.map;
+        let mapLayer: Layer | undefined;
         for (const n of walk(source.group))
-          if (n.kind === 'layer' && (n.depthMap || n.mask.kind === 'depth')) {
-            depthLayer = n;
+          if (
+            n.kind === 'layer' &&
+            (kind === 'depth'
+              ? layerHasDepth({ analysis: this.analysis }, n)
+              : !!this.analysis[n.originalId]?.[kind])
+          ) {
+            mapLayer = n;
             break;
           }
-        if (!depthLayer) return null;
-        return this.effectMask(
-          frame,
-          mask,
-          { layer: depthLayer, geo: this.geometry(depthLayer, opts) },
-          opts,
-        );
+        if (!mapLayer) return null;
+        return this.effectMask(frame, mask, { layer: mapLayer, geo: this.geometry(mapLayer, opts) }, opts);
       }
       // Helligkeit/Kanten aus dem Eingangsbild (Leinwand-Ausschnitt)
       const { input } = source;
@@ -306,11 +358,32 @@ export class Compositor {
         },
       };
     }
-    const other = this.root ? findNode(this.root, mask.layerId) : undefined;
-    if (other?.kind !== 'layer') return null;
-    const geo = this.geometry(other, opts);
-    const m = this.processedMask(frame, other, geo, opts);
-    const key = `layermask|${m?.key ?? 'full'}${geo.key}|${mask.invert ? 'inv' : ''}`;
+    let geo: Geometry;
+    let m: { tex: GPUTexture; key: string } | null;
+    let key: string;
+    if (mask.kind === 'segment') {
+      // Segment eines Originals: mit der Lage der Ebene, die das Original zeigt (bevorzugt die eigene)
+      const seg = this.segments.find((x) => x.id === mask.segmentId);
+      if (!seg) return null;
+      let carrier = host?.layer.originalId === seg.originalId ? host.layer : undefined;
+      if (!carrier && this.root)
+        for (const n of walk(this.root))
+          if (n.kind === 'layer' && n.originalId === seg.originalId) {
+            carrier = n;
+            break;
+          }
+      if (!carrier) return null;
+      geo = host && carrier === host.layer ? host.geo : this.geometry(carrier, opts);
+      const base = this.baseMask(frame, carrier, seg.mask.base, geo, opts, false);
+      m = this.withStrokes(frame, carrier, base, seg.mask.strokes, geo, 1);
+      key = `segmask|${m?.key ?? 'full'}${geo.key}|${mask.invert ? 'inv' : ''}`;
+    } else {
+      const other = this.root ? findNode(this.root, mask.layerId) : undefined;
+      if (other?.kind !== 'layer') return null;
+      geo = this.geometry(other, opts);
+      m = this.processedMask(frame, other, geo, opts);
+      key = `layermask|${m?.key ?? 'full'}${geo.key}|${mask.invert ? 'inv' : ''}`;
+    }
     return {
       key,
       get: () => {
@@ -463,14 +536,20 @@ export class Compositor {
     frame: Frame,
     project: Project,
     layerId: string,
-    kind: 'mask' | 'focus' | 'depth' | 'luminance' | 'edges' | 'flow' | 'selection',
+    kind: OverlayKind,
     opts: RenderOptions,
   ): { tex: GPUTexture; owned: boolean } | null {
     this.use(project);
     const layer =
       kind === 'depth'
         ? findDepthLayer(project, layerId)
-        : kind === 'luminance' || kind === 'edges' || kind === 'flow'
+        : kind === 'luminance' ||
+            kind === 'edges' ||
+            kind === 'flow' ||
+            kind === 'normals' ||
+            kind === 'saliency' ||
+            kind === 'faces' ||
+            kind === 'segments'
           ? findFirstLayer(project, layerId)
           : findLayer(project, layerId);
     if (!layer) return null;
@@ -485,11 +564,50 @@ export class Compositor {
       return { tex: r.tex, owned: false };
     };
     const regionKey = `[${opts.region.x},${opts.region.y},${opts.region.width},${opts.region.height}]`;
-    if (kind === 'luminance' || kind === 'edges' || kind === 'flow') {
+    if (
+      kind === 'luminance' ||
+      kind === 'edges' ||
+      kind === 'flow' ||
+      kind === 'normals' ||
+      kind === 'saliency' ||
+      kind === 'faces'
+    ) {
       const map = this.layerMap(frame, layer, geo, kind);
       return map
         ? keep(`${map.key}${geo.key}${regionKey}`, () => this.place(frame, geo, map.tex, opts, 'map-view'))
         : null;
+    }
+    if (kind === 'segments') {
+      // Segmente des Originals farbig übereinander (rgb vormultipliziert, a = Deckung)
+      const segs = this.segments.filter((x) => x.originalId === layer.originalId);
+      const masks = segs.map((seg) => {
+        const base = this.baseMask(frame, layer, seg.mask.base, geo, opts, false);
+        return { seg, m: this.withStrokes(frame, layer, base, seg.mask.strokes, geo, 1) };
+      });
+      const key = `segments|${masks.map((x) => `${x.seg.id}:${x.m?.key ?? 'full'}:${x.seg.color.join(',')}`).join(';')}`;
+      return keep(`${key}${geo.key}${regionKey}`, () => {
+        const { width, height } = opts.region;
+        let acc = this.core.pool.acquire(width, height, 'segments-view');
+        this.core.fill(frame, acc, [0, 0, 0, 0]);
+        const color = this.core.pool.acquire(width, height, 'segment-color');
+        const tinted = this.core.pool.acquire(width, height, 'segment-tinted');
+        for (const { seg, m } of masks) {
+          const c = seg.color.map((v) => v ** 2.2);
+          this.core.fill(frame, color, [c[0] ?? 0, c[1] ?? 0, c[2] ?? 0, 1]);
+          let maskTex: { tex: GPUTexture; owned: boolean } | null = null;
+          if (m) maskTex = this.place(frame, geo, m.tex, opts, 'segment-mask');
+          if (maskTex) this.core.maskApply(frame, color, maskTex.tex, tinted);
+          else frame.encoder.copyTextureToTexture({ texture: color }, { texture: tinted }, [width, height]);
+          if (maskTex?.owned) this.core.pool.release(maskTex.tex);
+          const next = this.core.pool.acquire(width, height, 'segments-view');
+          this.core.blend(frame, acc, tinted, next, 1);
+          this.core.pool.release(acc);
+          acc = next;
+        }
+        this.core.pool.release(color);
+        this.core.pool.release(tinted);
+        return { tex: acc, owned: true };
+      });
     }
     if (kind === 'depth') {
       const d = this.depthTexture(frame, layer, geo);
@@ -727,7 +845,11 @@ export class Compositor {
 
   /** Tiefenkarte einer Ebene in Ebenengröße (für Effekte und die Ansicht „Tiefe“), gecacht. */
   private depthTexture(frame: Frame, layer: Layer, geo: Geometry): { tex: GPUTexture; key: string } | null {
-    const id = layer.depthMap?.id ?? (layer.mask.kind === 'depth' ? layer.mask.depthId : null);
+    const id =
+      layer.depthMap?.id ??
+      (layer.mask.kind === 'depth' ? layer.mask.depthId : null) ??
+      this.analysis[layer.originalId]?.depth?.id ??
+      null;
     if (!id || !this.sources.hasMask(id)) return null;
     const [cw, ch] = geo.local;
     const key = `depth|${id}@${cw}x${ch}`;
@@ -752,7 +874,7 @@ export class Compositor {
     let aux: Aux | null = null;
     // Analysekarten der Ebene (aus dem Original, im Ebenenraum gecacht) bei Bedarf platzieren
     const addMaps = (a: Aux, need: readonly string[]) => {
-      for (const id of ['luminance', 'edges', 'flow'] as const) {
+      for (const id of ['luminance', 'edges', 'flow', 'normals'] as const) {
         if (!need.includes(id) || a[id]) continue;
         const map = this.layerMap(frame, layer, geo, id);
         if (!map) continue;
@@ -760,13 +882,33 @@ export class Compositor {
         if (r.owned) owned.push(r.tex);
         a[id] = r.tex;
       }
+      if ((need.includes('saliency') || need.includes('faces')) && !a.semantic) {
+        const sal = this.layerMap(frame, layer, geo, 'saliency');
+        const faces = this.layerMap(frame, layer, geo, 'faces');
+        if (sal || faces) {
+          const [lw, lh] = geo.local;
+          const local = this.sources.derive(
+            `semantic|${sal?.key ?? '-'}|${faces?.key ?? '-'}`,
+            lw,
+            lh,
+            (out) => {
+              this.core.pack2(frame, sal?.tex ?? this.core.black, faces?.tex ?? this.core.black, out);
+            },
+          );
+          const r = this.place(frame, geo, local, opts, 'map-semantic');
+          if (r.owned) owned.push(r.tex);
+          a.semantic = r.tex;
+        }
+      }
     };
+    const maps = this.analysis[layer.originalId];
     return {
       key:
         (hasFocus
           ? `focus${JSON.stringify(points.map((p) => [p.x, p.y, p.radius]))}|${strokesKey(focusStrokes)}`
           : 'nofocus') +
-        (depthTex ? `|depth${layer.depthMap?.id ?? ''}` : '') +
+        (depthTex ? `|depth${layer.depthMap?.id ?? maps?.depth?.id ?? ''}` : '') +
+        (maps?.saliency || maps?.faces ? `|sem${maps.saliency?.id ?? ''},${maps.faces?.id ?? ''}` : '') +
         geo.key,
       get: (need) => {
         if (aux) {
@@ -984,7 +1126,31 @@ export class Compositor {
   ): RenderResult {
     let cur = input;
     if (opts.ignoreEffects) return cur;
-    const auxKey = aux?.key ?? 'noaux';
+    // Gruppen: Analysekarten aus Modellen (Tiefe, Normalen, Salienz, Gesichter) von der ersten sichtbaren Ebene
+    let groupAux: AuxProvider | null = null;
+    if (!aux && group) {
+      const needsMaps = effects.some(
+        (fx) => fx.enabled && needsMlMaps(getPlugin(fx.effectId)?.manifest?.requires ?? []),
+      );
+      let first: Layer | undefined;
+      for (const n of walk(group))
+        if (n.kind === 'layer' && n.visible) {
+          first = n;
+          break;
+        }
+      if (needsMaps && first) {
+        const geo = this.geometry(first, opts);
+        groupAux = this.auxFor(
+          frame,
+          first,
+          geo,
+          null,
+          this.depthTexture(frame, first, geo)?.tex ?? null,
+          opts,
+        );
+      }
+    }
+    const auxKey = aux?.key ?? (groupAux ? `gmaps|${groupAux.key}` : 'noaux');
     effects.forEach((fx, i) => {
       if (!fx.enabled) return;
       const plugin = getPlugin(fx.effectId);
@@ -1056,11 +1222,14 @@ export class Compositor {
       this.effectRuns++;
       const need = plugin.manifest?.requires ?? [];
       const temps: GPUTexture[] = [];
+      const fromGroup = groupAux && needsMlMaps(need) ? groupAux.get(need) : null;
       const a = aux?.get(need) ?? {
         mask: this.core.white,
         focus: this.core.black,
-        depth: this.core.black,
+        depth: fromGroup?.depth ?? this.core.black,
         hasFocus: false,
+        ...(fromGroup?.normals ? { normals: fromGroup.normals } : {}),
+        ...(fromGroup?.semantic ? { semantic: fromGroup.semantic } : {}),
         ...this.inputMaps(frame, cur.tex, opts, need, temps),
       };
       const m = emask?.get() ?? null;
@@ -1092,6 +1261,7 @@ export class Compositor {
         cur = { tex: out, key, owned: false };
       } else cur = { tex: out, key, owned: true };
     });
+    groupAux?.release();
     return cur;
   }
 }

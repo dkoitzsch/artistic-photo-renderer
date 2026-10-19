@@ -1,5 +1,6 @@
 // Mischmodus und eigene Maske eines Effekts (Spec „Effekte“ 2.2) sowie die Maske einer Gruppe (2.2a):
-// Maske aus einem Bereich der Helligkeit/Kantenstärke/Tiefe oder aus der Maske einer anderen Ebene, umkehrbar.
+// Maske aus einem Bereich der Helligkeit/Kantenstärke/Tiefe/Salienz/Gesichter, aus einem Segment oder aus der Maske einer
+// anderen Ebene, umkehrbar. Fehlende Karten aus Modellen werden automatisch berechnet (ml/analysis.ts).
 // Bei Gruppen (und Effekten auf Gruppen) stammen Helligkeit und Kanten aus dem zusammengeführten Ergebnis.
 
 import {
@@ -30,14 +31,35 @@ const MAP_LABEL: Record<MaskMapId, string> = {
   luminance: 'Helligkeit',
   edges: 'Kantenstärke',
   depth: 'Tiefe',
+  saliency: 'Salienz',
+  faces: 'Gesichter',
+};
+
+const MAP_HINT: Record<MaskMapId, string> = {
+  luminance: '0 % = schwarz, 100 % = weiß',
+  edges: '0 % = keine Kante, 100 % = starke Kante',
+  depth: '0 % = nah, 100 % = fern',
+  saliency: '0 % = unauffällig, 100 % = zieht den Blick an',
+  faces: '0 % = kein Gesicht, 100 % = Gesicht',
+};
+
+/** Standardbereich je Karte beim Auswählen */
+const MAP_DEFAULT: Record<MaskMapId, [number, number]> = {
+  luminance: [0, 0.3],
+  edges: [0, 0.3],
+  depth: [0, 0.3],
+  saliency: [0.5, 1],
+  faces: [0.5, 1],
 };
 
 function encode(m: EffectMask | undefined): string {
   if (!m) return '';
-  return m.kind === 'map' ? `map:${m.map}` : `layer:${m.layerId}`;
+  return m.kind === 'map'
+    ? `map:${m.map}`
+    : m.kind === 'segment'
+      ? `segment:${m.segmentId}`
+      : `layer:${m.layerId}`;
 }
-
-const hasDepth = (l: Layer) => l.depthMap !== undefined || l.mask.kind === 'depth';
 
 /** Auswahlmöglichkeiten der Maske: Kartenbereiche der Ebene bzw. des Gruppenergebnisses, Masken anderer Ebenen. */
 function maskOptions(project: Project, ctx: { layer: Layer | null; group: Group | null }) {
@@ -45,12 +67,21 @@ function maskOptions(project: Project, ctx: { layer: Layer | null; group: Group 
   const suffix = ctx.group ? ' (Gruppenergebnis)' : '';
   options.push({ value: 'map:luminance', label: `Helligkeitsbereich${suffix}` });
   options.push({ value: 'map:edges', label: `Kantenbereich${suffix}` });
-  const depth = ctx.layer
-    ? hasDepth(ctx.layer)
+  const layers = ctx.layer
+    ? [ctx.layer]
     : ctx.group
-      ? [...walk(ctx.group)].some((n) => n.kind === 'layer' && hasDepth(n))
-      : false;
-  if (depth) options.push({ value: 'map:depth', label: 'Tiefenbereich' });
+      ? [...walk(ctx.group)].filter((n) => n.kind === 'layer')
+      : [];
+  if (layers.length) {
+    // Karten aus Modellen: werden bei Bedarf berechnet
+    options.push({ value: 'map:depth', label: 'Tiefenbereich' });
+    options.push({ value: 'map:saliency', label: 'Salienz (Blickfang)' });
+    options.push({ value: 'map:faces', label: 'Gesichter' });
+  }
+  const originals = new Set(layers.map((l) => l.originalId));
+  for (const seg of project.segments ?? [])
+    if (originals.has(seg.originalId))
+      options.push({ value: `segment:${seg.id}`, label: `Segment: ${seg.name}` });
   for (const l of walkLayers(project.root))
     if (l.id !== ctx.layer?.id) options.push({ value: `layer:${l.id}`, label: `Ebene: ${l.name}` });
   return options;
@@ -83,15 +114,12 @@ export function MaskEditor({
           onChange={(e) => {
             const v = e.target.value;
             if (!v) set(undefined);
-            else if (v.startsWith('map:'))
-              set({
-                kind: 'map',
-                map: v.slice(4) as MaskMapId,
-                from: 0,
-                to: 0.3,
-                feather: 0.05,
-                invert: false,
-              });
+            else if (v.startsWith('map:')) {
+              const map = v.slice(4) as MaskMapId;
+              const [from, to] = MAP_DEFAULT[map];
+              set({ kind: 'map', map, from, to, feather: 0.05, invert: false });
+            } else if (v.startsWith('segment:'))
+              set({ kind: 'segment', segmentId: v.slice(8), invert: false });
             else set({ kind: 'layer', layerId: v.slice(6), invert: false });
           }}
         >
@@ -106,17 +134,11 @@ export function MaskEditor({
         <>
           <Slider
             label={`${MAP_LABEL[value.map]} von`}
-            hint={
-              value.map === 'depth'
-                ? '0 % = nah, 100 % = fern'
-                : value.map === 'edges'
-                  ? '0 % = keine Kante, 100 % = starke Kante'
-                  : '0 % = schwarz, 100 % = weiß'
-            }
+            hint={MAP_HINT[value.map]}
             value={Math.round(value.from * 100)}
             min={0}
             max={100}
-            defaultValue={0}
+            defaultValue={Math.round(MAP_DEFAULT[value.map][0] * 100)}
             step={1}
             unit="%"
             onChange={(v, g) => {
@@ -130,7 +152,7 @@ export function MaskEditor({
             value={Math.round(value.to * 100)}
             min={0}
             max={100}
-            defaultValue={30}
+            defaultValue={Math.round(MAP_DEFAULT[value.map][1] * 100)}
             step={1}
             unit="%"
             onChange={(v, g) => {

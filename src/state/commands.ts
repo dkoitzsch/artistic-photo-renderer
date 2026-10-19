@@ -37,6 +37,9 @@ import {
   type EffectInstance,
   type EffectMask,
   type FocusMapSpec,
+  type Group,
+  type PaintedMask,
+  type SceneNode,
   type FocusPoint,
   type LicenseMode,
   type MaskEdge,
@@ -764,5 +767,86 @@ export function applyStackPresetCommand(
       const added = instancesFrom(preset.effects, newId);
       return { ...h, effects: mode === 'replace' ? added : [...h.effects, ...added] };
     }),
+  );
+}
+
+// ---------- Segmente (E3, Analysekarte „segmentation“) ----------
+
+/** Farben neuer Segmente (sRGB, Ansicht „Segmente“) */
+const SEGMENT_COLORS: [number, number, number][] = [
+  [0.95, 0.3, 0.35],
+  [0.25, 0.6, 0.95],
+  [0.3, 0.8, 0.4],
+  [0.95, 0.75, 0.2],
+  [0.7, 0.4, 0.9],
+  [0.2, 0.8, 0.8],
+];
+
+/** Segment aus einer Maske anlegen; liefert seine ID. */
+export function addSegmentCommand(originalId: string, name: string, mask: PaintedMask): string {
+  const id = newId();
+  commit(`Segment „${name}“ angelegt`, (p) => {
+    const list = p.segments ?? [];
+    const color = SEGMENT_COLORS[list.length % SEGMENT_COLORS.length] ?? [1, 0, 0];
+    return { ...p, segments: [...list, { id, name, originalId, mask, color }] };
+  });
+  return id;
+}
+
+/** Die Markierung einer Ebene als Segment speichern (z. B. die per Klick ausgewählte Person). */
+export function saveSelectionAsSegmentCommand(layerId: string, name: string): string | null {
+  const project = getProject();
+  const layer = project ? findNode(project.root, layerId) : undefined;
+  if (layer?.kind !== 'layer' || !layer.selection) return null;
+  const { base, strokes } = layer.selection;
+  return addSegmentCommand(layer.originalId, name, { base, strokes });
+}
+
+/** Umbenennen beim Tippen: ein Verlaufseintrag bis zum Verlassen des Feldes (endGesture). */
+export function renameSegmentCommand(segmentId: string, name: string): void {
+  commit(
+    'Segment umbenannt',
+    (p) => ({
+      ...p,
+      segments: (p.segments ?? []).map((s) => (s.id === segmentId ? { ...s, name } : s)),
+    }),
+    `rename-segment:${segmentId}`,
+  );
+}
+
+/** Segment löschen; Effekt- und Gruppenmasken, die darauf verweisen, entfallen. */
+export function deleteSegmentCommand(segmentId: string): void {
+  const drop = <T extends { mask?: EffectMask }>(x: T): T => {
+    if (x.mask?.kind !== 'segment' || x.mask.segmentId !== segmentId) return x;
+    const { mask: _m, ...rest } = x;
+    return rest as T;
+  };
+  const fixNode = (n: SceneNode): SceneNode => {
+    const effects = n.effects.map(drop);
+    if (n.kind === 'layer')
+      return {
+        ...n,
+        effects,
+        ...(n.shadow ? { shadow: { ...n.shadow, effects: n.shadow.effects.map(drop) } } : {}),
+      };
+    return drop({ ...n, effects, children: n.children.map(fixNode) });
+  };
+  commit('Segment gelöscht', (p) => ({
+    ...p,
+    segments: (p.segments ?? []).filter((s) => s.id !== segmentId),
+    root: fixNode(p.root) as Group,
+  }));
+}
+
+/** Segment als Markierung einer Ebene laden (gleiches Original), z. B. zum Hervorheben. */
+export function selectSegmentCommand(layerId: string, segmentId: string): void {
+  const seg = getProject()?.segments?.find((s) => s.id === segmentId);
+  if (!seg) return;
+  commit(`Markierung aus Segment „${seg.name}“`, (p) =>
+    updateLayer(p, layerId, (l) =>
+      l.originalId === seg.originalId
+        ? { ...l, selection: { base: seg.mask.base, strokes: seg.mask.strokes } }
+        : l,
+    ),
   );
 }

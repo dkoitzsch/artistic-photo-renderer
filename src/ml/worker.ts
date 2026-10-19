@@ -186,8 +186,8 @@ async function segment(
     ? new ort.Tensor('float16', toHalf(chw), [1, 3, S, S])
     : new ort.Tensor('float32', chw, [1, 3, S, S]);
   const outputs = await sess.run({ [inputName]: tensor });
-  // letzte Ausgabe = feinste Maske (BiRefNet liefert mehrere Stufen)
-  const outName = sess.outputNames[sess.outputNames.length - 1] ?? '';
+  // letzte Ausgabe = feinste Maske (BiRefNet liefert mehrere Stufen); U²-Net: erste (fusionierte) Ausgabe
+  const outName = sess.outputNames[model.outputIndex ?? sess.outputNames.length - 1] ?? '';
   const out = outputs[outName];
   if (!out) throw new Error(`${model.name}: keine Ausgabe.`);
   const raw = tensorToFloat32(out);
@@ -438,8 +438,15 @@ function getLandmarkers(mode: LicenseMode, onProgress: (p: Progress) => void) {
     const loader = (await import(/* @vite-ignore */ vendor('mediapipe/vision_wasm_module_internal.js'))) as {
       default?: unknown;
     };
+    // WASM einmal asynchron laden und der Factory mitgeben: sonst lädt Emscripten es per synchronem XHR, das im Worker
+    // nach vorangegangenen ORT-Sitzungen gelegentlich mit „NetworkError“ scheitert (Stolperstein S24)
+    const wasmRes = await fetch(vendor('mediapipe/vision_wasm_module_internal.wasm'));
+    if (!wasmRes.ok) throw new Error(`MediaPipe-WASM: HTTP ${wasmRes.status}`);
+    const wasmBinary = await wasmRes.arrayBuffer();
+    const factory = loader.default as (opts?: Record<string, unknown>) => unknown;
     const setFactory = () => {
-      (self as unknown as { ModuleFactory?: unknown }).ModuleFactory = loader.default;
+      (self as unknown as { ModuleFactory?: unknown }).ModuleFactory = (opts?: Record<string, unknown>) =>
+        factory({ ...opts, wasmBinary });
     };
     setFactory();
     const fileset = {

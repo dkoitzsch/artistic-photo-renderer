@@ -1,0 +1,113 @@
+{
+  "id": "cut-paper",
+  "name": "Papierschnitt",
+  "version": "1.0.0",
+  "category": "Material & Oberfläche",
+  "description": "Das Bild als übereinanderliegende, ausgeschnittene Papierlagen mit Schlagschatten und rauen Kanten.",
+  "inputs": ["source"],
+  "passes": 3,
+  "implementations": { "preview": "webgpu", "final": "webgpu" },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung (Tonwertlagen, Schlagschatten per Abtastung, prozedurale Papierfaser)."
+  },
+  "cost": "realtime",
+  "randomized": true,
+  "reach": "simplify * 3 + shadowLength + 4",
+  "params": [
+    { "key": "layers", "label": "Anzahl Lagen", "type": "int", "min": 2, "max": 8, "default": 5 },
+    {
+      "key": "colorMode",
+      "label": "Farben",
+      "type": "enum",
+      "options": [
+        { "value": "image", "label": "Aus dem Bild" },
+        { "value": "palette", "label": "Palette" }
+      ],
+      "default": "image"
+    },
+    {
+      "key": "palette",
+      "label": "Papierfarben",
+      "hint": "Von unten (dunkel) nach oben (hell)",
+      "type": "palette",
+      "default": [
+        [0.16, 0.2, 0.3],
+        [0.3, 0.42, 0.52],
+        [0.62, 0.55, 0.45],
+        [0.86, 0.72, 0.52],
+        [0.96, 0.93, 0.86]
+      ],
+      "visibleIf": "colorMode=palette"
+    },
+    { "key": "shadowAngle", "label": "Schattenwinkel", "type": "angle", "default": 135 },
+    {
+      "key": "shadowLength",
+      "label": "Schattenlänge",
+      "type": "float",
+      "min": 0,
+      "max": 40,
+      "default": 10,
+      "step": 0.1,
+      "unit": "px"
+    },
+    {
+      "key": "shadowStrength",
+      "label": "Schattendichte",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 55,
+      "unit": "%"
+    },
+    {
+      "key": "roughness",
+      "label": "Kantenrauheit",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 40,
+      "unit": "%"
+    },
+    {
+      "key": "simplify",
+      "label": "Vereinfachung",
+      "type": "float",
+      "min": 0.5,
+      "max": 30,
+      "default": 6,
+      "step": 0.1,
+      "unit": "px",
+      "scale": "log",
+      "group": "Erweitert"
+    },
+    {
+      "key": "fiber",
+      "label": "Papierfaser",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 35,
+      "unit": "%",
+      "group": "Erweitert"
+    }
+  ],
+  "presets": [
+    { "name": "Schattenbox", "values": { "layers": 6, "shadowLength": 16, "shadowStrength": 70 } },
+    {
+      "name": "Nachtblau",
+      "values": {
+        "colorMode": "palette",
+        "layers": 5,
+        "palette": [
+          [0.05, 0.07, 0.15],
+          [0.12, 0.18, 0.35],
+          [0.25, 0.35, 0.6],
+          [0.55, 0.65, 0.85],
+          [0.95, 0.9, 0.75]
+        ]
+      }
+    },
+    { "name": "Grob gerissen", "values": { "layers": 3, "roughness": 90, "simplify": 12, "fiber": 70 } }
+  ]
+}

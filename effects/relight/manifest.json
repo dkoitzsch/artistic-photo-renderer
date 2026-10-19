@@ -1,0 +1,100 @@
+{
+  "id": "relight",
+  "name": "Neu beleuchten",
+  "version": "1.0.0",
+  "category": "Licht & Atmosphäre",
+  "description": "Verschiebt das Licht nachträglich: Oberflächen aus der Tiefenkarte werden von einer ziehbaren Lichtquelle beleuchtet.",
+  "inputs": ["source", "depth"],
+  "passes": 1,
+  "implementations": { "preview": "webgpu", "final": "webgpu" },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung (Lambert + Glanz auf Normalen aus der Tiefenkarte, Depth Anything V2 Small, Apache-2.0)."
+  },
+  "cost": "realtime",
+  "randomized": false,
+  "requires": ["depth", "normals"],
+  "params": [
+    {
+      "key": "light",
+      "label": "Lichtquelle",
+      "hint": "Auf der Leinwand ziehen",
+      "type": "point",
+      "default": [0, 0]
+    },
+    {
+      "key": "height",
+      "label": "Höhe des Lichts",
+      "hint": "Abstand vor dem Bild (flach = Streiflicht)",
+      "type": "float",
+      "min": 2,
+      "max": 150,
+      "default": 35,
+      "unit": "%"
+    },
+    {
+      "key": "intensity",
+      "label": "Licht",
+      "type": "float",
+      "min": 0,
+      "max": 200,
+      "default": 90,
+      "unit": "%"
+    },
+    {
+      "key": "ambient",
+      "label": "Umgebungslicht",
+      "type": "float",
+      "min": 0,
+      "max": 150,
+      "default": 45,
+      "unit": "%"
+    },
+    { "key": "color", "label": "Lichtfarbe", "type": "color", "default": [1, 0.92, 0.8] },
+    {
+      "key": "falloff",
+      "label": "Reichweite",
+      "hint": "Licht nimmt mit der Entfernung ab (100 % = kaum)",
+      "type": "float",
+      "min": 10,
+      "max": 100,
+      "default": 70,
+      "unit": "%"
+    },
+    {
+      "key": "gloss",
+      "label": "Glanz",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 15,
+      "unit": "%",
+      "group": "Erweitert"
+    },
+    {
+      "key": "flatten",
+      "label": "Altes Licht ausgleichen",
+      "hint": "Hebt Schatten und dämpft Lichter des Fotos vor dem neuen Licht",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 30,
+      "unit": "%",
+      "group": "Erweitert"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Streiflicht warm",
+      "values": { "height": 8, "intensity": 120, "ambient": 35, "color": [1, 0.8, 0.6] }
+    },
+    {
+      "name": "Kühles Fensterlicht",
+      "values": { "height": 45, "intensity": 80, "ambient": 55, "color": [0.75, 0.85, 1] }
+    },
+    {
+      "name": "Bühnenspot",
+      "values": { "height": 60, "intensity": 160, "ambient": 15, "falloff": 30, "gloss": 35 }
+    }
+  ]
+}

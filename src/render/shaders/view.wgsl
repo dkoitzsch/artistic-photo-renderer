@@ -12,7 +12,7 @@ struct View {
   checker_a: vec4f,   // linear
   checker_b: vec4f,   // linear
   split_x: f32,       // CSS-Pixel; < 0 = keine Teilung (links „vorher“)
-  overlay: f32,       // 0 aus, 1 Maske (rot = ausgeblendet), 2 Fokuskarte, 3 Tiefe (Farbskala),
+  overlay: f32,       // 0 aus, 1 Maske (rot = ausgeblendet), 2 Fokuskarte, 3 Tiefe (Farbskala), 8 Normalen,
                       // 4 Analysekarte grau (r), 5 Kantenkarte (Farbe = Richtung, Helligkeit = Stärke),
                       // 6 Richtungsfeld (Farbe = Richtung, Helligkeit = Kohärenz), 7 Markierung (Farbschleier)
   overlay_opacity: f32, // nur 4/5: Deckkraft der Karte über dem Bild
@@ -119,6 +119,14 @@ fn fs(@builtin(position) pos: vec4f) -> @location(0) vec4f {
         color = mix(color, srgb_to_linear(depth_colormap(o)), 0.8);
       } else if (view.overlay < 4.5) {
         color = mix(color, srgb_to_linear(vec3f(o)), view.overlay_opacity);
+      } else if (view.overlay > 8.5) {
+        // Segmente: Farbe vormultipliziert, a = Deckung
+        let e = textureSampleLevel(overlay_tex, samp, px / view.image_size, 0.0);
+        color = color * (1.0 - e.a * view.overlay_opacity) + e.rgb * view.overlay_opacity;
+      } else if (view.overlay > 7.5) {
+        // Normalen: Richtung als Farbe (x → rot, y → grün, z → blau)
+        let n = textureSampleLevel(overlay_tex, samp, px / view.image_size, 0.0).xyz;
+        color = mix(color, srgb_to_linear(n * 0.5 + 0.5), view.overlay_opacity);
       } else if (view.overlay > 6.5) {
         // Markierung: Farbschleier mit wählbarer Deckkraft, Original bleibt sichtbar
         color = mix(color, view.veil.rgb, view.overlay_opacity * o);

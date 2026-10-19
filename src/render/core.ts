@@ -199,7 +199,7 @@ export class GpuCore {
       'analysis',
       analysisWgsl,
       ['uniform', 'tex', 'tex', 'storage'],
-      ['tensor', 'edges', 'flow'],
+      ['tensor', 'edges', 'flow', 'normals', 'pack'],
     );
     this.warpPipelines = new ModulePipelines(
       device,
@@ -606,6 +606,39 @@ export class GpuCore {
     this.pool.release(t);
     this.pool.release(near);
     this.pool.release(far);
+  }
+
+  /**
+   * Normalenkarte (Analysekarte „normals“) aus einer Tiefenkarte (r, 0 = nah): rgb = Normale, a = 1.
+   * Die Tiefe wird vorher relativ zur Bildgröße geglättet; Relief: Tiefenbereich 0…1 = ¼ der langen Kante.
+   * Damit sind die Normalen unabhängig von der Auflösung (Vorschau = Export).
+   */
+  normalMap(frame: Frame, depth: GPUTexture, dst: GPUTexture): void {
+    const { width, height } = dst;
+    const long = Math.max(width, height);
+    const smooth = this.pool.acquire(width, height, 'normals-depth');
+    this.gaussian(frame, depth, smooth, Math.max(1.5, long * 0.006), 'clamp');
+    const u = frame.uniform(new Float32Array([long * 0.25, 0, 0, 0]));
+    this.analysis.run(
+      frame,
+      'normals',
+      [{ buffer: u }, smooth.createView(), smooth.createView(), dst.createView()],
+      width,
+      height,
+    );
+    this.pool.release(smooth);
+  }
+
+  /** r aus a, g aus b (gleich groß wie dst). */
+  pack2(frame: Frame, a: GPUTexture, b: GPUTexture, dst: GPUTexture): void {
+    const u = frame.uniform(new Float32Array([1, 0, 0, 0]));
+    this.analysis.run(
+      frame,
+      'pack',
+      [{ buffer: u }, a.createView(), b.createView(), dst.createView()],
+      dst.width,
+      dst.height,
+    );
   }
 
   /** Helligkeit (wahrgenommen, 0…1) eines Bildes; dst gleich groß wie src. */

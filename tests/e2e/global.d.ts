@@ -7,6 +7,7 @@ import type { detectLandmarks } from '../../src/ml/backend';
 import type { browserDepth } from '../../src/ml/browserBackend';
 import type { modelById } from '../../src/ml/registry';
 import type * as split from '../../src/ml/split';
+import type * as analysis from '../../src/ml/analysis';
 import type { presetsSaved, usePresetStore } from '../../src/presets/store';
 import type { useMalplanStore } from '../../src/malplan/store';
 
@@ -26,6 +27,14 @@ declare global {
         splitWithMask: (layerId: string, data: Uint16Array, width: number, height: number) => Promise<string>;
         browserDepth: typeof browserDepth;
         modelById: typeof modelById;
+        analysis: typeof analysis;
+        injectMap: (
+          originalId: string,
+          kind: 'depth' | 'saliency' | 'faces',
+          data: Float32Array,
+          width: number,
+          height: number,
+        ) => Promise<void>;
       };
       presets: { store: typeof usePresetStore; saved: typeof presetsSaved };
       malplan: typeof useMalplanStore;

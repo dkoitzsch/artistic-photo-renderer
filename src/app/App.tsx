@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { startAutosave } from '../io/autosave';
 import { loadPresets } from '../presets/store';
+import { startAnalysisWatcher } from '../ml/analysis';
 import { startServiceMonitor } from '../ml/backend';
 import { browserDownload } from '../ml/browserBackend';
 import { openStoredProject } from '../io/import';
@@ -63,7 +64,9 @@ export function App() {
     const stopSession = startSessionMemory();
     const stopMonitor = startServiceMonitor();
     const stopAutosave = startAutosave();
+    const stopAnalysis = startAnalysisWatcher();
     return () => {
+      stopAnalysis();
       stopSession();
       stopAutosave();
       stopMonitor();

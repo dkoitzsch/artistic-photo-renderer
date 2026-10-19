@@ -13,8 +13,8 @@ Abweichungen von der Spec und Festlegungen bei unklaren Anforderungen. Neueste o
 ## 2026-10-18 – E3: Analysekarten, Segmente, Stil
 
 - **Modelle (Spec 13.3, an der Quelle geprüft 18.10.2026):**
-  - `depth`: Depth Anything V2 Small (Apache-2.0, Browser und Dienst) im Modus „Kommerziell“, im Modus „Alle“ wahlweise
-    Large (CC BY-NC 4.0, Dienst) – wie bei den Tiefenebenen.
+  - `depth`: Depth Anything V2 Small (Apache-2.0, Browser und Dienst) – automatisch berechnete Analysekarten nutzen immer
+    Small. Large (CC BY-NC 4.0, Dienst) bleibt über den Dialog „Tiefenebenen“ wählbar; deren Tiefenkarte hat Vorrang.
   - `saliency`: **U²-Net-p** (xuebinqin/U-2-Net, Code und Gewichte Apache-2.0; ONNX aus der rembg-Veröffentlichung, MIT),
     4,6 MB, im Browser. Das volle U²-Net (176 MB) bringt für eine weiche Aufmerksamkeitskarte keinen sichtbaren Gewinn.
   - `faces`: MediaPipe Face Landmarker (Apache-2.0, vorhanden) – Gesichtsfläche = Hülle der Landmarken, weich gezeichnet.
