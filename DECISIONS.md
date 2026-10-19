@@ -10,6 +10,25 @@ Abweichungen von der Spec und Festlegungen bei unklaren Anforderungen. Neueste o
 - **Betrifft:** (Spec-Abschnitt / Phase)
 -->
 
+## 2026-10-19 – E5: Simulationen
+
+- **Simulationsraster:** Iterative Simulationen (Reaktions-Diffusion, Kristallwachstum, Erosion, Ausbreitung chemischer
+  Prozesse, Aquarell) rechnen auf einem festen Raster über der ganzen Leinwand (lange Kante einstellbar, Standard
+  1024–1536 Zellen), unabhängig von Vorschau- oder Exportauflösung. Das Ergebnis wird auf die Ausgabe hochskaliert und
+  dort mit ortsfestem Detail in voller Auflösung verbunden (Papier, Körnung, Kantenschärfe aus dem Original). Folge:
+  Vorschau und Export zeigen dieselbe Simulation, ein 24-MP-Endrender kostet nur das Hochskalieren. Die Effekte geben
+  als Reichweite die ganze Leinwand an und werden im Export am Stück gerendert (wie die globalen Effekte aus E2).
+- **Ausführungsorte:** alle Simulationen auf der GPU (WebGPU, viele Durchgänge je Effekt), außer `watercolor-sim` im
+  Browser-Worker: Es nutzt die Pigment-Engine (Rezepte je Lasur, Kubelka-Munk-Schichten mit 31 Stützstellen, Granulation
+  aus der Pigmentdatenbank). Kein Effekt braucht den Python-Dienst.
+- **Aquarell vereinfacht:** statt der vollständigen Flachwasser-Simulation von Curtis et al. werden Lasuren je Farbfläche
+  (hell → dunkel) mit Wasserausbreitung (Diffusion im nassen Bereich), Randverdunkelung beim Trocknen, Blüten
+  (Backruns), Nass-in-Nass-Verlauf und Granulation auf der Papierstruktur gerechnet.
+- **Kubistisch:** Neuprojektion als Rückwärts-Verschiebung nach der Tiefe je Blickwinkel; Lückenfüllung mit
+  geglättetem Bild („Inpainting“ vereinfacht), Farbfläche oder offen.
+- **Betrifft:** Effekte `reaction-diffusion`, `crystal-growth`, `erosion`, `chemical`, `aging`, `memory`, `cubist`,
+  `watercolor-sim`
+
 ## 2026-10-19 – E4: Pigmente, Striche, Malplan
 
 - **Pigmentdaten (13.5):** eigene Näherungsdaten je Pigment – Vollton- und Aufhellungsfarbe (1 Teil Pigment : 4 Teile
