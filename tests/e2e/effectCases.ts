@@ -604,4 +604,12 @@ export const EFFECT_CASES: EffectCase[] = [
     syntheticDepth: true,
     flatBorder: false,
   },
+  { name: 'watercolor-sim-landscape', fixture: 'landscape', effectId: 'watercolor-sim', flatBorder: false },
+  {
+    name: 'watercolor-sim-wet-portrait',
+    fixture: 'portrait',
+    effectId: 'watercolor-sim',
+    preset: 'Nass in Nass',
+    flatBorder: false,
+  },
 ];

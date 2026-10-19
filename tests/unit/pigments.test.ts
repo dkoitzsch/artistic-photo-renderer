@@ -184,3 +184,21 @@ describe('Rezeptsuche (findMix)', () => {
     ).toBe('2 Teile Ultramarinblau + 1 Teil Siena gebrannt + etwas Titanweiß');
   });
 });
+
+describe('Dünne Schichten (Kubelka-Munk)', () => {
+  it('Schicht der Dicke 0 = Untergrund, sehr dicke Schicht = Vollton', async () => {
+    const { layerReflectance, mixConstants } = await import('../../src/pigments/engine');
+    const { K, S } = mixConstants([{ id: 'ultramarine', parts: 1 }]);
+    const i = 15;
+    const k = K[i] ?? 0;
+    const s = S[i] ?? 0;
+    expect(layerReflectance(k, s, 0, 0.9)).toBeCloseTo(0.9, 6);
+    const rInf = 1 + k / s - Math.sqrt((k / s) ** 2 + 2 * (k / s));
+    expect(layerReflectance(k, s, 1000, 0.9)).toBeCloseTo(rInf, 4);
+    // dünne Schicht liegt dazwischen und wird mit der Dicke dunkler
+    const thin = layerReflectance(k, s, 0.05, 0.9);
+    const thick = layerReflectance(k, s, 0.5, 0.9);
+    expect(thin).toBeLessThan(0.9);
+    expect(thick).toBeLessThan(thin);
+  });
+});

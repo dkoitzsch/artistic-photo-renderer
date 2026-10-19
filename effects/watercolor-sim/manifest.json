@@ -1,0 +1,122 @@
+{
+  "id": "watercolor-sim",
+  "name": "Aquarell (Simulation)",
+  "version": "1.0.0",
+  "category": "Malerei",
+  "description": "Aquarell als Simulation: Lasuren aus echten Pigmentmischungen, Wasser verläuft, Ränder dunkeln beim Trocknen nach, Blüten, Granulation auf dem Papier.",
+  "inputs": ["source"],
+  "passes": 1,
+  "implementations": { "preview": "browser-cpu", "final": "browser-cpu" },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung nach Curtis et al. (1997, vereinfacht); Farbmischung und Schichten mit der Pigment-Engine (Kubelka-Munk, eigene Pigmentnäherungen)."
+  },
+  "cost": "slow",
+  "randomized": true,
+  "requires": [],
+  "reach": "max(canvasWidth, canvasHeight)",
+  "params": [
+    {
+      "key": "water",
+      "label": "Wassermenge",
+      "hint": "Wie weit Farbe verläuft (nass in nass)",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 45,
+      "unit": "%"
+    },
+    {
+      "key": "washes",
+      "label": "Lasuren",
+      "hint": "Anzahl Farbtöne",
+      "type": "int",
+      "min": 3,
+      "max": 12,
+      "default": 7
+    },
+    {
+      "key": "pigments",
+      "label": "Pigmente",
+      "type": "enum",
+      "options": [
+        { "value": "standard", "label": "Grundpalette" },
+        { "value": "earth", "label": "Erdfarben" },
+        { "value": "granulating", "label": "Granulierende Farben" }
+      ],
+      "default": "standard"
+    },
+    {
+      "key": "paper",
+      "label": "Papier",
+      "type": "enum",
+      "options": [
+        { "value": "hot", "label": "Satiniert (glatt)" },
+        { "value": "cold", "label": "Matt (Torchon)" },
+        { "value": "rough", "label": "Rau (Grob)" }
+      ],
+      "default": "cold"
+    },
+    {
+      "key": "granulation",
+      "label": "Granulation",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 60,
+      "unit": "%"
+    },
+    {
+      "key": "edges",
+      "label": "Randverdunkelung",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 55,
+      "unit": "%"
+    },
+    {
+      "key": "backruns",
+      "label": "Blüten",
+      "hint": "Ausblühungen, wo Wasser in feuchte Farbe läuft",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 30,
+      "unit": "%"
+    },
+    {
+      "key": "drying",
+      "label": "Trocknungsschritte",
+      "hint": "Wie oft Pigment zum Rand wandert, bevor es trocknet",
+      "type": "int",
+      "min": 1,
+      "max": 6,
+      "default": 3
+    },
+    {
+      "key": "gridSize",
+      "label": "Simulationsraster",
+      "hint": "Lange Kante in Zellen",
+      "type": "int",
+      "min": 200,
+      "max": 1400,
+      "default": 640,
+      "group": "Erweitert"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Leichte Skizze",
+      "values": { "water": 35, "washes": 5, "edges": 40, "backruns": 10, "granulation": 30 }
+    },
+    {
+      "name": "Nass in Nass",
+      "values": { "water": 85, "washes": 6, "edges": 70, "backruns": 60, "drying": 5 }
+    },
+    {
+      "name": "Granulierend auf Rauem Papier",
+      "values": { "pigments": "granulating", "paper": "rough", "granulation": 90, "edges": 50 }
+    }
+  ]
+}

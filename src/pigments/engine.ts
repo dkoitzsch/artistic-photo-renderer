@@ -264,3 +264,42 @@ export function formatRecipe(r: Recipe): string {
 /** Lineares sRGB einer Mischung (für Bildberechnungen) */
 export const mixLinear = (parts: readonly MixPart[]): [number, number, number] =>
   mix(parts).srgb.map(decodeSrgb) as [number, number, number];
+
+/** K und S einer Mischung je Wellenlänge (Anteile werden normiert). */
+export function mixConstants(parts: readonly MixPart[]): { K: Float64Array; S: Float64Array } {
+  const total = parts.reduce((s, p) => s + Math.max(0, p.parts), 0) || 1;
+  const K = new Float64Array(BANDS);
+  const S = new Float64Array(BANDS);
+  for (const p of parts) {
+    const c = Math.max(0, p.parts) / total;
+    if (c === 0) continue;
+    const k = constantsOf(p.id);
+    for (let i = 0; i < BANDS; i++) {
+      K[i] = (K[i] ?? 0) + c * (k.K[i] ?? 0);
+      S[i] = (S[i] ?? 0) + c * (k.S[i] ?? 0);
+    }
+  }
+  return { K, S };
+}
+
+/**
+ * Reflexion einer dünnen Farbschicht (Dicke x in S-Einheiten) über einem Untergrund mit Reflexion rg
+ * (Kubelka-Munk-Lösung für endliche Schichten), je Wellenlänge.
+ */
+export function layerReflectance(K: number, S: number, x: number, rg: number): number {
+  if (x <= 0 || S <= 0) return rg;
+  const a = 1 + K / S;
+  const b = Math.sqrt(Math.max(a * a - 1, 1e-12));
+  const bsx = b * S * x;
+  const coth = bsx > 20 ? 1 : 1 / Math.tanh(bsx);
+  return (1 - rg * (a - b * coth)) / (a - rg + b * coth);
+}
+
+/** Granulation einer Mischung (anteilig aus der Pigmentdatenbank) */
+export function mixGranulation(parts: readonly MixPart[]): number {
+  const total = parts.reduce((s, p) => s + Math.max(0, p.parts), 0) || 1;
+  return parts.reduce(
+    (s, p) => s + (Math.max(0, p.parts) / total) * (pigmentById(p.id)?.granulation ?? 0),
+    0,
+  );
+}
