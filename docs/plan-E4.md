@@ -14,7 +14,7 @@ Entscheidungen in [DECISIONS.md](../DECISIONS.md) („E4: Pigmente, Striche, Mal
 - [x] 4. Effekte `stroke-paint` (Hertzmann 1998, Striche als Daten), `impasto`, `saliency-abstraction`
 - [x] 5. Schichtplan (4–8 Schritte je Maltechnik, neu + kumuliert) und Strichführung (aus `stroke-paint` bzw. `flow`,
       Pinselbreite in mm)
-- [ ] 6. PDF-Malmappe vollständig (Palette mit Rezepten, Farbfeld-Karte, Kanten-Karte, Schichtplan, Strichführung),
+- [x] 6. PDF-Malmappe vollständig (Palette mit Rezepten, Farbfeld-Karte, Kanten-Karte, Schichtplan, Strichführung),
       einzelne Hilfen als PNG
 - [ ] 7. Abnahme (10 eigene Farben → vollständige Malmappe mit Mischrezepten, Kanten-Karte und Schichtplan), Spec
       abhaken, CLAUDE.md

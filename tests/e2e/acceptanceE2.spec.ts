@@ -59,7 +59,22 @@ test('Abnahme E2: Foto → Effekt → Malplan → druckbare Malmappe im korrekte
   expect(regions).toBeGreaterThan(20);
   expect(regions).toBeLessThanOrEqual(settings.shapes);
 
-  // Malmappe erstellen
+  // Malmappe erstellen (Seitenumfang wie in E2; die Seiten aus E4 prüft acceptanceE4.spec.ts)
+  await page.evaluate(() => {
+    const pdf = window.__bls.getProject()?.malplan?.pdf;
+    const pages = {
+      ...(pdf?.pages ?? {}),
+      palette: false,
+      numbers: false,
+      edges: false,
+      steps: false,
+      strokes: false,
+    };
+    window.__bls.commands.setMalplanCommand(
+      { pdf: { paper: pdf?.paper ?? 'A4', pages: pages as never } },
+      false,
+    );
+  });
   await page.getByTestId('pdf-toggle').click();
   const t2 = Date.now();
   const dl = page.waitForEvent('download');

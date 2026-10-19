@@ -25,7 +25,8 @@ export function PdfButton() {
     if (!result || !derived) return;
     setBusy(true);
     try {
-      const bytes = await buildMalmappe(result, derived, s, project.name);
+      const st = useMalplanStore.getState();
+      const bytes = await buildMalmappe(result, derived, s, project.name, st);
       downloadBlob(
         new Blob([bytes as Uint8Array<ArrayBuffer>], { type: 'application/pdf' }),
         `${project.name} – Malmappe.pdf`,

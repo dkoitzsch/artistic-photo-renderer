@@ -80,13 +80,30 @@ export const HELPS: { id: HelpId; label: string }[] = [
 ];
 
 export type PaperSize = 'A4' | 'A3';
-export type PdfPage = 'cover' | 'values' | 'notan' | 'warmcold' | 'grid' | 'gridSheet' | 'contour';
+export type PdfPage =
+  | 'cover'
+  | 'values'
+  | 'notan'
+  | 'warmcold'
+  | 'palette'
+  | 'numbers'
+  | 'edges'
+  | 'steps'
+  | 'strokes'
+  | 'grid'
+  | 'gridSheet'
+  | 'contour';
 
 export const PDF_PAGES: { id: PdfPage; label: string }[] = [
   { id: 'cover', label: 'Deckblatt (Endbild)' },
   { id: 'values', label: 'Werteskizze mit Wertskala' },
   { id: 'notan', label: 'Notan' },
   { id: 'warmcold', label: 'Warm-Kalt-Karte' },
+  { id: 'palette', label: 'Palette mit Mischrezepten' },
+  { id: 'numbers', label: 'Farbfeld-Karte' },
+  { id: 'edges', label: 'Kanten-Karte' },
+  { id: 'steps', label: 'Schichtplan (eine Seite je Schritt)' },
+  { id: 'strokes', label: 'Strichführung' },
   { id: 'grid', label: 'Endbild mit Proportionsraster' },
   { id: 'gridSheet', label: 'Raster als eigenes Blatt' },
   { id: 'contour', label: 'Konturvorlage in Originalgröße (gekachelt)' },
@@ -164,6 +181,11 @@ export function defaultMalplan(canvas: { width: number; height: number }): Malpl
         values: true,
         notan: true,
         warmcold: true,
+        palette: true,
+        numbers: true,
+        edges: true,
+        steps: true,
+        strokes: true,
         grid: true,
         gridSheet: true,
         contour: true,

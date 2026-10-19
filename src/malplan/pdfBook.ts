@@ -1,10 +1,26 @@
-// PDF-Malmappe (Spec 7.8): Deckblatt, Werteskizze mit Wertskala, Notan, Warm-Kalt-Karte, Endbild mit Raster,
-// Raster als eigenes Blatt und die Konturvorlage in Originalgröße, gekachelt mit Überlappung und Passmarken.
+// PDF-Malmappe (Spec 7.8): Deckblatt, Werteskizze mit Wertskala, Notan, Warm-Kalt-Karte, Palette mit Mischrezepten,
+// Farbfeld-Karte, Kanten-Karte, Schichtplan (eine Seite je Schritt), Strichführung, Endbild mit Raster, Raster als
+// eigenes Blatt und die Konturvorlage in Originalgröße, gekachelt mit Überlappung und Passmarken.
 
 import { PAPER_PT, PdfDocument, PT_PER_CM, textWidth, type PdfImage, type PdfPage } from '../io/pdf';
 import { gridLines, PDF_PAGES, TECHNIQUES, type MalplanSettings, type PdfPage as PageId } from './model';
-import { renderNotan, renderValues, renderWarmCold, toneGrays, warmColor } from './render';
-import type { MalplanDerived, MalplanResult } from './store';
+import { pigmentById, recipeParts } from '../pigments/engine';
+import {
+  EDGE_COLORS,
+  GUIDE_COLORS,
+  renderEdges,
+  renderNotan,
+  renderNumbers,
+  renderPalette,
+  renderStep,
+  renderStrokes,
+  renderValues,
+  renderWarmCold,
+  toneGrays,
+  warmColor,
+  type HelpExtras,
+} from './render';
+import type { MalplanDerived, MalplanPalette, MalplanResult } from './store';
 import { tileLayout, tileName, tileOrigin } from './tiles';
 
 const MARGIN = 36; // pt (≈ 1,27 cm) für Bildseiten
@@ -16,9 +32,183 @@ type Ctx = {
   s: MalplanSettings;
   r: MalplanResult;
   d: MalplanDerived;
+  x: HelpExtras;
   name: string;
   pageNo: number;
 };
+
+/** Zerlegt einen Text in Zeilen bis maxWidth (pt). */
+function wrap(text: string, maxWidth: number, size: number, bold = false): string[] {
+  const out: string[] = [];
+  let line = '';
+  for (const word of text.split(' ')) {
+    const next = line ? `${line} ${word}` : word;
+    if (textWidth(next, size, bold) > maxWidth && line) {
+      out.push(line);
+      line = word;
+    } else line = next;
+  }
+  if (line) out.push(line);
+  return out;
+}
+
+const rgb01 = (c: readonly number[]): [number, number, number] => [c[0] ?? 0, c[1] ?? 0, c[2] ?? 0];
+
+/** Rezept als Text (Teile, „etwas“) */
+function recipeText(e: MalplanPalette['entries'][number]): string {
+  return recipeParts({
+    parts: e.recipe,
+    deltaE: e.deltaE,
+    result: { srgb: e.mixed, hex: '', lab: [0, 0, 0], spectrum: new Float64Array() },
+  })
+    .map((p) =>
+      p.parts === null ? `etwas ${p.name}` : `${p.parts} ${p.parts === 1 ? 'Teil' : 'Teile'} ${p.name}`,
+    )
+    .join(' + ');
+}
+
+/** Palette mit Mischrezepten: kleines Bild der reduzierten Palette, Tabelle (ggf. über mehrere Seiten), Meine Farben. */
+function palettePages(ctx: Ctx, pal: MalplanPalette) {
+  const rowH = 30;
+  let i = 0;
+  let first = true;
+  while (i < pal.entries.length || first) {
+    const { p, area } = pageFor(
+      ctx,
+      first ? `Palette und Mischrezepte (${pal.entries.length} Farben)` : 'Mischrezepte (Fortsetzung)',
+      false,
+    );
+    const [x, y, w, h] = area;
+    let top = y + h;
+    if (first) {
+      const img = renderPalette(ctx.r, pal);
+      const ih = Math.min(h * 0.32, (w * img.height) / img.width);
+      const iw = (ih * img.width) / img.height;
+      p.image(embedCanvas(ctx.doc, img), x, top - ih, iw, ih);
+      p.stroke([0.75, 0.75, 0.72], 0.5).rect(x, top - ih, iw, ih);
+      const note = wrap(
+        'Jede Fläche in der Mischfarbe ihres Eintrags. Farbfeld links = Sollfarbe aus dem Bild, rechts = Mischung aus „Meine Farben“. dE = Farbabstand (CIEDE2000); ab 5 sichtbar abweichend. Die Pigmentspektren sind Näherungen.',
+        w - iw - 16,
+        8,
+      );
+      note.forEach((l, k) => p.text(l, x + iw + 16, top - 10 - k * 11, 8, false, MUTED));
+      top -= ih + 22;
+    }
+    while (i < pal.entries.length && top - rowH > y + (first ? 70 : 0)) {
+      const e = pal.entries[i];
+      if (!e) break;
+      const ry = top - rowH;
+      p.text(String(e.number), x, ry + 10, 11, true, INK);
+      p.fill(rgb01(e.target))
+        .stroke(INK, 0.4)
+        .rect(x + 24, ry + 2, 20, 20, 'B');
+      p.fill(rgb01(e.mixed))
+        .stroke(INK, 0.4)
+        .rect(x + 44, ry + 2, 20, 20, 'B');
+      const lines = wrap(recipeText(e), w - 150, 9);
+      lines.slice(0, 2).forEach((l, k) => p.text(l, x + 76, ry + 14 - k * 11, 9, false, INK));
+      const off = e.deltaE >= 5;
+      p.text(`dE ${e.deltaE.toFixed(1)}`, x + w - 60, ry + 10, 9, off, off ? [0.75, 0.1, 0.1] : MUTED);
+      if (off) p.text('nicht genau mischbar', x + w - 110, ry, 7, false, [0.75, 0.1, 0.1]);
+      top -= rowH;
+      i++;
+    }
+    if (first) {
+      // Meine Farben (Fußbereich der ersten Seite)
+      const names = ctx.s.myColors.map((id) => {
+        const pg = pigmentById(id);
+        return pg ? `${pg.name} (${pg.ci})` : id;
+      });
+      p.text('Meine Farben', x, y + 52, 9, true, INK);
+      wrap(names.join(' · '), w, 8)
+        .slice(0, 4)
+        .forEach((l, k) => p.text(l, x, y + 40 - k * 10, 8, false, INK));
+    }
+    first = false;
+  }
+}
+
+/** Farbfeld-Karte mit Legende (Nummer → Mischfarbe). */
+function numbersPage(ctx: Ctx, pal: MalplanPalette) {
+  const cols = 6;
+  const rows = Math.ceil(pal.entries.length / cols);
+  const reserve = 20 + rows * 18;
+  const { p, box } = imagePage(ctx, 'Farbfeld-Karte', renderNumbers(ctx.r, pal, 3), reserve);
+  const [bx, by, bw] = box;
+  const cw = bw / cols;
+  pal.entries.forEach((e, k) => {
+    const cx = bx + (k % cols) * cw;
+    const cy = by - 22 - Math.floor(k / cols) * 18;
+    p.fill(rgb01(e.mixed)).stroke(INK, 0.4).rect(cx, cy, 14, 12, 'B');
+    p.text(String(e.number), cx + 18, cy + 2, 9, true, INK);
+  });
+}
+
+/** Kanten-Karte mit Legende. */
+function edgesPage(ctx: Ctx) {
+  const edges = ctx.x.edges;
+  if (!edges) return;
+  const { p, box } = imagePage(ctx, 'Kanten-Karte', renderEdges(ctx.r, edges, ctx.s), 40);
+  const [bx, by] = box;
+  const y = by - 18;
+  const items: [1 | 2 | 3, string][] = [
+    [1, 'hart – scharf malen'],
+    [2, 'weich – verblenden'],
+    [3, 'verloren – ineinander laufen lassen'],
+  ];
+  items.forEach(([k, label], i) => {
+    const c = EDGE_COLORS[k];
+    p.fill([c[0] / 255, c[1] / 255, c[2] / 255]).rect(bx + i * 170, y, 18, 5, 'f');
+    p.text(label, bx + i * 170 + 24, y - 1, 9, false, INK);
+  });
+}
+
+/** Schichtplan: eine Seite je Schritt (Stand mit neu hinzukommenden Flächen umrandet). */
+function stepPages(ctx: Ctx) {
+  const plan = ctx.x.plan;
+  if (!plan) return;
+  plan.steps.forEach((st, k) => {
+    const { p, box } = imagePage(
+      ctx,
+      `Schichtplan – Schritt ${k + 1} von ${plan.steps.length}: ${st.title}`,
+      renderStep(ctx.r, plan, k, ctx.s, ctx.x.palette ?? null),
+      40,
+    );
+    const [bx, by, bw] = box;
+    wrap(st.description, bw, 10).forEach((l, i) => p.text(l, bx, by - 16 - i * 12, 10, false, INK));
+    if (st.kind === 'paint')
+      p.text('Neu in diesem Schritt: umrandete Flächen.', bx, by - 42, 8, false, MUTED);
+  });
+}
+
+/** Strichführung mit Legende (Pinselbreite in mm auf dem Untergrund). */
+function strokesPage(ctx: Ctx) {
+  const guide = ctx.x.guide;
+  if (!guide) return;
+  const { p, box } = imagePage(ctx, 'Strichführung', renderStrokes(ctx.r, guide), 46);
+  const [bx, by] = box;
+  const mm = (px: number) =>
+    Math.max(1, Math.round((px * ctx.s.format.widthCm * 10) / Math.max(1, ctx.r.width)));
+  const names =
+    guide.source === 'stroke-paint'
+      ? guide.widths.map((_, i) => `Durchgang ${i + 1}`)
+      : ['große Flächen', 'mittlere Formen', 'Details'];
+  guide.widths.forEach((w, i) => {
+    const c = GUIDE_COLORS[i % GUIDE_COLORS.length] ?? [0, 0, 0];
+    p.fill([c[0] / 255, c[1] / 255, c[2] / 255]).rect(bx + i * 170, by - 18, 18, 5, 'f');
+    p.text(`${names[i] ?? ''}: Pinsel ca. ${mm(w)} mm`, bx + i * 170 + 24, by - 19, 9, false, INK);
+  });
+  p.text(
+    guide.source === 'stroke-paint'
+      ? 'Aus den Strichdaten des Effekts „Pinselstriche“: Richtung und Reihenfolge der Durchgänge.'
+      : 'Richtung aus dem Richtungsfeld des Bildes; Pinselbreite nach Flächengröße.',
+    bx,
+    by - 36,
+    8,
+    false,
+    MUTED,
+  );
+}
 
 /** Bild eines Canvas verlustfrei einbetten. */
 function embedCanvas(doc: PdfDocument, c: HTMLCanvasElement): PdfImage {
@@ -98,7 +288,9 @@ function cover(ctx: Ctx, jpeg: { data: Uint8Array; width: number; height: number
     MUTED,
   );
   const pages = PDF_PAGES.filter((pg) => pg.id !== 'cover' && s.pdf.pages[pg.id]).map((pg) => pg.label);
-  p.text(`Inhalt: ${pages.join(' · ')}`, x, y + 18, 8, false, MUTED);
+  wrap(`Inhalt: ${pages.join(' · ')}`, w, 8)
+    .slice(0, 2)
+    .forEach((l, i) => p.text(l, x, y + 18 - i * 10, 8, false, MUTED));
 }
 
 function valuesPage(ctx: Ctx) {
@@ -354,9 +546,10 @@ export async function buildMalmappe(
   d: MalplanDerived,
   s: MalplanSettings,
   name: string,
+  x: HelpExtras = {},
 ): Promise<Uint8Array> {
   const doc = new PdfDocument();
-  const ctx: Ctx = { doc, s, r, d, name, pageNo: 0 };
+  const ctx: Ctx = { doc, s, r, d, x, name, pageNo: 0 };
   const final = document.createElement('canvas');
   final.width = r.width;
   final.height = r.height;
@@ -366,6 +559,11 @@ export async function buildMalmappe(
   if (on('values')) valuesPage(ctx);
   if (on('notan')) notanPage(ctx);
   if (on('warmcold')) warmColdPage(ctx);
+  if (on('palette') && x.palette) palettePages(ctx, x.palette);
+  if (on('numbers') && x.palette) numbersPage(ctx, x.palette);
+  if (on('edges')) edgesPage(ctx);
+  if (on('steps')) stepPages(ctx);
+  if (on('strokes')) strokesPage(ctx);
   if (on('grid')) gridPage(ctx, final);
   if (on('gridSheet')) gridSheet(ctx);
   if (on('contour')) contourPages(ctx);
