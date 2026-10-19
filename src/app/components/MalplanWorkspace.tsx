@@ -90,14 +90,15 @@ function MalplanView() {
   const result = useMalplanStore((s) => s.result);
   const derived = useMalplanStore((s) => s.derived);
   const palette = useMalplanStore((s) => s.palette);
+  const edges = useMalplanStore((s) => s.edges);
   const status = useMalplanStore((s) => s.status);
   const progress = useMalplanStore((s) => s.progress);
   const error = useMalplanStore((s) => s.error);
   const settings = useSettings();
   const ref = useRef<HTMLCanvasElement>(null);
   const image = useMemo(
-    () => (settings ? renderHelp(help, result, derived, settings, palette) : null),
-    [help, result, derived, settings, palette],
+    () => (settings ? renderHelp(help, result, derived, settings, palette, edges) : null),
+    [help, result, derived, settings, palette, edges],
   );
   useEffect(() => {
     const c = ref.current;
@@ -242,7 +243,8 @@ function MalplanPanel() {
     });
   };
   const savePng = () => {
-    const c = renderHelp(help, result, derived, settings, useMalplanStore.getState().palette);
+    const st = useMalplanStore.getState();
+    const c = renderHelp(help, result, derived, settings, st.palette, st.edges);
     if (!c) return;
     c.toBlob((blob) => {
       if (blob)
@@ -401,6 +403,42 @@ function HelpSettings({
   median: number | null;
 }) {
   switch (help) {
+    case 'edges':
+      return (
+        <Section title="Kanten-Karte" testId="malplan-edges">
+          <p className="section-note edge-legend">
+            <span className="edge-key hard" /> hart <span className="edge-key soft" /> weich{' '}
+            <span className="edge-key lost" /> verloren – wo scharf und wo weich gemalt werden soll.
+          </p>
+          <Slider
+            label="Verloren unter Kontrast"
+            value={Math.round(settings.edges.lost * 100)}
+            min={0}
+            max={30}
+            defaultValue={4}
+            step={1}
+            unit="%"
+            onChange={(v, g) => {
+              set({ edges: { ...settings.edges, lost: v / 100 } }, g);
+            }}
+            testId="malplan-edges-lost"
+          />
+          <Slider
+            label="Hart bis Übergangsbreite"
+            hint="Breite des Übergangs in % der langen Bildkante"
+            value={settings.edges.hard}
+            min={0.05}
+            max={2}
+            defaultValue={0.25}
+            step={0.05}
+            unit="%"
+            onChange={(v, g) => {
+              set({ edges: { ...settings.edges, hard: v } }, g);
+            }}
+            testId="malplan-edges-hard"
+          />
+        </Section>
+      );
     case 'palette':
     case 'numbers':
       return (

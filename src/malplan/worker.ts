@@ -6,10 +6,12 @@ import {
   levelMap,
   medianLightness,
   notanOfRegions,
+  toOklab,
   valueLevels,
   type Analysis,
   type Region,
 } from './analysis';
+import { blurL, measureEdges } from './edges';
 import { buildPalette, type PaletteEntry } from './palette';
 
 export type MalplanRequest =
@@ -23,7 +25,8 @@ export type MalplanRequest =
       colors: number;
     }
   | { type: 'derive'; id: number; levels: number; minArea: number; threshold: number | null }
-  | { type: 'palette'; id: number; count: number; myColors: string[] };
+  | { type: 'palette'; id: number; count: number; myColors: string[] }
+  | { type: 'edges'; id: number };
 
 export type MalplanResponse =
   | { type: 'progress'; id: number; progress: number }
@@ -45,9 +48,12 @@ export type MalplanResponse =
       regionEntry: Int32Array;
       labelPoints: Float32Array;
     }
+  | { type: 'edges'; id: number; contrast: Float32Array; width: Float32Array }
   | { type: 'error'; id: number; message: string };
 
 let current: Analysis | null = null;
+/** Helligkeit (Oklab L, leicht geglättet) des analysierten Bildes – für die Kanten-Karte */
+let currentL: Float32Array | null = null;
 
 const post = (msg: MalplanResponse, transfer: Transferable[] = []) => {
   (self as unknown as Worker).postMessage(msg, transfer);
@@ -61,6 +67,10 @@ self.onmessage = (e: MessageEvent<MalplanRequest>) => {
         post({ type: 'progress', id: req.id, progress: p });
       });
       current = a;
+      const lab = toOklab(req.rgba, req.width, req.height);
+      const L = new Float32Array(req.width * req.height);
+      for (let i = 0; i < L.length; i++) L[i] = lab[i * 3] ?? 0;
+      currentL = blurL(L, req.width, req.height);
       const lines = contours(a.labels, a.width, a.height);
       const labels = a.labels.slice();
       post(
@@ -80,6 +90,12 @@ self.onmessage = (e: MessageEvent<MalplanRequest>) => {
     }
     if (!current) throw new Error('Noch keine Analyse vorhanden.');
     const a = current;
+    if (req.type === 'edges') {
+      if (!currentL) throw new Error('Noch keine Analyse vorhanden.');
+      const m = measureEdges(a, currentL);
+      post({ type: 'edges', id: req.id, ...m }, [m.contrast.buffer, m.width.buffer]);
+      return;
+    }
     if (req.type === 'palette') {
       const pal = buildPalette(a, req.count, req.myColors);
       post({ type: 'palette', id: req.id, ...pal }, [pal.regionEntry.buffer, pal.labelPoints.buffer]);

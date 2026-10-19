@@ -5,6 +5,7 @@ import { create } from 'zustand';
 import { getEngine } from '../render/runtime';
 import type { Project } from '../state/project';
 import type { Region } from './analysis';
+import type { EdgeMeasures } from './edges';
 import type { PaletteEntry } from './palette';
 import { normalizeMalplan, type MalplanSettings } from './model';
 import type { MalplanRequest, MalplanResponse } from './worker';
@@ -36,6 +37,8 @@ type State = {
   result: MalplanResult | null;
   derived: MalplanDerived | null;
   palette: MalplanPalette | null;
+  /** Kontrast und Übergangsbreite je Grenzpixel (Kanten-Karte) */
+  edges: EdgeMeasures | null;
 };
 
 export const useMalplanStore = create<State>()(() => ({
@@ -45,6 +48,7 @@ export const useMalplanStore = create<State>()(() => ({
   result: null,
   derived: null,
   palette: null,
+  edges: null,
 }));
 
 let worker: Worker | null = null;
@@ -139,7 +143,10 @@ async function step(project: Project, s: MalplanSettings): Promise<void> {
       analysisKey = key;
       deriveKey = '';
       paletteKey = '';
+      const er = await request({ type: 'edges' });
+      if (er.type !== 'edges') throw new Error('Unerwartete Antwort der Analyse');
       useMalplanStore.setState({
+        edges: { contrast: er.contrast, width: er.width },
         result: {
           image,
           width: res.width,
@@ -192,5 +199,6 @@ export function resetMalplan(): void {
     result: null,
     derived: null,
     palette: null,
+    edges: null,
   });
 }

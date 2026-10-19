@@ -25,7 +25,8 @@ export function useBeamerSync(): void {
     const { help, grid, corners } = settings.beamer;
     let alive = true;
     const send = () => {
-      const c = renderHelp(help, result, derived, settings, useMalplanStore.getState().palette);
+      const st = useMalplanStore.getState();
+      const c = renderHelp(help, result, derived, settings, st.palette, st.edges);
       if (!c) return;
       if (grid && help !== 'grid') {
         const g = c.getContext('2d');

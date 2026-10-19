@@ -3,6 +3,7 @@
 
 import { linearFromOklab, srgbFromOklab, warmth } from './analysis';
 import { gridLines, type HelpId, type MalplanSettings } from './model';
+import { classify, type EdgeMeasures } from './edges';
 import type { MalplanDerived, MalplanPalette, MalplanResult } from './store';
 
 /** Papier und Tusche der Hilfen (sRGB 0..255) */
@@ -249,6 +250,49 @@ export function renderNumbers(r: MalplanResult, pal: MalplanPalette, scale = 2):
   return c;
 }
 
+/** Farben der Kanten-Karte: hart, weich, verloren (sRGB 0..255) */
+export const EDGE_COLORS: Record<1 | 2 | 3, [number, number, number]> = {
+  1: [214, 39, 40],
+  2: [236, 168, 0],
+  3: [44, 110, 220],
+};
+
+/** Kanten-Karte: aufgehelltes Endbild, darüber die Flächengrenzen farbig nach Art (2 px breit). */
+export function renderEdges(r: MalplanResult, m: EdgeMeasures, s: MalplanSettings): HTMLCanvasElement {
+  const { width: w, height: h } = r;
+  // Schwelle „hart“ in % der langen Kante → px der Analyse (gleiches Ergebnis bei jeder Bildgröße)
+  const cls = classify(m, s.edges.lost, (s.edges.hard / 100) * Math.max(w, h));
+  const [c, g] = canvasOf(w, h);
+  const img = g.createImageData(w, h);
+  const src = r.image.data;
+  for (let p = 0; p < w * h; p++) {
+    for (let k = 0; k < 3; k++)
+      img.data[p * 4 + k] = Math.round((src[p * 4 + k] ?? 0) * 0.35 + (PAPER[k] ?? 0) * 0.65);
+    img.data[p * 4 + 3] = 255;
+  }
+  for (let p = 0; p < w * h; p++) {
+    const k = cls[p] ?? 0;
+    if (!k) continue;
+    const col = EDGE_COLORS[k as 1 | 2 | 3];
+    const x = p % w;
+    const y = (p - x) / w;
+    for (const [dx, dy] of [
+      [0, 0],
+      [1, 0],
+      [0, 1],
+      [1, 1],
+    ] as const) {
+      if (x + dx >= w || y + dy >= h) continue;
+      const q = ((y + dy) * w + x + dx) * 4;
+      img.data[q] = col[0];
+      img.data[q + 1] = col[1];
+      img.data[q + 2] = col[2];
+    }
+  }
+  g.putImageData(img, 0, 0);
+  return c;
+}
+
 /** Bild einer Hilfe (ohne Rasterüberlagerung) oder null, solange die Analyse fehlt. */
 export function renderHelp(
   help: HelpId,
@@ -256,9 +300,12 @@ export function renderHelp(
   d: MalplanDerived | null,
   s: MalplanSettings,
   pal: MalplanPalette | null = null,
+  edges: EdgeMeasures | null = null,
 ): HTMLCanvasElement | null {
   if (!r) return null;
   switch (help) {
+    case 'edges':
+      return edges ? renderEdges(r, edges, s) : null;
     case 'palette':
       return pal ? renderPalette(r, pal) : null;
     case 'numbers':

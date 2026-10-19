@@ -51,7 +51,7 @@ export const FORMAT_PRESETS: FormatPreset[] = [
 export type Rect01 = { x: number; y: number; width: number; height: number };
 
 export type HelpId =
-  'final' | 'notan' | 'values' | 'scale' | 'warmcold' | 'palette' | 'numbers' | 'grid' | 'contour';
+  'final' | 'notan' | 'values' | 'scale' | 'warmcold' | 'palette' | 'numbers' | 'edges' | 'grid' | 'contour';
 
 export const HELPS: { id: HelpId; label: string }[] = [
   { id: 'final', label: 'Endbild' },
@@ -61,6 +61,7 @@ export const HELPS: { id: HelpId; label: string }[] = [
   { id: 'warmcold', label: 'Warm-Kalt-Karte' },
   { id: 'palette', label: 'Reduzierte Palette' },
   { id: 'numbers', label: 'Farbfeld-Karte' },
+  { id: 'edges', label: 'Kanten-Karte' },
   { id: 'grid', label: 'Proportionsraster' },
   { id: 'contour', label: 'Konturvorlage' },
 ];
@@ -91,6 +92,8 @@ export type MalplanSettings = {
   colors: number;
   /** „Meine Farben“: vorhandene Tubenfarben (Pigment-IDs der Pigmentdatenbank) */
   myColors: string[];
+  /** Kanten-Karte: Kontrast (Oklab L) unter lost = verloren; Übergang bis hard % der langen Bildkante = hart */
+  edges: { lost: number; hard: number };
   notan: { threshold: number };
   values: { levels: 3 | 4 | 5; minArea: number };
   grid: { mode: 'divisions' | 'spacing'; cols: number; rows: number; spacingCm: number };
@@ -127,6 +130,7 @@ export function defaultMalplan(canvas: { width: number; height: number }): Malpl
     shapes: 200,
     colors: 12,
     myColors: [...DEFAULT_MY_COLORS],
+    edges: { lost: 0.04, hard: 0.25 },
     notan: { threshold: 0.5 },
     values: { levels: 4, minArea: 0.2 },
     grid: { mode: 'divisions', cols: 4, rows: 4, spacingCm: 5 },
@@ -266,6 +270,10 @@ export function normalizeMalplan(raw: unknown, canvas: { width: number; height: 
         : [];
       return list.length ? [...new Set(list)] : d.myColors;
     })(),
+    edges: {
+      lost: num(r.edges?.lost, 0, 0.3, d.edges.lost),
+      hard: num(r.edges?.hard, 0.05, 2, d.edges.hard),
+    },
     notan: { threshold: num(r.notan?.threshold, 0, 1, d.notan.threshold) },
     values: {
       levels: levels === 3 || levels === 4 || levels === 5 ? levels : d.values.levels,

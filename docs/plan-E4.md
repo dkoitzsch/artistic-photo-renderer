@@ -10,7 +10,7 @@ Entscheidungen in [DECISIONS.md](../DECISIONS.md) („E4: Pigmente, Striche, Mal
       Kubelka-Munk mit zwei Konstanten, `mix`, `findMix` (bis 3 Pigmente + Weiß), ΔE2000; Unit-Tests nach 6.3
 - [x] 2. „Meine Farben“ (Auswahl im Malplan, Profile speicherbar), reduzierte Palette nur aus mischbaren Tönen,
       Mischrezepte (Teile, Farbfeld Soll/Mischung, ΔE), Farbfeld-Karte (nummerierte Flächen)
-- [ ] 3. Kanten-Karte (hart/weich/verloren aus Kontrast und Gradientenbreite, Schwellwerte einstellbar)
+- [x] 3. Kanten-Karte (hart/weich/verloren aus Kontrast und Gradientenbreite, Schwellwerte einstellbar)
 - [ ] 4. Effekte `stroke-paint` (Hertzmann 1998, Striche als Daten), `impasto`, `saliency-abstraction`
 - [ ] 5. Schichtplan (4–8 Schritte je Maltechnik, neu + kumuliert) und Strichführung (aus `stroke-paint` bzw. `flow`,
       Pinselbreite in mm)

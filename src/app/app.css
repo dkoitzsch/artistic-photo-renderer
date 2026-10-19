@@ -2524,3 +2524,20 @@ button:disabled {
   color: var(--danger);
   font-weight: 600;
 }
+.edge-key {
+  display: inline-block;
+  width: 14px;
+  height: 4px;
+  border-radius: 2px;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+.edge-key.hard {
+  background: rgb(214, 39, 40);
+}
+.edge-key.soft {
+  background: rgb(236, 168, 0);
+}
+.edge-key.lost {
+  background: rgb(44, 110, 220);
+}

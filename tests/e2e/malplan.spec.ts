@@ -286,3 +286,37 @@ test('Malplan E4: reduzierte Palette aus „Meine Farben“, Mischrezepte, Farbf
     (await page.evaluate(() => window.__bls.getProject()?.malplan?.myColors)) ?? DEFAULT_MY_COLORS,
   ).toHaveLength(10);
 });
+
+test('Malplan E4: Kanten-Karte – hart, weich, verloren; Schwellen wirken', async ({ page }) => {
+  test.setTimeout(120_000);
+  await openFixture(page, 'golden/portrait.png');
+  await page.getByTestId('workspace-malplan').click();
+  await ready(page);
+  await page.getByTestId('help-edges').click();
+  await expect(page.getByTestId('malplan-image')).toHaveAttribute('data-help', 'edges');
+  const counts = () =>
+    page.evaluate(() => {
+      const c = document.querySelector<HTMLCanvasElement>('[data-testid="malplan-image"]');
+      const d = c?.getContext('2d')?.getImageData(0, 0, c.width, c.height).data;
+      const n = { hard: 0, soft: 0, lost: 0 };
+      if (d)
+        for (let i = 0; i < d.length; i += 4) {
+          const k = `${d[i]},${d[i + 1]},${d[i + 2]}`;
+          if (k === '214,39,40') n.hard++;
+          else if (k === '236,168,0') n.soft++;
+          else if (k === '44,110,220') n.lost++;
+        }
+      return n;
+    });
+  const base = await counts();
+  expect(base.hard).toBeGreaterThan(0);
+  expect(base.soft).toBeGreaterThan(0);
+  expect(base.lost).toBeGreaterThan(0);
+  // höhere Verlust-Schwelle → mehr verlorene Kanten; großzügige Härte → mehr harte
+  await page.evaluate(() => {
+    window.__bls.commands.setMalplanCommand({ edges: { lost: 0.15, hard: 1.5 } }, false);
+  });
+  await expect.poll(async () => (await counts()).lost).toBeGreaterThan(base.lost);
+  const after = await counts();
+  expect(after.hard).toBeGreaterThan(base.hard);
+});
