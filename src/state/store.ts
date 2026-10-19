@@ -134,6 +134,8 @@ type AppState = {
   viewMode: ViewMode;
   tool: Tool;
   splitDialogLayerId: string | null;
+  /** Dialog „Stil je Bereich“ für diese Ebene */
+  styleRegionsLayerId: string | null;
   settingsOpen: boolean;
   exportWarning: ExportWarning | null;
   /** Browser-Modelldateien (Download-Manager im ML-Worker) */
@@ -176,6 +178,7 @@ type AppState = {
   setViewMode: (m: ViewMode) => void;
   setTool: (t: Tool) => void;
   openSplitDialog: (layerId: string | null) => void;
+  openStyleRegions: (layerId: string | null) => void;
   setSettingsOpen: (open: boolean) => void;
   setExportWarning: (w: ExportWarning | null) => void;
   setDownloads: (states: DownloadState[]) => void;
@@ -226,6 +229,7 @@ export const useAppStore = create<AppState>()((set) => ({
   viewMode: 'result',
   tool: 'move',
   splitDialogLayerId: null,
+  styleRegionsLayerId: null,
   settingsOpen: false,
   exportWarning: null,
   downloads: {},
@@ -269,6 +273,7 @@ export const useAppStore = create<AppState>()((set) => ({
   setViewMode: (viewMode) => set({ viewMode }),
   setTool: (tool) => set({ tool }),
   openSplitDialog: (splitDialogLayerId) => set({ splitDialogLayerId }),
+  openStyleRegions: (styleRegionsLayerId) => set({ styleRegionsLayerId }),
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
   setExportWarning: (exportWarning) => set({ exportWarning }),
   setDownloads: (states) => set({ downloads: Object.fromEntries(states.map((d) => [d.name, d])) }),

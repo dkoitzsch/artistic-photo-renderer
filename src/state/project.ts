@@ -223,7 +223,7 @@ export type Group = {
    * Kartenbereiche beziehen sich auf das zusammengeführte Ergebnis vor den Gruppeneffekten (Tiefe: erste Ebene mit Tiefe).
    */
   mask?: EffectMask;
-  origin?: { kind: 'auto-fg-bg' | 'depth-split' | 'sam-objects'; sourceLayerId: string };
+  origin?: { kind: 'auto-fg-bg' | 'depth-split' | 'sam-objects' | 'style-regions'; sourceLayerId: string };
 };
 
 /** Heißt in der Spec "Node" (kollidiert mit dem DOM-Typ). */

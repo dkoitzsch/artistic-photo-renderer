@@ -25,6 +25,7 @@ import {
   ungroup,
   findNode,
   insertAbove,
+  replaceNode,
   moveToEdge,
   removeNode,
   stepNode,
@@ -47,6 +48,7 @@ import {
   type Project,
   DEFAULT_MASK_EDGE,
 } from './project';
+import { buildRegionGroup, type RegionSpec } from './regions';
 import { getProject, newHistory, useAppStore } from './store';
 import { instancesFrom, type StackPreset } from '../presets/model';
 import { normalizeMalplan, type MalplanSettings } from '../malplan/model';
@@ -849,4 +851,36 @@ export function selectSegmentCommand(layerId: string, segmentId: string): void {
         : l,
     ),
   );
+}
+
+// ---------- Stil je Bereich (E3, style-per-region) ----------
+
+/** Ändert den aktuellen Verlaufseintrag ohne neuen Schritt (abgeleitete Werte, z. B. Tiefe der Bereichsebenen). */
+export function amendPresent(fn: (p: Project) => Project): void {
+  const { history, setHistory } = useAppStore.getState();
+  if (!history) return;
+  const entry = history.entries[history.index];
+  if (!entry) return;
+  const next = fn(entry.state);
+  if (next === entry.state) return;
+  const entries = history.entries.slice();
+  entries[history.index] = { ...entry, state: next };
+  setHistory({ ...history, entries });
+}
+
+/** Ersetzt eine Ebene durch die Gruppe „Stil je Bereich“; liefert die Gruppen-ID. */
+export function styleRegionsCommand(layerId: string, regions: RegionSpec[]): string | null {
+  const project = getProject();
+  const layer = project ? findNode(project.root, layerId) : undefined;
+  if (!project || layer?.kind !== 'layer') return null;
+  const depthId =
+    layer.depthMap?.id ??
+    (layer.mask.kind === 'depth' ? layer.mask.depthId : null) ??
+    project.analysis?.[layer.originalId]?.depth?.id ??
+    null;
+  const group = buildRegionGroup(layer, regions, project.segments ?? [], depthId, newId);
+  if (group.children.length === 0) return null;
+  commit('Stil je Bereich', (p) => replaceNode(p, layerId, group));
+  useAppStore.getState().select(group.id);
+  return group.id;
 }

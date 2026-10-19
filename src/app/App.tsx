@@ -13,6 +13,7 @@ import { BottomPanel } from './components/BottomPanel';
 import { CanvasView } from './components/CanvasView';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ExportDialog, ExportWarningDialog, SettingsDialog, SplitDialog } from './components/Dialogs';
+import { StyleRegionsDialog } from './components/StyleRegionsDialog';
 import { EffectBrowser } from './components/EffectBrowser';
 import { MalplanWorkspace } from './components/MalplanWorkspace';
 import { ModelsDialog } from './components/ModelsDialog';
@@ -106,6 +107,7 @@ export function App() {
       <ErrorBoundary name="Dialoge">
         <EffectBrowser />
         <SplitDialog />
+        <StyleRegionsDialog />
         <SettingsDialog />
         <ExportWarningDialog />
         <ExportDialog />

@@ -27,6 +27,7 @@ export function SegmentSection({ layer }: { layer: Layer }) {
   const project = useProject();
   const busy = useAppStore((s) => s.tasks.length > 0);
   const setTool = useAppStore((s) => s.setTool);
+  const openStyleRegions = useAppStore((s) => s.openStyleRegions);
   const [name, setName] = useState('Person');
   const segments = (project?.segments ?? []).filter((s) => s.originalId === layer.originalId);
   return (
@@ -98,6 +99,16 @@ export function SegmentSection({ layer }: { layer: Layer }) {
           onClick={() => void foregroundSegment(layer.id)}
         >
           Vordergrund als Segment
+        </button>
+        <button
+          className="button small primary"
+          data-testid="style-regions-open"
+          title="Jedem Bereich einen eigenen Stil geben (z. B. Person anders als der Hintergrund)"
+          onClick={() => {
+            openStyleRegions(layer.id);
+          }}
+        >
+          Stil je Bereich …
         </button>
       </div>
     </Section>

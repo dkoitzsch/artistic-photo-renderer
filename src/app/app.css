@@ -2442,3 +2442,26 @@ button:disabled {
 .point-handle.dragging {
   cursor: grabbing;
 }
+
+/* Stil je Bereich (E3) */
+.style-regions .region-row {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px;
+  margin: 6px 0;
+  display: grid;
+  gap: 6px;
+}
+.style-regions .region-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.style-regions .region-name {
+  font-weight: 600;
+  flex: 1;
+}
+.style-regions .region-kind {
+  font-size: 11px;
+  color: var(--text-muted);
+}

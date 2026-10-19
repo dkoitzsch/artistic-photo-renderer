@@ -14,7 +14,7 @@ import { DepthSplitPanel } from './DepthSplit';
 import { Slider } from '../controls/Slider';
 import { LicenseBadge } from './LayerSections';
 
-function Modal({
+export function Modal({
   open,
   onOpenChange,
   title,

@@ -17,7 +17,7 @@ Entscheidungen in [DECISIONS.md](../DECISIONS.md) („E3: Analysekarten, Segment
 - [x] 5. CPU-Effekte: `gouache-flat`, `textile`, `flow-lines`, `tsp-art`
 - [x] 6. Stil: Zweitbild auch für Worker-/Dienst-Effekte; `style-transfer` (AdaIN im Dienst, nur Modus „Alle“) und
       `style-match` (klassische Stilübertragung, kommerziell); Hinweis zu Stilbildern
-- [ ] 7. `style-per-region` („Stil je Bereich“: Region → Effektstapel über das Ebenensystem); Abstimmung mit der
+- [x] 7. `style-per-region` („Stil je Bereich“: Region → Effektstapel über das Ebenensystem); Abstimmung mit der
       Parallax-Vorschau (gleiche Tiefenkarte, Tiefe der Bereichsebenen)
 - [ ] 8. Abnahme (Person per Klick segmentieren, anderer Stil als der Hintergrund, Licht verschieben, exportieren),
       Spec abhaken, CLAUDE.md
