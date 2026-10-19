@@ -417,12 +417,13 @@ Jede Phase endet mit: lauffähigem Stand, grünen Tests, kurzer Änderungsnotiz,
 ✅ Abgenommen am 19.10.2026 – siehe [abnahme-E3.md](abnahme-E3.md).
 
 ### Phase E4 – Pigmente, Striche & Malplan komplett
-- Pigment-Engine (Abschnitt 6) mit Pigmentdatenbank
-- „Meine Farben“-Profil, reduzierte Palette mit Mischrezepten, Farbfeld-Karte
-- `stroke-paint` mit gespeicherten Strichdaten, `impasto`, `saliency-abstraction`
-- Kanten-Karte, Schichtplan, Strichführung
-- PDF-Malmappe vollständig
+- [x] Pigment-Engine (Abschnitt 6) mit Pigmentdatenbank
+- [x] „Meine Farben“-Profil, reduzierte Palette mit Mischrezepten, Farbfeld-Karte
+- [x] `stroke-paint` mit gespeicherten Strichdaten, `impasto`, `saliency-abstraction`
+- [x] Kanten-Karte, Schichtplan, Strichführung
+- [x] PDF-Malmappe vollständig
 **Abnahme:** Mit einer Palette von 10 eigenen Farben entsteht für ein Foto eine vollständige Malmappe inkl. Mischrezepten, Kanten-Karte und Schichtplan.
+✅ Abgenommen am 19.10.2026 – siehe [abnahme-E4.md](abnahme-E4.md).
 
 ### Phase E5 – Simulationen & Experimente
 - `watercolor-sim` (nutzt Pigment-Engine, inkl. Granulation)

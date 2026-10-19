@@ -13,11 +13,11 @@ Abgeschlossen: **Phase 0 – Gerüst**, **Phase 1 – Ganzes Bild**, **Phase 2 �
 **Phase 3 – Tiefenebenen und Gruppen**, **Phase 4 – Weitere Bilder**, **Phase 5 – Pinsel** ([docs/abnahme-P5.md](docs/abnahme-P5.md)). Erledigte Punkte werden in der Spec abgehakt.
 
 **Erweiterung „Effekte & Malvorlagen“** ([docs/spec-effekte-und-malvorlagen.md](docs/spec-effekte-und-malvorlagen.md)):
-**Phasen E1, E2 und E3 abgeschlossen** ([docs/plan-E1.md](docs/plan-E1.md), [docs/plan-E2.md](docs/plan-E2.md),
-[docs/plan-E3.md](docs/plan-E3.md); Abnahme und Demo-Listen: [docs/abnahme-E1.md](docs/abnahme-E1.md),
-[docs/abnahme-E2.md](docs/abnahme-E2.md), [docs/abnahme-E3.md](docs/abnahme-E3.md); Ideen für später:
+**Phasen E1 bis E4 abgeschlossen** (Pläne `docs/plan-E1.md` … `docs/plan-E4.md`; Abnahme und Demo-Listen:
+[docs/abnahme-E1.md](docs/abnahme-E1.md), [docs/abnahme-E2.md](docs/abnahme-E2.md), [docs/abnahme-E3.md](docs/abnahme-E3.md),
+[docs/abnahme-E4.md](docs/abnahme-E4.md); Ideen für später:
 [docs/optimierungen-und-varianten.md](docs/optimierungen-und-varianten.md)).
-Nächste (wartet auf Freigabe): E4, danach E5. Danach `docs/spec-ml-fotobearbeitung.md` (nicht anfassen).
+Nächste (wartet auf Freigabe): E5. Danach `docs/spec-ml-fotobearbeitung.md` (nicht anfassen).
 Nach jedem Schritt: Tests, [PROGRESS.md](PROGRESS.md) nachführen (Stand, offene Punkte, Logbuch, Stolpersteine, Messwerte), Commit, Push.
 
 ## Ordnerstruktur (✓ = existiert)
@@ -227,6 +227,20 @@ Autosave (`io/autosave.ts`) beobachtet den Store und schreibt ins OPFS.
 - Tests: `debug.ts` `ml.injectMap` (synthetische Karten), Golden-Fälle mit `syntheticDepth`, Abnahme `acceptanceE3.spec.ts`;
   `npm run models:fetch` lädt auch die AdaIN-Gewichte (Test-Dienst).
 
+**Erweiterung E4 (Pigmente, Striche, Malplan komplett):**
+
+- Pigment-Engine `src/pigments/`: `pigments.json` (eigene Näherungsdaten: Vollton + Aufhellung 1:4 mit Titanweiß),
+  `spectral.ts` (CIE 1931 2°, D65, 31 Stützstellen, Spektrenrekonstruktion nach Burns, CIELAB, ΔE2000), `engine.ts`
+  (K/S je Wellenlänge, `mix`, `findMix` ≤ 3 Pigmente mit Verfeinerung, `recipeParts`/`formatRecipe`).
+- Malplan: Einstellungen `myColors` (Standard 10 Farben), `edges` {lost, hard in % der langen Kante}; Worker-Anfragen
+  `palette` (`malplan/palette.ts`: flächengewichtetes k-Means, Rezepte, Beschriftungspunkte), `edges`
+  (`malplan/edges.ts`: Querprofil an Flächengrenzen), `plan` (`malplan/plan.ts`: Schritte je Technik), `strokes`
+  (`malplan/strokeGuide.ts`: Striche von `stroke-paint` neu erzeugt oder Richtungsfeld). Hilfen `palette`, `numbers`,
+  `edges`, `steps`, `strokes`; `renderHelp(…, extras)`; Oberfläche `MalplanColors.tsx`, `MalplanPlan.tsx`.
+- PDF (`malplan/pdfBook.ts`): Seiten `palette`, `numbers`, `edges`, `steps`, `strokes` (Text in WinAnsi: „dE“ statt „ΔE“).
+- Effekte: `stroke-paint` (Worker; Strichgenerator `effects/stroke-paint/strokes.ts` auch im Malplan-Worker),
+  `impasto`, `saliency-abstraction` (GPU); Golden-Fälle mit `syntheticSaliency`.
+
 **Neuen Effekt anlegen:** siehe [effects/README.md](effects/README.md) – nur einen Ordner unter `effects/` anlegen.
 
 ## Referenz-Hardware
@@ -270,4 +284,6 @@ Eine neue Phase beginnt nur nach ausdrücklicher Freigabe durch den Nutzer.
 - Browser-Kürzel (⌘0, ⌘E, ⌘O, ⌘S) werden per `preventDefault` abgefangen; in Playwright getestet, im echten Chrome manuell zu prüfen.
 - Malplan: Werte- und Farbhilfen sind Rasterbilder (lange Kante 1600 px), nur die Konturvorlage ist Vektor. Die Maltechnik
   wirkt erst mit dem Schichtplan (E4). Beamer-Ecken beziehen sich auf das Beamer-Fenster.
+- Pigmentspektren sind Näherungen (keine Messdaten); Rezepte zeigen die Richtung. Die Strichführung erzeugt die Striche
+  von „Pinselstriche“ für den Malplan neu (ähnlich, nicht identisch). Schichtplan-Regeln fest je Technik.
 - Lange Testläufe brauchen einen wachen Rechner: im Akkubetrieb mit geschlossenem Deckel schläft der Mac (Stolperstein S23).

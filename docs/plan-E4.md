@@ -16,5 +16,5 @@ Entscheidungen in [DECISIONS.md](../DECISIONS.md) („E4: Pigmente, Striche, Mal
       Pinselbreite in mm)
 - [x] 6. PDF-Malmappe vollständig (Palette mit Rezepten, Farbfeld-Karte, Kanten-Karte, Schichtplan, Strichführung),
       einzelne Hilfen als PNG
-- [ ] 7. Abnahme (10 eigene Farben → vollständige Malmappe mit Mischrezepten, Kanten-Karte und Schichtplan), Spec
+- [x] 7. Abnahme (10 eigene Farben → vollständige Malmappe mit Mischrezepten, Kanten-Karte und Schichtplan), Spec
       abhaken, CLAUDE.md
