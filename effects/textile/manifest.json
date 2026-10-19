@@ -1,0 +1,76 @@
+{
+  "id": "textile",
+  "name": "Kreuzstich",
+  "version": "1.0.0",
+  "category": "Material & Oberfläche",
+  "description": "Stickerei im Kreuzstich: das Bild als Raster aus gekreuzten Garnstichen in wenigen Garnfarben auf Aida-Stoff.",
+  "inputs": ["source"],
+  "passes": 1,
+  "implementations": { "preview": "browser-cpu", "final": "browser-cpu" },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung (Farbreduktion per k-Means in Oklab, prozedurale Garn- und Stoffstruktur)."
+  },
+  "cost": "interactive",
+  "randomized": true,
+  "requires": [],
+  "params": [
+    {
+      "key": "stitch",
+      "label": "Stichgröße",
+      "type": "float",
+      "min": 3,
+      "max": 60,
+      "default": 10,
+      "step": 0.5,
+      "unit": "px",
+      "scale": "log"
+    },
+    { "key": "colors", "label": "Garnfarben", "type": "int", "min": 2, "max": 32, "default": 12 },
+    { "key": "fabric", "label": "Stofffarbe", "type": "color", "default": [0.93, 0.9, 0.82] },
+    {
+      "key": "skipLight",
+      "label": "Helles frei lassen",
+      "hint": "Sehr helle Stellen bleiben ungestickt (Stoff sichtbar)",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 15,
+      "unit": "%"
+    },
+    {
+      "key": "thread",
+      "label": "Garnstärke",
+      "type": "float",
+      "min": 20,
+      "max": 100,
+      "default": 62,
+      "unit": "%"
+    },
+    {
+      "key": "sheen",
+      "label": "Glanz des Garns",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 40,
+      "unit": "%",
+      "group": "Erweitert"
+    },
+    {
+      "key": "irregular",
+      "label": "Unregelmäßigkeit",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 30,
+      "unit": "%",
+      "group": "Erweitert"
+    }
+  ],
+  "presets": [
+    { "name": "Feine Handarbeit", "values": { "stitch": 6, "colors": 20, "skipLight": 8 } },
+    { "name": "Grob, wenige Farben", "values": { "stitch": 18, "colors": 6, "skipLight": 25, "thread": 75 } },
+    { "name": "Schwarzer Stoff", "values": { "fabric": [0.08, 0.08, 0.09], "skipLight": 0, "colors": 14 } }
+  ]
+}

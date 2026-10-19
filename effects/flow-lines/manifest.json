@@ -1,0 +1,101 @@
+{
+  "id": "flow-lines",
+  "name": "Fließlinien",
+  "version": "1.0.0",
+  "category": "Geometrisch & Abstrakt",
+  "description": "Generative Linien, die dem Richtungsfeld des Bildes folgen – dicht in dunklen Bereichen, licht in hellen.",
+  "inputs": ["source"],
+  "passes": 1,
+  "implementations": { "preview": "browser-cpu", "final": "browser-cpu" },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung (Stromlinien im Richtungsfeld nach Kang et al. 2007, Startpunkte nach Dunkelheit)."
+  },
+  "cost": "interactive",
+  "randomized": true,
+  "requires": ["flow"],
+  "params": [
+    {
+      "key": "lines",
+      "label": "Anzahl Linien",
+      "type": "int",
+      "min": 200,
+      "max": 30000,
+      "default": 5000,
+      "scale": "log"
+    },
+    {
+      "key": "length",
+      "label": "Linienlänge",
+      "type": "float",
+      "min": 5,
+      "max": 400,
+      "default": 70,
+      "unit": "px",
+      "scale": "log"
+    },
+    {
+      "key": "width",
+      "label": "Linienstärke",
+      "type": "float",
+      "min": 0.3,
+      "max": 6,
+      "default": 1.1,
+      "step": 0.1,
+      "unit": "px"
+    },
+    {
+      "key": "density",
+      "label": "Dichte nach Helligkeit",
+      "hint": "100 % = Linien nur im Dunklen, 0 % = gleichmäßig",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 80,
+      "unit": "%"
+    },
+    {
+      "key": "colorMode",
+      "label": "Farbe",
+      "type": "enum",
+      "options": [
+        { "value": "ink", "label": "Tusche" },
+        { "value": "image", "label": "Bildfarben" }
+      ],
+      "default": "ink"
+    },
+    {
+      "key": "ink",
+      "label": "Linienfarbe",
+      "type": "color",
+      "default": [0.1, 0.1, 0.12],
+      "visibleIf": "colorMode=ink"
+    },
+    { "key": "paper", "label": "Hintergrund", "type": "color", "default": [0.96, 0.94, 0.89] },
+    {
+      "key": "taper",
+      "label": "Auslaufende Enden",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 60,
+      "unit": "%",
+      "group": "Erweitert"
+    }
+  ],
+  "presets": [
+    { "name": "Feder", "values": { "lines": 9000, "length": 50, "width": 0.8 } },
+    {
+      "name": "Farbige Ströme",
+      "values": {
+        "colorMode": "image",
+        "lines": 6000,
+        "length": 140,
+        "width": 2.2,
+        "density": 30,
+        "paper": [0.1, 0.1, 0.12]
+      }
+    },
+    { "name": "Lange Haare", "values": { "lines": 3000, "length": 260, "width": 1.4, "taper": 85 } }
+  ]
+}

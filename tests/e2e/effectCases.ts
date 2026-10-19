@@ -441,4 +441,28 @@ export const EFFECT_CASES: EffectCase[] = [
     preset: 'Plakativ',
     flatBorder: false,
   },
+  { name: 'textile-portrait', fixture: 'portrait', effectId: 'textile', flatBorder: false },
+  {
+    name: 'textile-coarse-still-life',
+    fixture: 'still-life',
+    effectId: 'textile',
+    preset: 'Grob, wenige Farben',
+    flatBorder: false,
+  },
+  { name: 'flow-lines-portrait', fixture: 'portrait', effectId: 'flow-lines', flatBorder: false },
+  {
+    name: 'flow-lines-color-landscape',
+    fixture: 'landscape',
+    effectId: 'flow-lines',
+    preset: 'Farbige Ströme',
+    flatBorder: false,
+  },
+  { name: 'tsp-art-portrait', fixture: 'portrait', effectId: 'tsp-art', flatBorder: false },
+  {
+    name: 'tsp-art-coarse-architecture',
+    fixture: 'architecture',
+    effectId: 'tsp-art',
+    preset: 'Grob',
+    flatBorder: false,
+  },
 ];
