@@ -1,0 +1,98 @@
+{
+  "id": "chemical",
+  "name": "Chemische Prozesse",
+  "version": "1.0.0",
+  "category": "Simulation",
+  "description": "Rost, Bleiche oder Solarisation (Sabattier) breiten sich von Kanten, dunklen oder nahen Bereichen über das Bild aus.",
+  "inputs": ["source", "depth"],
+  "passes": 4,
+  "implementations": { "preview": "webgpu", "final": "webgpu" },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung (Ausbreitung über geglättete Startbereiche mit unregelmäßiger Front, prozedurale Oberflächen)."
+  },
+  "cost": "interactive",
+  "randomized": true,
+  "requires": ["edges", "luminance"],
+  "reach": "spread + 8",
+  "params": [
+    {
+      "key": "process",
+      "label": "Prozess",
+      "type": "enum",
+      "options": [
+        { "value": "rust", "label": "Rost / Oxidation" },
+        { "value": "bleach", "label": "Bleiche" },
+        { "value": "solarize", "label": "Solarisation (Sabattier)" }
+      ],
+      "default": "rust"
+    },
+    {
+      "key": "progress",
+      "label": "Fortschritt",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 50,
+      "unit": "%"
+    },
+    {
+      "key": "start",
+      "label": "Startbereiche",
+      "type": "enum",
+      "options": [
+        { "value": "edges", "label": "Kanten" },
+        { "value": "dark", "label": "Dunkle Bereiche" },
+        { "value": "near", "label": "Nahe Bereiche (Tiefe)" },
+        { "value": "everywhere", "label": "Überall" }
+      ],
+      "default": "edges"
+    },
+    {
+      "key": "spread",
+      "label": "Ausbreitung",
+      "type": "float",
+      "min": 4,
+      "max": 300,
+      "default": 60,
+      "unit": "px",
+      "scale": "log"
+    },
+    {
+      "key": "irregular",
+      "label": "Unregelmäßige Front",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 60,
+      "unit": "%"
+    },
+    {
+      "key": "texture",
+      "label": "Oberflächenstruktur",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 60,
+      "unit": "%",
+      "group": "Erweitert"
+    }
+  ],
+  "presets": [
+    { "name": "Alter Rost", "values": { "process": "rust", "progress": 70, "start": "edges", "spread": 90 } },
+    {
+      "name": "Ausgebleicht",
+      "values": { "process": "bleach", "progress": 55, "start": "everywhere", "spread": 120, "irregular": 80 }
+    },
+    {
+      "name": "Sabattier",
+      "values": {
+        "process": "solarize",
+        "progress": 95,
+        "start": "everywhere",
+        "spread": 40,
+        "irregular": 20
+      }
+    }
+  ]
+}

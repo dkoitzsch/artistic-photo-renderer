@@ -1,0 +1,100 @@
+{
+  "id": "erosion",
+  "name": "Erosion",
+  "version": "1.0.0",
+  "category": "Simulation",
+  "description": "Das Bild als Landschaft: Regen spült Rinnen aus, Wasser trägt Material und Farbe den Hang hinunter.",
+  "inputs": ["source", "depth"],
+  "passes": 5,
+  "implementations": { "preview": "webgpu", "final": "webgpu" },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung: vereinfachte hydraulische Erosion (Wasser, Sediment, Transport) auf einem festen Raster."
+  },
+  "cost": "slow",
+  "randomized": true,
+  "requires": ["luminance"],
+  "reach": "max(canvasWidth, canvasHeight)",
+  "params": [
+    {
+      "key": "rain",
+      "label": "Regenmenge",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 45,
+      "unit": "%"
+    },
+    {
+      "key": "iterations",
+      "label": "Iterationen",
+      "type": "int",
+      "min": 20,
+      "max": 2000,
+      "default": 400,
+      "scale": "log"
+    },
+    {
+      "key": "hardness",
+      "label": "Härte",
+      "hint": "Hoch = wenig Abtrag",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 40,
+      "unit": "%"
+    },
+    {
+      "key": "heightSource",
+      "label": "Höhenquelle",
+      "hint": "Tiefe nutzt die Tiefenkarte der Ebene (falls vorhanden)",
+      "type": "enum",
+      "options": [
+        { "value": "luminance", "label": "Helligkeit (hell = hoch)" },
+        { "value": "inverse", "label": "Helligkeit (dunkel = hoch)" },
+        { "value": "depth", "label": "Tiefe (nah = hoch)" }
+      ],
+      "default": "luminance"
+    },
+    {
+      "key": "carry",
+      "label": "Farbe mittragen",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 30,
+      "unit": "%"
+    },
+    {
+      "key": "relief",
+      "label": "Relieflicht",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 45,
+      "unit": "%"
+    },
+    {
+      "key": "cell",
+      "label": "Feinheit",
+      "hint": "Leinwand-px je Simulationszelle",
+      "type": "float",
+      "min": 1,
+      "max": 8,
+      "default": 2.5,
+      "step": 0.1,
+      "group": "Erweitert"
+    }
+  ],
+  "presets": [
+    { "name": "Sommerregen", "values": { "rain": 30, "iterations": 250, "carry": 20 } },
+    {
+      "name": "Sintflut",
+      "values": { "rain": 90, "iterations": 900, "hardness": 15, "carry": 60, "relief": 60 }
+    },
+    {
+      "name": "Sandstein",
+      "values": { "rain": 55, "iterations": 600, "hardness": 70, "relief": 80, "carry": 10 }
+    }
+  ]
+}

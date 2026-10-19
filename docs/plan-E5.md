@@ -7,7 +7,7 @@ Jeder Schritt endet lauffähig, mit grünen Tests, aktueller `PROGRESS.md`, Comm
 - [x] 0. Plan, Entscheidungen, PROGRESS.md
 - [x] 1. `reaction-diffusion` (Gray-Scott, Steuerkarte) und `crystal-growth` (dendritisches Wachstum von Kanten aus) –
       GPU, auf einem festen Simulationsraster
-- [ ] 2. `erosion` (Höhenfeld aus Helligkeit/Tiefe, Regen trägt ab, Farbe wird mitgetragen) und `chemical` (Rost,
+- [x] 2. `erosion` (Höhenfeld aus Helligkeit/Tiefe, Regen trägt ab, Farbe wird mitgetragen) und `chemical` (Rost,
       Bleiche, Solarisation; Wachstum von Kanten, Dunkel oder Tiefe aus)
 - [ ] 3. `aging` (Craquelé nach Schichtdicke, Firnis, Ausbleichen) und `memory` (Verblassen, Verschwimmen, Auflösen;
       Gesichter und Salientes bleiben)

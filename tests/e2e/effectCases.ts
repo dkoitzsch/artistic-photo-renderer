@@ -528,4 +528,33 @@ export const EFFECT_CASES: EffectCase[] = [
     preset: 'Eisblumen am Fenster',
     flatBorder: false,
   },
+  { name: 'erosion-landscape', fixture: 'landscape', effectId: 'erosion', flatBorder: false },
+  {
+    name: 'erosion-flood-portrait',
+    fixture: 'portrait',
+    effectId: 'erosion',
+    preset: 'Sintflut',
+    flatBorder: false,
+  },
+  {
+    name: 'chemical-rust-architecture',
+    fixture: 'architecture',
+    effectId: 'chemical',
+    preset: 'Alter Rost',
+    flatBorder: false,
+  },
+  {
+    name: 'chemical-bleach-portrait',
+    fixture: 'portrait',
+    effectId: 'chemical',
+    preset: 'Ausgebleicht',
+    flatBorder: false,
+  },
+  {
+    name: 'chemical-sabattier-still-life',
+    fixture: 'still-life',
+    effectId: 'chemical',
+    preset: 'Sabattier',
+    flatBorder: false,
+  },
 ];
