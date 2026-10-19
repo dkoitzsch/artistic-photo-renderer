@@ -10,6 +10,28 @@ Abweichungen von der Spec und Festlegungen bei unklaren Anforderungen. Neueste o
 - **Betrifft:** (Spec-Abschnitt / Phase)
 -->
 
+## 2026-10-19 – E4: Pigmente, Striche, Malplan
+
+- **Pigmentdaten (13.5):** eigene Näherungsdaten je Pigment – Vollton- und Aufhellungsfarbe (1 Teil Pigment : 4 Teile
+  Titanweiß) in sRGB. Daraus werden glatte Reflexionsspektren mit 31 Stützstellen (400–700 nm) rekonstruiert
+  (geringste Krümmung unter der Bedingung, dass das Spektrum unter D65 genau die Farbe ergibt; Verfahren nach Burns),
+  und je Wellenlänge K und S des Pigments bestimmt (Zwei-Konstanten-Kubelka-Munk mit Titanweiß als Bezug, S_Weiß = 1).
+  Mischungen: K und S anteilig, R aus K/S, Saunderson-Korrektur für die Oberfläche. Die Werte sind Näherungen; die UI
+  sagt das. CIE-1931-2°-Normspektralwerte und D65 (10-nm-Tabellen) als Konstanten im Code.
+- **Rezeptsuche:** erschöpfend über alle Kombinationen aus 1–3 Pigmenten der Auswahl (grobes Mengengitter), danach
+  Verfeinerung der besten Kandidaten; Weiß aus der Auswahl darf zusätzlich beigemischt werden. Bewertet mit ΔE2000.
+  Teile werden auf kleine ganze Zahlen gerundet („2 Teile … + 1 Teil … + etwas …“ unter 10 %).
+- **„Meine Farben“:** Auswahl im Projekt (`malplan.myColors`, Projektdatei), Profile zusätzlich im Browser-Speicher.
+- **`stroke-paint`:** Striche sind reproduzierbare Daten (Seed, Parameter, Bild): der Strichgenerator ist ein reines Modul
+  (`effects/stroke-paint/strokes.ts`), das Effekt und Malplan gemeinsam nutzen; der Malplan rechnet die Striche für den
+  Zuschnitt neu statt sie als großen Datenblock im Projekt zu speichern. Export der Strichdaten als JSON möglich.
+- **Kanten-Karte:** je Grenzpixel zwischen zwei Malplan-Flächen Kontrast (ΔL der Flächen) und Breite des Übergangs im
+  geglätteten Bild (Kontrast / größter Gradient in px): verloren = Kontrast unter Schwelle, hart = schmaler Übergang,
+  sonst weich.
+- **Schichtplan:** Schritte je Maltechnik aus Flächen, Tonwerten und Flächengröße (Öl/Acryl dunkel → hell, Aquarell
+  hell → dunkel, Bleistift/Kohle Formen → Massen → Details); jeder Schritt zeigt Neues hervorgehoben und den Stand.
+- **Betrifft:** Pigment-Engine, Malplan, Effekte, PDF
+
 ## 2026-10-18 – E3: Analysekarten, Segmente, Stil
 
 - **Modelle (Spec 13.3, an der Quelle geprüft 18.10.2026):**
