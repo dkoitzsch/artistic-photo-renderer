@@ -426,10 +426,11 @@ Jede Phase endet mit: lauffähigem Stand, grünen Tests, kurzer Änderungsnotiz,
 ✅ Abgenommen am 19.10.2026 – siehe [abnahme-E4.md](abnahme-E4.md).
 
 ### Phase E5 – Simulationen & Experimente
-- `watercolor-sim` (nutzt Pigment-Engine, inkl. Granulation)
-- `aging`, `chemical`, `reaction-diffusion`, `crystal-growth`, `erosion`, `memory`, `cubist`
-- Performance-Optimierung der Simulationen für 24 MP (Kachelung, ggf. GPU im Python-Dienst, falls verfügbar)
+- [x] `watercolor-sim` (nutzt Pigment-Engine, inkl. Granulation)
+- [x] `aging`, `chemical`, `reaction-diffusion`, `crystal-growth`, `erosion`, `memory`, `cubist`
+- [x] Performance-Optimierung der Simulationen für 24 MP (Kachelung, ggf. GPU im Python-Dienst, falls verfügbar)
 **Abnahme:** Jeder Simulationseffekt liefert mit Standard-Presets auf den Testbildern ein überzeugendes Ergebnis; Endrender in 24 MP läuft stabil durch.
+✅ Abgenommen am 19.10.2026 – siehe [abnahme-E5.md](abnahme-E5.md).
 
 ---
 

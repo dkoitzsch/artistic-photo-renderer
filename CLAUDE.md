@@ -13,11 +13,11 @@ Abgeschlossen: **Phase 0 – Gerüst**, **Phase 1 – Ganzes Bild**, **Phase 2 �
 **Phase 3 – Tiefenebenen und Gruppen**, **Phase 4 – Weitere Bilder**, **Phase 5 – Pinsel** ([docs/abnahme-P5.md](docs/abnahme-P5.md)). Erledigte Punkte werden in der Spec abgehakt.
 
 **Erweiterung „Effekte & Malvorlagen“** ([docs/spec-effekte-und-malvorlagen.md](docs/spec-effekte-und-malvorlagen.md)):
-**Phasen E1 bis E4 abgeschlossen** (Pläne `docs/plan-E1.md` … `docs/plan-E4.md`; Abnahme und Demo-Listen:
+**Phasen E1 bis E5 abgeschlossen** (Pläne `docs/plan-E1.md` … `docs/plan-E5.md`; Abnahme und Demo-Listen:
 [docs/abnahme-E1.md](docs/abnahme-E1.md), [docs/abnahme-E2.md](docs/abnahme-E2.md), [docs/abnahme-E3.md](docs/abnahme-E3.md),
-[docs/abnahme-E4.md](docs/abnahme-E4.md); Ideen für später:
+[docs/abnahme-E4.md](docs/abnahme-E4.md), [docs/abnahme-E5.md](docs/abnahme-E5.md); Ideen für später:
 [docs/optimierungen-und-varianten.md](docs/optimierungen-und-varianten.md)).
-Nächste (wartet auf Freigabe): E5. Danach `docs/spec-ml-fotobearbeitung.md` (nicht anfassen).
+Nächste (wartet auf Freigabe): `docs/spec-ml-fotobearbeitung.md` (Datei nicht anfassen).
 Nach jedem Schritt: Tests, [PROGRESS.md](PROGRESS.md) nachführen (Stand, offene Punkte, Logbuch, Stolpersteine, Messwerte), Commit, Push.
 
 ## Ordnerstruktur (✓ = existiert)
@@ -240,6 +240,17 @@ Autosave (`io/autosave.ts`) beobachtet den Store und schreibt ins OPFS.
 - PDF (`malplan/pdfBook.ts`): Seiten `palette`, `numbers`, `edges`, `steps`, `strokes` (Text in WinAnsi: „dE“ statt „ΔE“).
 - Effekte: `stroke-paint` (Worker; Strichgenerator `effects/stroke-paint/strokes.ts` auch im Malplan-Worker),
   `impasto`, `saliency-abstraction` (GPU); Golden-Fälle mit `syntheticSaliency`.
+
+**Erweiterung E5 (Simulationen):**
+
+- Simulationsraster (DECISIONS „E5: Simulationen“): Zustand auf einem festen Raster über der Leinwand (Zellgröße in
+  Leinwand-px, Obergrenze 1536–2048 Zellen), Vorschau und Export rechnen dieselbe Simulation; Reichweite
+  `max(canvasWidth, canvasHeight)` → Export am Stück; die Darstellung tastet das Raster über `canvas_px` ab.
+- GPU: `reaction-diffusion` (Gray-Scott, Zustand 1−U wegen fp16), `crystal-growth` (Spitzenwachstum mit Wuchsrichtung),
+  `erosion` (Höhe/Wasser/Sediment, Farbe von stromaufwärts), `chemical`, `aging` (Craquelé, Firnis), `memory`
+  (Salienz/Gesichter/Fokuskarte), `cubist` (Rückwärts-Verschiebung nach der Tiefe, Fragmente).
+- Worker: `watercolor-sim` (Lasuren per k-Means, Rezepte und Kubelka-Munk-Schichten aus der Pigment-Engine:
+  `mixConstants`, `layerReflectance`, `mixGranulation`). Abnahme `acceptanceE5.spec.ts` (alle in 24 MP).
 
 **Neuen Effekt anlegen:** siehe [effects/README.md](effects/README.md) – nur einen Ordner unter `effects/` anlegen.
 

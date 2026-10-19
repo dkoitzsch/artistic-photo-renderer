@@ -27,7 +27,9 @@ fn init_color(@builtin(global_invocation_id) id: vec3u) {
 fn init_state(@builtin(global_invocation_id) id: vec3u) {
   let size = textureDimensions(dst);
   if (id.x >= size.x || id.y >= size.y) { return; }
-  let h = textureLoad(src, vec2i(id.xy), 0).a;
+  // feines Rauschen bricht Terrassen glatter Verläufe (8-Bit-Stufen würden sonst zu waagrechten Rinnen)
+  let n = rand_noise(vec2f(id.xy), 3.0, params.seed) + 0.5 * rand_noise(vec2f(id.xy), 1.0, params.seed + 7u);
+  let h = textureLoad(src, vec2i(id.xy), 0).a + (n - 0.75) * 0.003;
   textureStore(dst, id.xy, vec4f(h, 0.0, 0.0, 1.0));
 }
 
