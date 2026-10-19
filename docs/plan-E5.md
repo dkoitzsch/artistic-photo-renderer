@@ -5,7 +5,7 @@ Entscheidungen in [DECISIONS.md](../DECISIONS.md) („E5: Simulationen“). Frei
 Jeder Schritt endet lauffähig, mit grünen Tests, aktueller `PROGRESS.md`, Commit und Push auf `main`.
 
 - [x] 0. Plan, Entscheidungen, PROGRESS.md
-- [ ] 1. `reaction-diffusion` (Gray-Scott, Steuerkarte) und `crystal-growth` (dendritisches Wachstum von Kanten aus) –
+- [x] 1. `reaction-diffusion` (Gray-Scott, Steuerkarte) und `crystal-growth` (dendritisches Wachstum von Kanten aus) –
       GPU, auf einem festen Simulationsraster
 - [ ] 2. `erosion` (Höhenfeld aus Helligkeit/Tiefe, Regen trägt ab, Farbe wird mitgetragen) und `chemical` (Rost,
       Bleiche, Solarisation; Wachstum von Kanten, Dunkel oder Tiefe aus)

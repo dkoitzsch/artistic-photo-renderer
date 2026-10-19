@@ -506,4 +506,26 @@ export const EFFECT_CASES: EffectCase[] = [
     syntheticSaliency: true,
     tileTolerance: 1,
   },
+  // ---- E5 ----
+  {
+    name: 'reaction-diffusion-portrait',
+    fixture: 'portrait',
+    effectId: 'reaction-diffusion',
+    flatBorder: false,
+  },
+  {
+    name: 'reaction-diffusion-maze-landscape',
+    fixture: 'landscape',
+    effectId: 'reaction-diffusion',
+    preset: 'Labyrinth',
+    flatBorder: false,
+  },
+  { name: 'crystal-growth-portrait', fixture: 'portrait', effectId: 'crystal-growth', flatBorder: false },
+  {
+    name: 'crystal-growth-window-architecture',
+    fixture: 'architecture',
+    effectId: 'crystal-growth',
+    preset: 'Eisblumen am Fenster',
+    flatBorder: false,
+  },
 ];

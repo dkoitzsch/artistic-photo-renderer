@@ -1,0 +1,119 @@
+{
+  "id": "reaction-diffusion",
+  "name": "Reaktions-Diffusion",
+  "version": "1.0.0",
+  "category": "Simulation",
+  "description": "Gray-Scott-Muster (Korallen, Flecken, Labyrinth) wachsen aus dem Bild – gesteuert durch Helligkeit oder Kanten.",
+  "inputs": ["source"],
+  "passes": 4,
+  "implementations": { "preview": "webgpu", "final": "webgpu" },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung des Gray-Scott-Modells (Pearson 1993) auf einem festen Simulationsraster."
+  },
+  "cost": "slow",
+  "randomized": true,
+  "requires": ["luminance", "edges"],
+  "reach": "max(canvasWidth, canvasHeight)",
+  "params": [
+    {
+      "key": "pattern",
+      "label": "Muster",
+      "type": "enum",
+      "options": [
+        { "value": "coral", "label": "Korallen" },
+        { "value": "spots", "label": "Flecken" },
+        { "value": "maze", "label": "Labyrinth" },
+        { "value": "worms", "label": "Würmer" },
+        { "value": "custom", "label": "Eigene Raten" }
+      ],
+      "default": "coral"
+    },
+    {
+      "key": "feed",
+      "label": "Zufuhr (F)",
+      "type": "float",
+      "min": 0.01,
+      "max": 0.1,
+      "default": 0.0545,
+      "step": 0.0005,
+      "visibleIf": "pattern=custom"
+    },
+    {
+      "key": "kill",
+      "label": "Abbau (k)",
+      "type": "float",
+      "min": 0.04,
+      "max": 0.075,
+      "default": 0.062,
+      "step": 0.0005,
+      "visibleIf": "pattern=custom"
+    },
+    {
+      "key": "iterations",
+      "label": "Iterationen",
+      "type": "int",
+      "min": 100,
+      "max": 8000,
+      "default": 2500,
+      "scale": "log"
+    },
+    {
+      "key": "steer",
+      "label": "Steuerkarte",
+      "type": "enum",
+      "options": [
+        { "value": "luminance", "label": "Helligkeit" },
+        { "value": "edges", "label": "Kanten" },
+        { "value": "none", "label": "keine" }
+      ],
+      "default": "luminance"
+    },
+    {
+      "key": "steerAmount",
+      "label": "Einfluss der Steuerkarte",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 60,
+      "unit": "%"
+    },
+    {
+      "key": "cell",
+      "label": "Mustergröße",
+      "hint": "Leinwand-px je Simulationszelle",
+      "type": "float",
+      "min": 1,
+      "max": 8,
+      "default": 1.6,
+      "step": 0.1
+    },
+    {
+      "key": "render",
+      "label": "Darstellung",
+      "type": "enum",
+      "options": [
+        { "value": "image", "label": "Bildfarben im Muster" },
+        { "value": "overlay", "label": "Muster über dem Bild" },
+        { "value": "duotone", "label": "Zweifarbig" }
+      ],
+      "default": "image"
+    },
+    { "key": "ink", "label": "Musterfarbe", "type": "color", "default": [0.1, 0.12, 0.2] },
+    {
+      "key": "paper",
+      "label": "Grund",
+      "type": "color",
+      "default": [0.96, 0.93, 0.86],
+      "visibleIf": "render!=overlay"
+    }
+  ],
+  "presets": [
+    { "name": "Korallen", "values": { "pattern": "coral", "iterations": 3000 } },
+    { "name": "Flecken", "values": { "pattern": "spots", "iterations": 2500, "render": "overlay" } },
+    {
+      "name": "Labyrinth",
+      "values": { "pattern": "maze", "iterations": 3500, "render": "duotone", "steer": "edges" }
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+{
+  "id": "crystal-growth",
+  "name": "Eisblumen",
+  "version": "1.0.0",
+  "category": "Simulation",
+  "description": "Kristalle und Eisblumen wachsen verästelt von den Kanten des Bildes aus und überziehen es wie Frost.",
+  "inputs": ["source"],
+  "passes": 4,
+  "implementations": { "preview": "webgpu", "final": "webgpu" },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung: zelluläres Spitzenwachstum (DLA-ähnlich) auf einem festen Simulationsraster."
+  },
+  "cost": "slow",
+  "randomized": true,
+  "requires": ["edges", "luminance"],
+  "reach": "max(canvasWidth, canvasHeight)",
+  "params": [
+    {
+      "key": "seeds",
+      "label": "Keimpunkte",
+      "type": "enum",
+      "options": [
+        { "value": "edges", "label": "Kanten" },
+        { "value": "dark", "label": "Dunkle Bereiche" },
+        { "value": "random", "label": "Verstreut" }
+      ],
+      "default": "edges"
+    },
+    {
+      "key": "density",
+      "label": "Dichte der Keime",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 35,
+      "unit": "%"
+    },
+    {
+      "key": "growth",
+      "label": "Astlänge",
+      "hint": "Länge der Äste in % der langen Bildkante",
+      "type": "float",
+      "min": 1,
+      "max": 60,
+      "default": 12,
+      "unit": "%"
+    },
+    {
+      "key": "rate",
+      "label": "Wachstumsrate",
+      "type": "float",
+      "min": 5,
+      "max": 100,
+      "default": 35,
+      "unit": "%"
+    },
+    {
+      "key": "branching",
+      "label": "Verzweigung",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 45,
+      "unit": "%"
+    },
+    {
+      "key": "cell",
+      "label": "Feinheit",
+      "hint": "Leinwand-px je Simulationszelle",
+      "type": "float",
+      "min": 1,
+      "max": 6,
+      "default": 1.5,
+      "step": 0.1
+    },
+    {
+      "key": "frost",
+      "label": "Frost über dem Bild",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 35,
+      "unit": "%"
+    },
+    { "key": "color", "label": "Kristallfarbe", "type": "color", "default": [0.86, 0.94, 1.0] }
+  ],
+  "presets": [
+    {
+      "name": "Eisblumen am Fenster",
+      "values": { "seeds": "random", "density": 20, "growth": 22, "branching": 35, "frost": 50 }
+    },
+    {
+      "name": "Feine Kristalle an Kanten",
+      "values": { "seeds": "edges", "density": 45, "growth": 6, "branching": 15, "cell": 1 }
+    },
+    {
+      "name": "Rauhreif",
+      "values": { "seeds": "dark", "density": 60, "growth": 4, "rate": 70, "branching": 60, "frost": 25 }
+    }
+  ]
+}
