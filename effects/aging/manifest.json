@@ -1,0 +1,70 @@
+{
+  "id": "aging",
+  "name": "Alterung",
+  "version": "1.0.0",
+  "category": "Simulation",
+  "description": "Das Bild altert über Jahrhunderte: Craquelé nach Schichtdicke, vergilbender Firnis, ausbleichende Farben, Schmutz.",
+  "inputs": ["source"],
+  "passes": 1,
+  "implementations": { "preview": "webgpu", "final": "webgpu" },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung (Voronoi-Rissnetz, Firnis- und Ausbleichmodell, prozedural)."
+  },
+  "cost": "realtime",
+  "randomized": true,
+  "requires": ["luminance"],
+  "reach": "crackSize * 2 + 4",
+  "params": [
+    { "key": "years", "label": "Jahre", "type": "float", "min": 0, "max": 500, "default": 220 },
+    {
+      "key": "climate",
+      "label": "Klima",
+      "type": "enum",
+      "options": [
+        { "value": "dry", "label": "Trocken (mehr Risse)" },
+        { "value": "humid", "label": "Feucht (Flecken, Schmutz)" }
+      ],
+      "default": "dry"
+    },
+    {
+      "key": "varnish",
+      "label": "Firnis",
+      "hint": "Vergilbender Schutzlack",
+      "type": "bool",
+      "default": true
+    },
+    {
+      "key": "crackSize",
+      "label": "Netzgröße des Craquelés",
+      "type": "float",
+      "min": 4,
+      "max": 80,
+      "default": 22,
+      "unit": "px",
+      "scale": "log"
+    },
+    {
+      "key": "thickness",
+      "label": "Schichtdicke folgt Helligkeit",
+      "hint": "Pastose Lichter → größere Rissfelder",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 50,
+      "unit": "%",
+      "group": "Erweitert"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Altmeister (300 Jahre)",
+      "values": { "years": 300, "climate": "dry", "varnish": true, "crackSize": 20 }
+    },
+    {
+      "name": "Feuchter Keller",
+      "values": { "years": 150, "climate": "humid", "varnish": false, "crackSize": 30 }
+    },
+    { "name": "Frisch gealtert", "values": { "years": 60, "varnish": true, "crackSize": 14 } }
+  ]
+}

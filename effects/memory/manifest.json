@@ -1,0 +1,72 @@
+{
+  "id": "memory",
+  "name": "Erinnerung",
+  "version": "1.0.0",
+  "category": "Simulation",
+  "description": "Das Bild zerfällt wie eine Erinnerung: Unwichtiges verblasst, verschwimmt oder löst sich auf – Gesichter und Blickfang bleiben.",
+  "inputs": ["source", "focus"],
+  "passes": 5,
+  "implementations": { "preview": "webgpu", "final": "webgpu" },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung; Salienz U²-Net-p (Apache-2.0), Gesichter MediaPipe (Apache-2.0)."
+  },
+  "cost": "interactive",
+  "randomized": true,
+  "requires": ["saliency", "faces"],
+  "reach": "radius * 1.5",
+  "params": [
+    {
+      "key": "forget",
+      "label": "Vergessensgrad",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 65,
+      "unit": "%"
+    },
+    {
+      "key": "decay",
+      "label": "Art des Zerfalls",
+      "type": "enum",
+      "options": [
+        { "value": "fade", "label": "Verblassen" },
+        { "value": "blur", "label": "Verschwimmen" },
+        { "value": "dissolve", "label": "Auflösen" }
+      ],
+      "default": "fade"
+    },
+    {
+      "key": "radius",
+      "label": "Unschärfe / Drift",
+      "type": "float",
+      "min": 2,
+      "max": 80,
+      "default": 24,
+      "unit": "px",
+      "scale": "log"
+    },
+    {
+      "key": "softness",
+      "label": "Übergang",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 55,
+      "unit": "%"
+    },
+    { "key": "useFocus", "label": "Fokuskarte bleibt erhalten", "type": "bool", "default": true },
+    {
+      "key": "paper",
+      "label": "Farbe des Vergessens",
+      "type": "color",
+      "default": [0.95, 0.92, 0.85],
+      "group": "Erweitert"
+    }
+  ],
+  "presets": [
+    { "name": "Ferne Erinnerung", "values": { "forget": 80, "decay": "fade" } },
+    { "name": "Verschwommen", "values": { "forget": 70, "decay": "blur", "radius": 32 } },
+    { "name": "Zerfall", "values": { "forget": 75, "decay": "dissolve", "radius": 18 } }
+  ]
+}

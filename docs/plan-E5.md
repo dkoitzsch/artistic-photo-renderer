@@ -9,7 +9,7 @@ Jeder Schritt endet lauffähig, mit grünen Tests, aktueller `PROGRESS.md`, Comm
       GPU, auf einem festen Simulationsraster
 - [x] 2. `erosion` (Höhenfeld aus Helligkeit/Tiefe, Regen trägt ab, Farbe wird mitgetragen) und `chemical` (Rost,
       Bleiche, Solarisation; Wachstum von Kanten, Dunkel oder Tiefe aus)
-- [ ] 3. `aging` (Craquelé nach Schichtdicke, Firnis, Ausbleichen) und `memory` (Verblassen, Verschwimmen, Auflösen;
+- [x] 3. `aging` (Craquelé nach Schichtdicke, Firnis, Ausbleichen) und `memory` (Verblassen, Verschwimmen, Auflösen;
       Gesichter und Salientes bleiben)
 - [ ] 4. `cubist` (Mehrperspektive über die Tiefe, Fragmente wie Joiner, Lückenfüllung)
 - [ ] 5. `watercolor-sim` (Aquarell nach Curtis et al. 1997, vereinfacht: Lasuren, Wasserfluss, Randverdunkelung,
