@@ -52,10 +52,12 @@ Alle Effekte unter `effects/` sind eigene Implementierungen (Lizenz des Projekts
 Kuwahara, XDoG, Floyd-Steinberg) sind als Algorithmen nicht urheberrechtlich geschützt; die Quelle steht im Manifest
 (`license.notes`). Texturen werden prozedural erzeugt; Blue-Noise-Masken erzeugt der Code selbst (keine Fremddateien).
 
-| Daten               | Lizenz  | Herkunft                                                   |
-| ------------------- | ------- | ---------------------------------------------------------- |
-| Testfotos           | CC0 1.0 | Wikimedia Commons (Unsplash/Pixabay), siehe tests/fixtures |
-| Synthetische Bilder | eigene  | `tests/fixtures/generate.mjs`                              |
+| Daten                                                | Lizenz                                               | Herkunft                                                                                       |
+| ---------------------------------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Testfotos                                            | CC0 1.0                                              | Wikimedia Commons (Unsplash/Pixabay), siehe tests/fixtures                                     |
+| Synthetische Bilder                                  | eigene                                               | `tests/fixtures/generate.mjs`                                                                  |
+| Pigmentdatenbank                                     | eigene Näherungsdaten                                | `src/pigments/pigments.json` (Vollton- und Aufhellungsfarben geschätzt, keine Herstellerdaten) |
+| CIE-1931-2°-Normspektralwerte, Normlicht D65 (10 nm) | frei veröffentlichte Normdaten der CIE (Zahlenwerte) | `src/pigments/spectral.ts`                                                                     |
 
 ## Nicht verwendet (bewusst)
 

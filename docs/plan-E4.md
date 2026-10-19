@@ -5,7 +5,7 @@ Entscheidungen in [DECISIONS.md](../DECISIONS.md) („E4: Pigmente, Striche, Mal
 19.10.2026. Jeder Schritt endet lauffähig, mit grünen Tests, aktueller `PROGRESS.md`, Commit und Push auf `main`.
 
 - [x] 0. Plan, Entscheidungen, PROGRESS.md
-- [ ] 1. Pigment-Engine (`src/pigments/`): Pigmentdatenbank (JSON, ~26 Künstlerpigmente mit Colour-Index, Deckkraft,
+- [x] 1. Pigment-Engine (`src/pigments/`): Pigmentdatenbank (JSON, ~26 Künstlerpigmente mit Colour-Index, Deckkraft,
       Lichtechtheit, Granulation), Spektren mit 31 Stützstellen (400–700 nm) aus Vollton- und Aufhellungsfarbe,
       Kubelka-Munk mit zwei Konstanten, `mix`, `findMix` (bis 3 Pigmente + Weiß), ΔE2000; Unit-Tests nach 6.3
 - [ ] 2. „Meine Farben“ (Auswahl im Malplan, Profile speicherbar), reduzierte Palette nur aus mischbaren Tönen,

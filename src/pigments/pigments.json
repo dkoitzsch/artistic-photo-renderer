@@ -1,0 +1,299 @@
+{
+  "$comment": "Eigene Näherungsdaten (DECISIONS.md „E4“): Volltonfarbe (masstone) und Aufhellung 1 Teil Pigment : 4 Teile Titanweiß (tint) in sRGB. Daraus rekonstruiert die Pigment-Engine Spektren und Kubelka-Munk-Konstanten. Keine Messwerte eines Herstellers.",
+  "formatVersion": 1,
+  "tintRatio": 0.2,
+  "pigments": [
+    {
+      "id": "titanium-white",
+      "name": "Titanweiß",
+      "ci": "PW6",
+      "masstone": "#f5f5f2",
+      "tint": "#f5f5f2",
+      "opacity": 1,
+      "lightfastness": "I",
+      "granulation": 0,
+      "white": true
+    },
+    {
+      "id": "zinc-white",
+      "name": "Zinkweiß",
+      "ci": "PW4",
+      "masstone": "#f2f3f3",
+      "tint": "#f3f4f3",
+      "opacity": 0.5,
+      "lightfastness": "I",
+      "granulation": 0,
+      "white": true
+    },
+    {
+      "id": "ivory-black",
+      "name": "Elfenbeinschwarz",
+      "ci": "PBk9",
+      "masstone": "#24211f",
+      "tint": "#8b8986",
+      "opacity": 0.8,
+      "lightfastness": "I",
+      "granulation": 0.2
+    },
+    {
+      "id": "mars-black",
+      "name": "Marsschwarz",
+      "ci": "PBk11",
+      "masstone": "#1f1f1f",
+      "tint": "#7a7a7b",
+      "opacity": 1,
+      "lightfastness": "I",
+      "granulation": 0.1
+    },
+    {
+      "id": "payne-grey",
+      "name": "Paynesgrau",
+      "ci": "PBk9/PB29",
+      "masstone": "#262b36",
+      "tint": "#8a93a3",
+      "opacity": 0.6,
+      "lightfastness": "I",
+      "granulation": 0.3
+    },
+    {
+      "id": "ultramarine",
+      "name": "Ultramarinblau",
+      "ci": "PB29",
+      "masstone": "#1c2a7d",
+      "tint": "#8b9cd9",
+      "opacity": 0.4,
+      "lightfastness": "I",
+      "granulation": 0.8
+    },
+    {
+      "id": "phthalo-blue",
+      "name": "Phthaloblau",
+      "ci": "PB15:3",
+      "masstone": "#0f1e48",
+      "tint": "#3f6fbd",
+      "opacity": 0.2,
+      "lightfastness": "I",
+      "granulation": 0
+    },
+    {
+      "id": "cerulean",
+      "name": "Cölinblau",
+      "ci": "PB36",
+      "masstone": "#2b7bb1",
+      "tint": "#a7cce4",
+      "opacity": 0.8,
+      "lightfastness": "I",
+      "granulation": 0.7
+    },
+    {
+      "id": "cobalt-blue",
+      "name": "Kobaltblau",
+      "ci": "PB28",
+      "masstone": "#2148a8",
+      "tint": "#9bb0dd",
+      "opacity": 0.5,
+      "lightfastness": "I",
+      "granulation": 0.6
+    },
+    {
+      "id": "prussian-blue",
+      "name": "Preußischblau",
+      "ci": "PB27",
+      "masstone": "#14233d",
+      "tint": "#5e7fa1",
+      "opacity": 0.3,
+      "lightfastness": "I",
+      "granulation": 0
+    },
+    {
+      "id": "lemon-yellow",
+      "name": "Zitronengelb",
+      "ci": "PY3",
+      "masstone": "#efe300",
+      "tint": "#f4f09b",
+      "opacity": 0.5,
+      "lightfastness": "II",
+      "granulation": 0
+    },
+    {
+      "id": "cadmium-yellow-light",
+      "name": "Kadmiumgelb hell",
+      "ci": "PY35",
+      "masstone": "#f5d000",
+      "tint": "#f8eb9b",
+      "opacity": 0.9,
+      "lightfastness": "I",
+      "granulation": 0
+    },
+    {
+      "id": "cadmium-yellow-medium",
+      "name": "Kadmiumgelb mittel",
+      "ci": "PY35",
+      "masstone": "#f2b500",
+      "tint": "#f7df90",
+      "opacity": 0.9,
+      "lightfastness": "I",
+      "granulation": 0
+    },
+    {
+      "id": "hansa-yellow",
+      "name": "Hansagelb mittel",
+      "ci": "PY74",
+      "masstone": "#f6c300",
+      "tint": "#f9e39b",
+      "opacity": 0.4,
+      "lightfastness": "I",
+      "granulation": 0
+    },
+    {
+      "id": "yellow-ochre",
+      "name": "Lichter Ocker",
+      "ci": "PY42",
+      "masstone": "#c8902e",
+      "tint": "#e6cd9d",
+      "opacity": 0.8,
+      "lightfastness": "I",
+      "granulation": 0.3
+    },
+    {
+      "id": "raw-sienna",
+      "name": "Siena natur",
+      "ci": "PBr7",
+      "masstone": "#b0702e",
+      "tint": "#dec09e",
+      "opacity": 0.4,
+      "lightfastness": "I",
+      "granulation": 0.5
+    },
+    {
+      "id": "burnt-sienna",
+      "name": "Siena gebrannt",
+      "ci": "PBr7",
+      "masstone": "#8a3b1c",
+      "tint": "#d3a18d",
+      "opacity": 0.5,
+      "lightfastness": "I",
+      "granulation": 0.5
+    },
+    {
+      "id": "raw-umber",
+      "name": "Umbra natur",
+      "ci": "PBr7",
+      "masstone": "#4a3c2c",
+      "tint": "#aaa294",
+      "opacity": 0.8,
+      "lightfastness": "I",
+      "granulation": 0.5
+    },
+    {
+      "id": "burnt-umber",
+      "name": "Umbra gebrannt",
+      "ci": "PBr7",
+      "masstone": "#3f2a1e",
+      "tint": "#a79083",
+      "opacity": 0.8,
+      "lightfastness": "I",
+      "granulation": 0.5
+    },
+    {
+      "id": "cadmium-orange",
+      "name": "Kadmiumorange",
+      "ci": "PO20",
+      "masstone": "#e86b10",
+      "tint": "#f5bf90",
+      "opacity": 0.9,
+      "lightfastness": "I",
+      "granulation": 0
+    },
+    {
+      "id": "cadmium-red-light",
+      "name": "Kadmiumrot hell",
+      "ci": "PR108",
+      "masstone": "#d8311e",
+      "tint": "#f0a89c",
+      "opacity": 0.9,
+      "lightfastness": "I",
+      "granulation": 0
+    },
+    {
+      "id": "cadmium-red-medium",
+      "name": "Kadmiumrot mittel",
+      "ci": "PR108",
+      "masstone": "#b5231e",
+      "tint": "#e59b9b",
+      "opacity": 0.9,
+      "lightfastness": "I",
+      "granulation": 0
+    },
+    {
+      "id": "pyrrole-red",
+      "name": "Pyrrolrot",
+      "ci": "PR254",
+      "masstone": "#c9211f",
+      "tint": "#ee9b9a",
+      "opacity": 0.7,
+      "lightfastness": "I",
+      "granulation": 0
+    },
+    {
+      "id": "alizarin-permanent",
+      "name": "Alizarin Karmesin (Ersatz)",
+      "ci": "PR177",
+      "masstone": "#6e1a2a",
+      "tint": "#d68ba0",
+      "opacity": 0.3,
+      "lightfastness": "I",
+      "granulation": 0
+    },
+    {
+      "id": "quinacridone-magenta",
+      "name": "Chinacridon-Magenta",
+      "ci": "PR122",
+      "masstone": "#8b1d50",
+      "tint": "#e19ac3",
+      "opacity": 0.2,
+      "lightfastness": "I",
+      "granulation": 0
+    },
+    {
+      "id": "dioxazine-violet",
+      "name": "Dioxazinviolett",
+      "ci": "PV23",
+      "masstone": "#2b1640",
+      "tint": "#8f7eb5",
+      "opacity": 0.2,
+      "lightfastness": "I",
+      "granulation": 0
+    },
+    {
+      "id": "phthalo-green",
+      "name": "Phthalogrün",
+      "ci": "PG7",
+      "masstone": "#0b3a2e",
+      "tint": "#50aa90",
+      "opacity": 0.2,
+      "lightfastness": "I",
+      "granulation": 0
+    },
+    {
+      "id": "viridian",
+      "name": "Viridian",
+      "ci": "PG18",
+      "masstone": "#1c5a4a",
+      "tint": "#8fc4b6",
+      "opacity": 0.3,
+      "lightfastness": "I",
+      "granulation": 0.5
+    },
+    {
+      "id": "chromium-oxide-green",
+      "name": "Chromoxidgrün",
+      "ci": "PG17",
+      "masstone": "#5b7148",
+      "tint": "#b4c1a7",
+      "opacity": 1,
+      "lightfastness": "I",
+      "granulation": 0.2
+    }
+  ]
+}
