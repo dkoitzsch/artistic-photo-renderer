@@ -1,0 +1,57 @@
+{
+  "id": "impasto",
+  "name": "Impasto (Relief)",
+  "version": "1.0.0",
+  "category": "Malerei",
+  "description": "Pastoser Farbauftrag: die Struktur der Striche wird zum Relief, das ein Streiflicht modelliert – am besten über Pinselstrichen oder Ölbild.",
+  "inputs": ["source"],
+  "passes": 3,
+  "implementations": { "preview": "webgpu", "final": "webgpu" },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung (Höhenfeld aus Helligkeitsstruktur, Lambert + Glanz)."
+  },
+  "cost": "realtime",
+  "randomized": true,
+  "reach": "brush * 3 + 4",
+  "params": [
+    {
+      "key": "thickness",
+      "label": "Schichtdicke",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 55,
+      "unit": "%"
+    },
+    { "key": "lightAngle", "label": "Lichtwinkel", "type": "angle", "default": 225 },
+    { "key": "gloss", "label": "Glanz", "type": "float", "min": 0, "max": 100, "default": 30, "unit": "%" },
+    {
+      "key": "brush",
+      "label": "Strichbreite",
+      "hint": "Größe der Reliefstruktur",
+      "type": "float",
+      "min": 1,
+      "max": 40,
+      "default": 6,
+      "step": 0.5,
+      "unit": "px",
+      "scale": "log"
+    },
+    {
+      "key": "texture",
+      "label": "Pinselspuren",
+      "hint": "Feine Rillen im Farbauftrag",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 35,
+      "unit": "%",
+      "group": "Erweitert"
+    }
+  ],
+  "presets": [
+    { "name": "Spachtel", "values": { "thickness": 85, "brush": 14, "gloss": 40, "texture": 15 } },
+    { "name": "Dezent", "values": { "thickness": 30, "brush": 4, "gloss": 15 } }
+  ]
+}

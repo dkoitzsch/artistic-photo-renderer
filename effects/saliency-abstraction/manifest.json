@@ -1,0 +1,79 @@
+{
+  "id": "saliency-abstraction",
+  "name": "Abstraktion nach Aufmerksamkeit",
+  "version": "1.0.0",
+  "category": "Malerei",
+  "description": "Detail bleibt, wo das Auge hinschaut (Salienz, Gesichter, Fokuskarte); der Rest wird zunehmend abstrahiert.",
+  "inputs": ["source", "focus"],
+  "passes": 5,
+  "implementations": { "preview": "webgpu", "final": "webgpu" },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung; Salienz aus U²-Net-p (Apache-2.0), Gesichter aus MediaPipe (Apache-2.0)."
+  },
+  "cost": "interactive",
+  "randomized": false,
+  "requires": ["saliency", "faces"],
+  "reach": "radius",
+  "params": [
+    {
+      "key": "amount",
+      "label": "Abstraktionsstärke",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 75,
+      "unit": "%"
+    },
+    {
+      "key": "mode",
+      "label": "Art",
+      "type": "enum",
+      "options": [
+        { "value": "simplify", "label": "Vereinfachen (Farbflächen)" },
+        { "value": "blur", "label": "Verwischen" }
+      ],
+      "default": "simplify"
+    },
+    {
+      "key": "radius",
+      "label": "Größte Abstraktion",
+      "type": "float",
+      "min": 2,
+      "max": 80,
+      "default": 24,
+      "unit": "px",
+      "scale": "log"
+    },
+    {
+      "key": "softness",
+      "label": "Übergangsweichheit",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 50,
+      "unit": "%"
+    },
+    {
+      "key": "useFocus",
+      "label": "Fokuskarte überschreibt",
+      "hint": "Gemalte oder gesetzte Fokuspunkte bleiben immer detailreich",
+      "type": "bool",
+      "default": true
+    },
+    {
+      "key": "levels",
+      "label": "Farbstufen (Vereinfachen)",
+      "type": "int",
+      "min": 3,
+      "max": 16,
+      "default": 7,
+      "visibleIf": "mode=simplify",
+      "group": "Erweitert"
+    }
+  ],
+  "presets": [
+    { "name": "Porträt-Fokus", "values": { "amount": 85, "radius": 30, "softness": 60 } },
+    { "name": "Traum", "values": { "mode": "blur", "amount": 90, "radius": 40, "softness": 80 } }
+  ]
+}

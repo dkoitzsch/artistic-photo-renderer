@@ -465,4 +465,45 @@ export const EFFECT_CASES: EffectCase[] = [
     preset: 'Grob',
     flatBorder: false,
   },
+  // ---- E4 ----
+  { name: 'stroke-paint-portrait', fixture: 'portrait', effectId: 'stroke-paint', flatBorder: false },
+  {
+    name: 'stroke-paint-expressive-landscape',
+    fixture: 'landscape',
+    effectId: 'stroke-paint',
+    preset: 'Expressiv, große Pinsel',
+    flatBorder: false,
+  },
+  {
+    name: 'impasto-still-life',
+    fixture: 'still-life',
+    effectId: 'impasto',
+    flatBorder: false,
+    tileTolerance: 1,
+  },
+  {
+    name: 'impasto-spatula-landscape',
+    fixture: 'landscape',
+    effectId: 'impasto',
+    preset: 'Spachtel',
+    flatBorder: false,
+    tileTolerance: 1,
+  },
+  {
+    name: 'saliency-abstraction-portrait',
+    fixture: 'portrait',
+    effectId: 'saliency-abstraction',
+    syntheticSaliency: true,
+    // Mitte (salient) bleibt detailreich, Rand wird vereinfacht – auch auf der grauen Prüffläche
+    flatBorder: false,
+    tileTolerance: 1,
+  },
+  {
+    name: 'saliency-abstraction-blur-still-life',
+    fixture: 'still-life',
+    effectId: 'saliency-abstraction',
+    preset: 'Traum',
+    syntheticSaliency: true,
+    tileTolerance: 1,
+  },
 ];

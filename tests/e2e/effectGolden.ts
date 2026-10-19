@@ -31,6 +31,8 @@ export type EffectCase = {
   flatBorder?: number | false;
   /** synthetische Tiefenkarte (ohne Modell): unten nah, oben fern, mit einer nahen Scheibe in der Bildmitte */
   syntheticDepth?: boolean;
+  /** synthetische Salienz (helle Scheibe in der Bildmitte) und leere Gesichterkarte (ohne Modell) */
+  syntheticSaliency?: boolean;
 };
 
 const GOLDEN_DIR = new URL('../golden/effects/', import.meta.url).pathname;
@@ -66,6 +68,22 @@ export async function applyEffect(page: Page, c: EffectCase, fixtureFile: string
           d[y * w + x] = disc * 0.1 + (1 - disc) * (0.25 + 0.7 * ramp);
         }
       await window.__bls.ml.injectMap(o.id, 'depth', d, w, h);
+    });
+  if (c.syntheticSaliency)
+    await page.evaluate(async () => {
+      const p = window.__bls.getProject();
+      const o = p ? Object.values(p.originals)[0] : undefined;
+      if (!o) throw new Error('kein Original');
+      const w = 128;
+      const h = Math.max(1, Math.round((128 * o.height) / o.width));
+      const s = new Float32Array(w * h);
+      for (let y = 0; y < h; y++)
+        for (let x = 0; x < w; x++) {
+          const r = Math.hypot(x / w - 0.45, (y / h - 0.45) * 1.3);
+          s[y * w + x] = Math.min(1, Math.max(0, (0.3 - r) / 0.12));
+        }
+      await window.__bls.ml.injectMap(o.id, 'saliency', s, w, h);
+      await window.__bls.ml.injectMap(o.id, 'faces', new Float32Array(w * h), w, h);
     });
   await page.evaluate(
     ({ effectId, preset, params }) => {
