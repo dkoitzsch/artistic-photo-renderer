@@ -3,7 +3,7 @@
 
 import { linearFromOklab, srgbFromOklab, warmth } from './analysis';
 import { gridLines, type HelpId, type MalplanSettings } from './model';
-import type { MalplanDerived, MalplanResult } from './store';
+import type { MalplanDerived, MalplanPalette, MalplanResult } from './store';
 
 /** Papier und Tusche der Hilfen (sRGB 0..255) */
 export const PAPER: [number, number, number] = [250, 248, 243];
@@ -213,15 +213,56 @@ export function renderScale(d: MalplanDerived, w = 1200): HTMLCanvasElement {
   return c;
 }
 
+/** Reduzierte Palette: jede Fläche in der Mischfarbe ihres Paletteneintrags. */
+export function renderPalette(r: MalplanResult, pal: MalplanPalette): HTMLCanvasElement {
+  const colors = pal.entries.map((e) => e.mixed.map(to8) as [number, number, number]);
+  const map = new Uint8Array(r.width * r.height);
+  for (let p = 0; p < map.length; p++) map[p] = pal.regionEntry[r.labels[p] ?? 0] ?? 0;
+  return fromMap(r.width, r.height, map, colors);
+}
+
+/**
+ * Farbfeld-Karte: Flächenumrisse mit der Nummer ihres Paletteneintrags (im innersten Punkt der Fläche); sehr kleine
+ * Flächen bleiben ohne Nummer. scale = Pixel je Analyse-Pixel.
+ */
+export function renderNumbers(r: MalplanResult, pal: MalplanPalette, scale = 2): HTMLCanvasElement {
+  const w = Math.round(r.width * scale);
+  const h = Math.round(r.height * scale);
+  const [c, g] = canvasOf(w, h);
+  g.fillStyle = `rgb(${PAPER.join(',')})`;
+  g.fillRect(0, 0, w, h);
+  drawContours(g, r.contours, w, h, Math.max(1, scale * 0.6), 'rgb(120,118,114)');
+  g.fillStyle = `rgb(${INK.join(',')})`;
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  for (let i = 0; i < r.regions.length; i++) {
+    const rad = (pal.labelPoints[i * 3 + 2] ?? 0) * scale;
+    if (rad < 5) continue;
+    const size = Math.min(22 * scale, Math.max(8, rad * 0.9));
+    g.font = `${Math.round(size)}px Helvetica, Arial, sans-serif`;
+    const n = (pal.entries[pal.regionEntry[i] ?? 0]?.number ?? 0).toString();
+    g.fillText(n, (pal.labelPoints[i * 3] ?? 0) * scale, (pal.labelPoints[i * 3 + 1] ?? 0) * scale);
+  }
+  g.strokeStyle = `rgb(${INK.join(',')})`;
+  g.lineWidth = Math.max(1, scale);
+  g.strokeRect(0.5, 0.5, w - 1, h - 1);
+  return c;
+}
+
 /** Bild einer Hilfe (ohne Rasterüberlagerung) oder null, solange die Analyse fehlt. */
 export function renderHelp(
   help: HelpId,
   r: MalplanResult | null,
   d: MalplanDerived | null,
   s: MalplanSettings,
+  pal: MalplanPalette | null = null,
 ): HTMLCanvasElement | null {
   if (!r) return null;
   switch (help) {
+    case 'palette':
+      return pal ? renderPalette(r, pal) : null;
+    case 'numbers':
+      return pal ? renderNumbers(r, pal) : null;
     case 'final':
       return renderFinal(r);
     case 'grid':

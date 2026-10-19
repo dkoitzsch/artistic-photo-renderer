@@ -5,6 +5,7 @@ import { create } from 'zustand';
 import { getEngine } from '../render/runtime';
 import type { Project } from '../state/project';
 import type { Region } from './analysis';
+import type { PaletteEntry } from './palette';
 import { normalizeMalplan, type MalplanSettings } from './model';
 import type { MalplanRequest, MalplanResponse } from './worker';
 
@@ -24,6 +25,9 @@ export type MalplanResult = {
 
 export type MalplanDerived = { values: Uint8Array; tones: number[]; notan: Uint8Array; threshold: number };
 
+/** Reduzierte Palette mit Mischrezepten (aus „Meine Farben“) */
+export type MalplanPalette = { entries: PaletteEntry[]; regionEntry: Int32Array; labelPoints: Float32Array };
+
 type State = {
   /** pending: Änderung erkannt, Neuberechnung steht an */
   status: 'idle' | 'pending' | 'rendering' | 'analyzing' | 'ready' | 'error';
@@ -31,6 +35,7 @@ type State = {
   error: string | null;
   result: MalplanResult | null;
   derived: MalplanDerived | null;
+  palette: MalplanPalette | null;
 };
 
 export const useMalplanStore = create<State>()(() => ({
@@ -39,6 +44,7 @@ export const useMalplanStore = create<State>()(() => ({
   error: null,
   result: null,
   derived: null,
+  palette: null,
 }));
 
 let worker: Worker | null = null;
@@ -81,6 +87,7 @@ function request(body: RequestBody, transfer: Transferable[] = []): Promise<Malp
 
 let analysisKey = '';
 let deriveKey = '';
+let paletteKey = '';
 let running: Promise<void> | null = null;
 let pending: { project: Project; settings: MalplanSettings } | null = null;
 
@@ -131,6 +138,7 @@ async function step(project: Project, s: MalplanSettings): Promise<void> {
       if (res.type !== 'analysis') throw new Error('Unerwartete Antwort der Analyse');
       analysisKey = key;
       deriveKey = '';
+      paletteKey = '';
       useMalplanStore.setState({
         result: {
           image,
@@ -157,6 +165,15 @@ async function step(project: Project, s: MalplanSettings): Promise<void> {
         derived: { values: res.values, tones: res.tones, notan: res.notan, threshold: res.threshold },
       });
     }
+    const pKey = JSON.stringify([analysisKey, s.colors, s.myColors]);
+    if (pKey !== paletteKey) {
+      const res = await request({ type: 'palette', count: s.colors, myColors: s.myColors });
+      if (res.type !== 'palette') throw new Error('Unerwartete Antwort der Analyse');
+      paletteKey = pKey;
+      useMalplanStore.setState({
+        palette: { entries: res.entries, regionEntry: res.regionEntry, labelPoints: res.labelPoints },
+      });
+    }
     useMalplanStore.setState({ status: 'ready', progress: 1 });
   } catch (err) {
     useMalplanStore.setState({ status: 'error', error: err instanceof Error ? err.message : String(err) });
@@ -167,5 +184,13 @@ async function step(project: Project, s: MalplanSettings): Promise<void> {
 export function resetMalplan(): void {
   analysisKey = '';
   deriveKey = '';
-  useMalplanStore.setState({ status: 'idle', progress: 0, error: null, result: null, derived: null });
+  paletteKey = '';
+  useMalplanStore.setState({
+    status: 'idle',
+    progress: 0,
+    error: null,
+    result: null,
+    derived: null,
+    palette: null,
+  });
 }

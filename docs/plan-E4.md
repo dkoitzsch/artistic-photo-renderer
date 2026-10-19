@@ -8,7 +8,7 @@ Entscheidungen in [DECISIONS.md](../DECISIONS.md) („E4: Pigmente, Striche, Mal
 - [x] 1. Pigment-Engine (`src/pigments/`): Pigmentdatenbank (JSON, ~26 Künstlerpigmente mit Colour-Index, Deckkraft,
       Lichtechtheit, Granulation), Spektren mit 31 Stützstellen (400–700 nm) aus Vollton- und Aufhellungsfarbe,
       Kubelka-Munk mit zwei Konstanten, `mix`, `findMix` (bis 3 Pigmente + Weiß), ΔE2000; Unit-Tests nach 6.3
-- [ ] 2. „Meine Farben“ (Auswahl im Malplan, Profile speicherbar), reduzierte Palette nur aus mischbaren Tönen,
+- [x] 2. „Meine Farben“ (Auswahl im Malplan, Profile speicherbar), reduzierte Palette nur aus mischbaren Tönen,
       Mischrezepte (Teile, Farbfeld Soll/Mischung, ΔE), Farbfeld-Karte (nummerierte Flächen)
 - [ ] 3. Kanten-Karte (hart/weich/verloren aus Kontrast und Gradientenbreite, Schwellwerte einstellbar)
 - [ ] 4. Effekte `stroke-paint` (Hertzmann 1998, Striche als Daten), `impasto`, `saliency-abstraction`

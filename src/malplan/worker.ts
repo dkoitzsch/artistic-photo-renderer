@@ -10,6 +10,7 @@ import {
   type Analysis,
   type Region,
 } from './analysis';
+import { buildPalette, type PaletteEntry } from './palette';
 
 export type MalplanRequest =
   | {
@@ -21,7 +22,8 @@ export type MalplanRequest =
       shapes: number;
       colors: number;
     }
-  | { type: 'derive'; id: number; levels: number; minArea: number; threshold: number | null };
+  | { type: 'derive'; id: number; levels: number; minArea: number; threshold: number | null }
+  | { type: 'palette'; id: number; count: number; myColors: string[] };
 
 export type MalplanResponse =
   | { type: 'progress'; id: number; progress: number }
@@ -36,6 +38,13 @@ export type MalplanResponse =
       median: number;
     }
   | { type: 'derived'; id: number; values: Uint8Array; tones: number[]; notan: Uint8Array; threshold: number }
+  | {
+      type: 'palette';
+      id: number;
+      entries: PaletteEntry[];
+      regionEntry: Int32Array;
+      labelPoints: Float32Array;
+    }
   | { type: 'error'; id: number; message: string };
 
 let current: Analysis | null = null;
@@ -71,6 +80,11 @@ self.onmessage = (e: MessageEvent<MalplanRequest>) => {
     }
     if (!current) throw new Error('Noch keine Analyse vorhanden.');
     const a = current;
+    if (req.type === 'palette') {
+      const pal = buildPalette(a, req.count, req.myColors);
+      post({ type: 'palette', id: req.id, ...pal }, [pal.regionEntry.buffer, pal.labelPoints.buffer]);
+      return;
+    }
     // Mindestfläche in % der Bildfläche
     const minPixels = Math.round((a.width * a.height * req.minArea) / 100);
     const { level, tones } = valueLevels(a, req.levels);

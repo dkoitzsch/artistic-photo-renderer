@@ -26,6 +26,7 @@ import { EnumControl } from '../controls/EnumControl';
 import { Slider } from '../controls/Slider';
 import { Section } from './LayerSections';
 import { BeamerButton, useBeamerSync } from './MalplanBeamer';
+import { MyColorsSection, RecipeList } from './MalplanColors';
 import { PdfButton } from './MalplanPdf';
 
 function useSettings(): MalplanSettings | null {
@@ -88,14 +89,15 @@ function MalplanView() {
   const cropEdit = useAppStore((s) => s.malplanCropEdit);
   const result = useMalplanStore((s) => s.result);
   const derived = useMalplanStore((s) => s.derived);
+  const palette = useMalplanStore((s) => s.palette);
   const status = useMalplanStore((s) => s.status);
   const progress = useMalplanStore((s) => s.progress);
   const error = useMalplanStore((s) => s.error);
   const settings = useSettings();
   const ref = useRef<HTMLCanvasElement>(null);
   const image = useMemo(
-    () => (settings ? renderHelp(help, result, derived, settings) : null),
-    [help, result, derived, settings],
+    () => (settings ? renderHelp(help, result, derived, settings, palette) : null),
+    [help, result, derived, settings, palette],
   );
   useEffect(() => {
     const c = ref.current;
@@ -240,7 +242,7 @@ function MalplanPanel() {
     });
   };
   const savePng = () => {
-    const c = renderHelp(help, result, derived, settings);
+    const c = renderHelp(help, result, derived, settings, useMalplanStore.getState().palette);
     if (!c) return;
     c.toBlob((blob) => {
       if (blob)
@@ -370,6 +372,7 @@ function MalplanPanel() {
           Wirkt auf alle Hilfen. Die Flächen werden aus dem aktuellen Ergebnis berechnet.
         </p>
       </Section>
+      <MyColorsSection settings={settings} set={set} />
       <HelpSettings help={help} settings={settings} set={set} median={result?.median ?? null} />
       <Section title="Ausgabe" testId="malplan-output">
         <div className="button-row">
@@ -398,6 +401,16 @@ function HelpSettings({
   median: number | null;
 }) {
   switch (help) {
+    case 'palette':
+    case 'numbers':
+      return (
+        <Section title="Palette und Mischrezepte" testId="malplan-recipes">
+          <p className="section-note">
+            {settings.colors} Farben, gemischt aus „Meine Farben“. Farbfeld: links Soll, rechts Mischung.
+          </p>
+          <RecipeList />
+        </Section>
+      );
     case 'notan':
       return (
         <Section title="Notan" testId="malplan-notan">

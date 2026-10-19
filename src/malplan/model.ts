@@ -1,6 +1,8 @@
 // Malplan (Spec „Effekte & Malvorlagen“, Abschnitt 7): Einstellungen im Projekt, Untergrundformate, Zuschnitt.
 // Reine Logik ohne Abhängigkeiten von Oberfläche oder GPU.
 
+import { pigmentById } from '../pigments/engine';
+
 export type Technique = 'oil' | 'acrylic' | 'watercolor' | 'gouache' | 'pencil';
 
 export const TECHNIQUES: { value: Technique; label: string }[] = [
@@ -48,7 +50,8 @@ export const FORMAT_PRESETS: FormatPreset[] = [
 /** Zuschnitt als Rechteck in normierten Leinwand-Koordinaten (0..1). */
 export type Rect01 = { x: number; y: number; width: number; height: number };
 
-export type HelpId = 'final' | 'notan' | 'values' | 'scale' | 'warmcold' | 'grid' | 'contour';
+export type HelpId =
+  'final' | 'notan' | 'values' | 'scale' | 'warmcold' | 'palette' | 'numbers' | 'grid' | 'contour';
 
 export const HELPS: { id: HelpId; label: string }[] = [
   { id: 'final', label: 'Endbild' },
@@ -56,6 +59,8 @@ export const HELPS: { id: HelpId; label: string }[] = [
   { id: 'values', label: 'Werteskizze' },
   { id: 'scale', label: 'Wertskala' },
   { id: 'warmcold', label: 'Warm-Kalt-Karte' },
+  { id: 'palette', label: 'Reduzierte Palette' },
+  { id: 'numbers', label: 'Farbfeld-Karte' },
   { id: 'grid', label: 'Proportionsraster' },
   { id: 'contour', label: 'Konturvorlage' },
 ];
@@ -84,6 +89,8 @@ export type MalplanSettings = {
   /** Vereinfachungsgrad: Anzahl Formen (20–2000) und Farben (4–40) */
   shapes: number;
   colors: number;
+  /** „Meine Farben“: vorhandene Tubenfarben (Pigment-IDs der Pigmentdatenbank) */
+  myColors: string[];
   notan: { threshold: number };
   values: { levels: 3 | 4 | 5; minArea: number };
   grid: { mode: 'divisions' | 'spacing'; cols: number; rows: number; spacingCm: number };
@@ -91,6 +98,20 @@ export type MalplanSettings = {
   beamer: { help: HelpId; corners: [Corner, Corner, Corner, Corner]; grid: boolean };
   pdf: { pages: Record<PdfPage, boolean>; paper: PaperSize };
 };
+
+/** Standard für „Meine Farben“: übliche Grundpalette aus 10 Farben */
+export const DEFAULT_MY_COLORS = [
+  'titanium-white',
+  'ivory-black',
+  'ultramarine',
+  'phthalo-blue',
+  'cadmium-yellow-light',
+  'yellow-ochre',
+  'burnt-sienna',
+  'cadmium-red-light',
+  'alizarin-permanent',
+  'phthalo-green',
+] as const;
 
 export const SHAPES_RANGE = [20, 2000] as const;
 export const COLORS_RANGE = [4, 40] as const;
@@ -105,6 +126,7 @@ export function defaultMalplan(canvas: { width: number; height: number }): Malpl
     crop: fitCrop(canvas, format.widthCm / format.heightCm),
     shapes: 200,
     colors: 12,
+    myColors: [...DEFAULT_MY_COLORS],
     notan: { threshold: 0.5 },
     values: { levels: 4, minArea: 0.2 },
     grid: { mode: 'divisions', cols: 4, rows: 4, spacingCm: 5 },
@@ -238,6 +260,12 @@ export function normalizeMalplan(raw: unknown, canvas: { width: number; height: 
     crop,
     shapes: Math.round(num(r.shapes, SHAPES_RANGE[0], SHAPES_RANGE[1], d.shapes)),
     colors: Math.round(num(r.colors, COLORS_RANGE[0], COLORS_RANGE[1], d.colors)),
+    myColors: (() => {
+      const list = Array.isArray(r.myColors)
+        ? r.myColors.filter((id): id is string => typeof id === 'string' && pigmentById(id) !== undefined)
+        : [];
+      return list.length ? [...new Set(list)] : d.myColors;
+    })(),
     notan: { threshold: num(r.notan?.threshold, 0, 1, d.notan.threshold) },
     values: {
       levels: levels === 3 || levels === 4 || levels === 5 ? levels : d.values.levels,

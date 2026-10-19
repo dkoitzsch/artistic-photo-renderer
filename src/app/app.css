@@ -2465,3 +2465,62 @@ button:disabled {
   font-size: 11px;
   color: var(--text-muted);
 }
+
+/* Malplan: Meine Farben und Mischrezepte (E4) */
+.pigment-list {
+  display: grid;
+  gap: 2px;
+  max-height: 260px;
+  overflow-y: auto;
+  margin: 4px 0 8px;
+}
+.pigment {
+  display: grid;
+  grid-template-columns: auto 14px 14px 1fr auto;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-sm);
+}
+.pigment-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+}
+.pigment-ci,
+.recipe-de {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+.recipe-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.recipe {
+  display: grid;
+  grid-template-columns: 22px 34px 1fr auto;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-sm);
+}
+.recipe-number {
+  font-weight: 600;
+  text-align: right;
+}
+.recipe-swatch {
+  display: flex;
+  height: 18px;
+  border-radius: 3px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.recipe-swatch > span {
+  flex: 1;
+}
+.recipe-de.off {
+  color: var(--danger);
+  font-weight: 600;
+}

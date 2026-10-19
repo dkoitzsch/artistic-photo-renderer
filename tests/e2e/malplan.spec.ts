@@ -2,6 +2,20 @@
 import { expect, test, type Page } from '@playwright/test';
 import { openFixture, waitForApp } from './helpers';
 
+/** Standard für „Meine Farben“ (wie DEFAULT_MY_COLORS in src/malplan/model.ts) */
+const DEFAULT_MY_COLORS: readonly string[] = [
+  'titanium-white',
+  'ivory-black',
+  'ultramarine',
+  'phthalo-blue',
+  'cadmium-yellow-light',
+  'yellow-ochre',
+  'burnt-sienna',
+  'cadmium-red-light',
+  'alizarin-permanent',
+  'phthalo-green',
+];
+
 const malplan = (page: Page) =>
   page.evaluate(() => {
     const p = window.__bls.getProject();
@@ -202,4 +216,73 @@ test('PDF-Malmappe: alle Seiten, Konturvorlage in Originalgröße auf A4 gekache
   // Kachelblätter mit Kontrollmaß und Bezeichnung
   expect(s).toContain('(5 cm) Tj');
   expect(s).toContain('Blatt A1');
+});
+
+test('Malplan E4: reduzierte Palette aus „Meine Farben“, Mischrezepte, Farbfeld-Karte', async ({ page }) => {
+  test.setTimeout(120_000);
+  await openFixture(page, 'golden/portrait.png');
+  await page.getByTestId('workspace-malplan').click();
+  await ready(page);
+  await page.getByTestId('help-palette').click();
+  await expect(page.getByTestId('malplan-image')).toHaveAttribute('data-help', 'palette');
+  // Rezeptliste: „Anzahl Farben“ Einträge, jedes Rezept nur aus „Meine Farben“
+  const recipes = page.getByTestId('recipe');
+  const count = await page.evaluate(() => window.__bls.getProject()?.malplan?.colors ?? 12);
+  await expect(recipes).toHaveCount(count);
+  await expect(recipes.first()).toContainText(/Teil|etwas/);
+  const pal = await page.evaluate(() => window.__bls.malplan.getState().palette);
+  // ohne Änderung gilt die Standardpalette aus 10 Farben
+  const my = (await page.evaluate(() => window.__bls.getProject()?.malplan?.myColors)) ?? DEFAULT_MY_COLORS;
+  expect(my).toHaveLength(10);
+  for (const e of pal?.entries ?? []) expect(e.recipe.every((p) => my.includes(p.id))).toBe(true);
+  // typische Fototöne sind mit 10 Farben gut mischbar
+  const good = (pal?.entries ?? []).filter((e) => e.deltaE < 5).length;
+  expect(good).toBeGreaterThanOrEqual(Math.round(count * 0.8));
+  // Bild der Palette besteht nur aus den Mischfarben
+  const colors = await page.evaluate(() => {
+    const c = document.querySelector<HTMLCanvasElement>('[data-testid="malplan-image"]');
+    const d = c?.getContext('2d')?.getImageData(0, 0, c.width, c.height).data;
+    const set = new Set<string>();
+    if (d) for (let i = 0; i < d.length; i += 16) set.add(`${d[i]},${d[i + 1]},${d[i + 2]}`);
+    return set.size;
+  });
+  expect(colors).toBeLessThanOrEqual(count);
+
+  // Farbfeld-Karte: Papier mit Umrissen und Nummern (dunkle Pixel vorhanden, überwiegend hell)
+  await page.getByTestId('help-numbers').click();
+  await expect(page.getByTestId('malplan-image')).toHaveAttribute('data-help', 'numbers');
+  const ink = await page.evaluate(() => {
+    const c = document.querySelector<HTMLCanvasElement>('[data-testid="malplan-image"]');
+    const d = c?.getContext('2d')?.getImageData(0, 0, c.width, c.height).data;
+    let dark = 0;
+    let n = 0;
+    if (d)
+      for (let i = 0; i < d.length; i += 4) {
+        n++;
+        if ((d[i] ?? 0) < 100) dark++;
+      }
+    return dark / n;
+  });
+  expect(ink).toBeGreaterThan(0.002);
+  expect(ink).toBeLessThan(0.2);
+
+  // „Meine Farben“: nur Weiß und Schwarz → Rezepte nur aus diesen, Abweichungen sichtbar
+  await page.evaluate(() => {
+    window.__bls.commands.setMalplanCommand({ myColors: ['titanium-white', 'ivory-black'] }, false);
+  });
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        (window.__bls.malplan.getState().palette?.entries ?? []).every((e) =>
+          e.recipe.every((p) => p.id === 'titanium-white' || p.id === 'ivory-black'),
+        ),
+      ),
+    )
+    .toBe(true);
+  await expect(page.locator('.recipe-de.off').first()).toBeVisible();
+  // Undo stellt die Auswahl wieder her
+  await page.getByTestId('undo').click();
+  expect(
+    (await page.evaluate(() => window.__bls.getProject()?.malplan?.myColors)) ?? DEFAULT_MY_COLORS,
+  ).toHaveLength(10);
 });
