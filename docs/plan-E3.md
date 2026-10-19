@@ -15,7 +15,7 @@ Entscheidungen in [DECISIONS.md](../DECISIONS.md) („E3: Analysekarten, Segment
       `depth-fog`, `depth-bokeh`
 - [x] 4. Grafik auf der GPU: `linocut`, `cut-paper`
 - [x] 5. CPU-Effekte: `gouache-flat`, `textile`, `flow-lines`, `tsp-art`
-- [ ] 6. Stil: Zweitbild auch für Worker-/Dienst-Effekte; `style-transfer` (AdaIN im Dienst, nur Modus „Alle“) und
+- [x] 6. Stil: Zweitbild auch für Worker-/Dienst-Effekte; `style-transfer` (AdaIN im Dienst, nur Modus „Alle“) und
       `style-match` (klassische Stilübertragung, kommerziell); Hinweis zu Stilbildern
 - [ ] 7. `style-per-region` („Stil je Bereich“: Region → Effektstapel über das Ebenensystem); Abstimmung mit der
       Parallax-Vorschau (gleiche Tiefenkarte, Tiefe der Bereichsebenen)

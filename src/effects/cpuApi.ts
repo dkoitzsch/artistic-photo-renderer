@@ -26,6 +26,8 @@ export interface CpuEffectContext {
   edges(): Float32Array;
   /** Richtungsfeld (w·h·4: Feldstärke, Tangente, Kohärenz) */
   flow(): Float32Array;
+  /** Zweitbild (Parameter vom Typ "image", z. B. Stilbild): RGBA float32 linear, vormultipliziert, oder null */
+  imageB(): { data: Float32Array; width: number; height: number } | null;
 }
 
 export type CpuEffectModule = {

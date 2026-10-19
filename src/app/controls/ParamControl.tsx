@@ -151,6 +151,7 @@ export function ParamControl({
             onChange(id, false);
           }}
           testId={`param-${spec.key}`}
+          notice={spec.notice}
         />
       );
   }

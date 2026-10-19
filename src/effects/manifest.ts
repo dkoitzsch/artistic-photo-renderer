@@ -80,7 +80,12 @@ export type SeedParam = ParamBase & { type: 'seed'; default: number };
 /** Farbpalette (sRGB 0..1), 1 bis MAX_PALETTE Farben; im Shader array<vec4f, 16> (linear) + <key>_count. */
 export type PaletteParam = ParamBase & { type: 'palette'; default: Rgb[] };
 /** Zweitbild: ID eines Originals im Projekt ("" = keins); im Shader u32 (1 = vorhanden), Textur = src_b. */
-export type ImageParam = ParamBase & { type: 'image'; default: '' };
+export type ImageParam = ParamBase & {
+  type: 'image';
+  default: '';
+  /** Hinweis, der beim Laden eines Bildes erscheint (z. B. Lizenz von Stilbildern) */
+  notice?: string;
+};
 /** Freier Text (z. B. für ASCII-Kunst); im Shader u32 = Anzahl Zeichen, der Text selbst über ctx.raw in effect.ts. */
 export type TextParam = ParamBase & { type: 'text'; default: string; maxLength?: number };
 

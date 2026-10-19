@@ -40,6 +40,8 @@ export type AsyncRequestInfo = {
 type Entry = AsyncJobInfo & {
   info: AsyncRequestInfo;
   input: GPUTexture | null;
+  /** Zweitbild (Parameter vom Typ "image"), Kopie */
+  inputB: GPUTexture | null;
   tex: GPUTexture | null;
   abort: AbortController | null;
   lastUsed: number;
@@ -145,15 +147,20 @@ export class AsyncEffects {
   }
 
   /** Meldet eine Anfrage (einmal je Schlüssel). Der Eingang wird in diesem Frame kopiert. */
-  request(frame: Frame, key: string, info: AsyncRequestInfo, input: GPUTexture): void {
+  request(frame: Frame, key: string, info: AsyncRequestInfo, input: GPUTexture, imageB?: GPUTexture | null): void {
     if (this.entries.has(key)) return;
-    const copy = this.device.createTexture({
-      label: `async-in ${info.effectId}`,
-      size: [input.width, input.height],
-      format: WORK_FORMAT,
-      usage: GPUTextureUsage.COPY_SRC | GPUTextureUsage.COPY_DST,
-    });
-    frame.encoder.copyTextureToTexture({ texture: input }, { texture: copy }, [input.width, input.height]);
+    const copyOf = (tex: GPUTexture, label: string) => {
+      const copy = this.device.createTexture({
+        label,
+        size: [tex.width, tex.height],
+        format: WORK_FORMAT,
+        usage: GPUTextureUsage.COPY_SRC | GPUTextureUsage.COPY_DST,
+      });
+      frame.encoder.copyTextureToTexture({ texture: tex }, { texture: copy }, [tex.width, tex.height]);
+      return copy;
+    };
+    const copy = copyOf(input, `async-in ${info.effectId}`);
+    const copyB = imageB ? copyOf(imageB, `async-in-b ${info.effectId}`) : null;
     const entry: Entry = {
       key,
       label: info.label,
@@ -163,6 +170,7 @@ export class AsyncEffects {
       progress: 0,
       info,
       input: copy,
+      inputB: copyB,
       tex: null,
       abort: null,
       lastUsed: performance.now(),
@@ -255,10 +263,11 @@ export class AsyncEffects {
   private dropInput(e: Entry): void {
     e.input?.destroy();
     e.input = null;
+    e.inputB?.destroy();
+    e.inputB = null;
   }
 
-  private async readInput(e: Entry): Promise<Uint16Array> {
-    const tex = e.input;
+  private async readInput(tex: GPUTexture | null): Promise<Uint16Array> {
     if (!tex) throw new Error('Eingang fehlt');
     const { width: w, height: h } = tex;
     const stride = paddedBytesPerRow(w, 8);
@@ -295,7 +304,9 @@ export class AsyncEffects {
       }
     };
     try {
-      const data = await this.readInput(e);
+      const data = await this.readInput(e.input);
+      const b = e.inputB;
+      const imageB = b ? { data: await this.readInput(b), width: b.width, height: b.height } : null;
       this.dropInput(e);
       const { info } = e;
       const result =
@@ -311,6 +322,7 @@ export class AsyncEffects {
                 scale: info.scale,
                 origin: info.origin,
                 canvasSize: info.canvasSize,
+                imageB,
               },
               progress,
               e.abort.signal,
@@ -326,6 +338,7 @@ export class AsyncEffects {
                 origin: info.origin,
                 canvasSize: info.canvasSize,
                 licenseMode: this.licenseMode(),
+                imageB,
               },
               progress,
               e.abort.signal,

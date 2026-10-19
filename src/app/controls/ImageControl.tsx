@@ -1,18 +1,21 @@
 // Zweitbild-Parameter: Auswahl eines Originals aus dem Projekt („kein Bild“ = leer) oder neues Bild laden.
 
 import { ACCEPTED_TYPES, importOriginal } from '../../io/import';
-import { useProject } from '../../state/store';
+import { useAppStore, useProject } from '../../state/store';
 
 export function ImageControl({
   label,
   value,
   onChange,
   testId,
+  notice,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   testId?: string;
+  /** Hinweis beim Laden eines Bildes (z. B. Lizenz von Stilbildern) */
+  notice?: string | undefined;
 }) {
   const project = useProject();
   const originals = project ? Object.values(project.originals) : [];
@@ -22,7 +25,12 @@ export function ImageControl({
     input.accept = ACCEPTED_TYPES.join(',');
     input.addEventListener('change', () => {
       const f = input.files?.[0];
-      if (f) void importOriginal(f).then((o) => o && onChange(o.id));
+      if (f)
+        void importOriginal(f).then((o) => {
+          if (!o) return;
+          onChange(o.id);
+          if (notice) useAppStore.getState().notify('info', notice);
+        });
     });
     input.click();
   };

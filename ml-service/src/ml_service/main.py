@@ -264,18 +264,19 @@ def create_app(state: State | None = None) -> FastAPI:
         if eff.render is None:
             raise HTTPException(503, eff.error or "Effekt nicht verfügbar")
         digest = str(body.get("image", ""))
+        digest_b = str(body.get("imageB") or "")
         params = dict(body.get("params") or {})
         scale = float(body.get("scale", 1.0))
         origin = tuple(float(v) for v in body.get("origin", (0, 0)))
         canvas = tuple(float(v) for v in body.get("canvasSize", (0, 0)))
         try:
-            if not st.images.has(digest):
+            if not st.images.has(digest) or (digest_b and not st.images.has(digest_b)):
                 raise HTTPException(409, "Bild fehlt im Dienst – bitte zuerst hochladen (PUT /images/{sha256}).")
         except ValueError as e:
             raise HTTPException(400, str(e)) from e
         # Ergebnis-Cache: Hash aus Bild, Effekt, Version, Parametern (inkl. Seed) und Lage
         key = sha256(
-            json.dumps([digest, eff.id, eff.version, params, scale, origin, canvas], sort_keys=True).encode()
+            json.dumps([digest, digest_b, eff.id, eff.version, params, scale, origin, canvas], sort_keys=True).encode()
         )
         hit = st.results.get(key)
         if hit is not None:
@@ -289,8 +290,14 @@ def create_app(state: State | None = None) -> FastAPI:
                 raise RuntimeError("Bild ist nicht mehr im Speicher – bitte erneut hochladen.")
             data, w, h = got
             img = decode_f16(data, w, h)
+            img_b = None
+            if digest_b:
+                got_b = st.images.get(digest_b)
+                if got_b is None:
+                    raise RuntimeError("Zweitbild ist nicht mehr im Speicher – bitte erneut hochladen.")
+                img_b = decode_f16(*got_b)
             progress(0.01)
-            out = run_effect(eff, img, params, scale, origin, canvas, progress)
+            out = run_effect(eff, img, params, scale, origin, canvas, progress, img_b)
             result = encode_f16(out)
             st.results.put(key, result, w, h)
             return result

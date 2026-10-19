@@ -487,6 +487,24 @@ export class Compositor {
   }
 
   /**
+   * Zweitbild für Worker-/Dienst-Effekte (Parameter vom Typ "image"): das Original, lange Kante höchstens 1024 px
+   * (genug für Stil- und Farbstatistik; hält Übertragung und Speicher klein). null = kein Bild gewählt.
+   */
+  private asyncImage(
+    frame: Frame,
+    specs: readonly { key: string; type: string }[],
+    params: Record<string, unknown>,
+  ): GPUTexture | null {
+    const spec = specs.find((ps) => ps.type === 'image');
+    const id = spec ? params[spec.key] : undefined;
+    if (typeof id !== 'string' || !id) return null;
+    const o = this.originals[id];
+    if (!o || !this.sources.has(id)) return null;
+    const f = Math.min(1, 1024 / Math.max(o.width, o.height));
+    return this.sources.at(frame, id, Math.max(1, Math.round(o.width * f)), Math.max(1, Math.round(o.height * f)));
+  }
+
+  /**
    * Maske (Effekt- oder Gruppenmaske) als Leinwand-Ausschnitt, z. B. für den PSD-Export. host: Ebene, auf der der
    * Effekt liegt; input: Eingangsbild bei Gruppen (Kartenbereiche aus dem Ergebnis); null = Maske „überall“.
    */
@@ -1192,6 +1210,7 @@ export class Compositor {
                 canvasSize: opts.canvasSize,
               },
               cur.tex,
+              this.asyncImage(frame, manifest.params, fx.params),
             );
             this.missingAsync.push(asyncKey);
           }

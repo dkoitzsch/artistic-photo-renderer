@@ -28,6 +28,8 @@ export type CpuRequest = {
   scale: number;
   origin: [number, number];
   canvasSize: [number, number];
+  /** Zweitbild (Parameter vom Typ "image") im Arbeitsformat */
+  imageB: { data: Uint16Array; width: number; height: number } | null;
 };
 
 export type CpuResponse =
@@ -75,6 +77,8 @@ async function run(req: CpuRequest): Promise<void> {
     luminance: () => (lum ??= luminance(img, w, h)),
     edges: () => (edg ??= edges(img, w, h, req.scale)),
     flow: () => (flw ??= flow(img, w, h, req.scale)),
+    imageB: () =>
+      req.imageB ? { data: halfToFloat32(req.imageB.data), width: req.imageB.width, height: req.imageB.height } : null,
   });
   if (out.length !== w * h * 4) throw new Error(`Ergebnis hat ${out.length} Werte, erwartet ${w * h * 4}.`);
   for (const v of out) if (!Number.isFinite(v)) throw new Error('Ergebnis enthält NaN/Inf.');

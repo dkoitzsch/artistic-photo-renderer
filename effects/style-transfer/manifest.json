@@ -1,0 +1,67 @@
+{
+  "id": "style-transfer",
+  "name": "Stil übertragen (KI, AdaIN)",
+  "version": "1.0.0",
+  "category": "Stil",
+  "description": "Neuronale Stilübertragung (AdaIN): malt das Bild im Stil eines Stilbildes. Läuft im ML-Dienst; nur nicht-kommerziell.",
+  "inputs": ["source"],
+  "passes": 1,
+  "implementations": { "preview": "python", "final": "python" },
+  "license": {
+    "commercialUse": false,
+    "notes": "AdaIN (Huang & Belongie 2017), Code MIT (naoto0804/pytorch-AdaIN); Gewichte ohne Lizenzangabe, Decoder mit WikiArt trainiert – nur nicht-kommerziell (Modell „adain“, siehe MODELS.md)."
+  },
+  "cost": "slow",
+  "randomized": false,
+  "requires": [],
+  "params": [
+    {
+      "key": "style",
+      "label": "Stilbild",
+      "hint": "Eigenes oder gemeinfreies Bild laden",
+      "type": "image",
+      "default": "",
+      "notice": "Hinweis zum Stilbild: Für Werke, die du verkaufst, nur eigene oder gemeinfreie Stilvorlagen verwenden (z. B. Gemälde, deren Urheber vor über 70 Jahren starb)."
+    },
+    {
+      "key": "alpha",
+      "label": "Stärke des Stils",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 85,
+      "unit": "%"
+    },
+    { "key": "keepColors", "label": "Farben des Fotos behalten", "type": "bool", "default": false },
+    {
+      "key": "size",
+      "label": "Detailgrad",
+      "hint": "Rechengröße (lange Kante); größer = feinere Pinselstriche, langsamer",
+      "type": "enum",
+      "options": [
+        { "value": "512", "label": "Grob (512 px)" },
+        { "value": "768", "label": "Mittel (768 px)" },
+        { "value": "1024", "label": "Fein (1024 px)" }
+      ],
+      "default": "768"
+    },
+    {
+      "key": "photoDetail",
+      "label": "Details des Fotos",
+      "hint": "Feine Details des Originals wieder einmischen",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 20,
+      "unit": "%",
+      "group": "Erweitert"
+    }
+  ],
+  "presets": [
+    { "name": "Kräftig", "values": { "alpha": 100, "size": "512" } },
+    {
+      "name": "Fein, Farben behalten",
+      "values": { "alpha": 75, "keepColors": true, "size": "1024", "photoDetail": 35 }
+    }
+  ]
+}

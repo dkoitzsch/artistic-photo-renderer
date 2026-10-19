@@ -11,7 +11,8 @@ Vertrag für ``effect.py``::
 ``ctx.params`` enthält die Projektwerte (mit Standardwerten ergänzt), ``ctx.seed`` den Seed, ``ctx.scale`` Render-px pro
 Leinwand-px, ``ctx.origin``/``ctx.canvas_size`` die Lage auf der Leinwand. ``ctx.progress(p)`` meldet Fortschritt (0..1)
 und bricht bei einem Abbruch mit ``Cancelled`` ab. ``ctx.luminance()`` / ``ctx.edges()`` / ``ctx.flow()`` liefern die Analysekarten,
-``ctx.rand_cell(x, y, k)`` denselben Zufall wie ``rand_cell`` im Shader.
+``ctx.rand_cell(x, y, k)`` denselben Zufall wie ``rand_cell`` im Shader. ``ctx.image_b`` ist das Zweitbild (Parameter vom
+Typ "image", z. B. ein Stilbild) im selben Format oder ``None``.
 """
 
 from __future__ import annotations
@@ -179,6 +180,8 @@ class RenderContext:
     origin: tuple[float, float]
     canvas_size: tuple[float, float]
     progress: Callable[[float], None]
+    # Zweitbild (Parameter vom Typ "image", z. B. Stilbild): float32 (H, W, 4), linear, vormultipliziert, oder None
+    image_b: np.ndarray | None = None
     _cache: dict[str, np.ndarray] = field(default_factory=dict)
 
     def luminance(self) -> np.ndarray:
@@ -216,13 +219,14 @@ def run_effect(
     origin: tuple[float, float],
     canvas_size: tuple[float, float],
     progress: Callable[[float], None],
+    image_b: np.ndarray | None = None,
 ) -> np.ndarray:
     if eff.render is None:
         raise RuntimeError(eff.error or f"Effekt {eff.id} hat keine Python-Implementierung.")
     full = {**eff.defaults(), **params}
     seed = int(full.get("seed", 1) or 0) if eff.randomized or "seed" in full else 0
     ctx = RenderContext(image=image, params=full, seed=seed, scale=scale, origin=origin, canvas_size=canvas_size,
-                        progress=progress)
+                        progress=progress, image_b=image_b)
     out = eff.render(image, ctx)
     out = np.asarray(out, dtype=np.float32)
     if out.shape != image.shape:

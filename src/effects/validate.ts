@@ -144,6 +144,7 @@ export function validateManifest(raw: unknown, folder?: string): ValidationResul
           break;
         case 'image':
           if (d !== '') errors.push(`${at}: "default" muss "" sein (kein Bild).`);
+          if (p.notice !== undefined && typeof p.notice !== 'string') errors.push(`${at}: "notice" muss ein Text sein.`);
           break;
         case 'text': {
           const max = p.maxLength;

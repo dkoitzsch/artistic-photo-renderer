@@ -15,6 +15,8 @@ export type ServiceRenderRequest = {
   origin: [number, number];
   canvasSize: [number, number];
   licenseMode: LicenseMode;
+  /** Zweitbild (Parameter vom Typ "image") im Arbeitsformat */
+  imageB?: { data: Uint16Array; width: number; height: number } | null;
 };
 
 async function sha256Hex(data: Uint16Array): Promise<string> {
@@ -37,23 +39,29 @@ export async function renderOnService(
   onProgress: (p: number) => void,
   signal: AbortSignal,
 ): Promise<Uint16Array> {
-  const digest = await sha256Hex(req.data);
-  const head = await fetch(`${SERVICE_URL}/images/${digest}`, { method: 'HEAD', signal }).catch(
-    (e: unknown) => {
-      if (signal.aborted) throw e;
-      throw new Error('Der lokale ML-Dienst ist nicht erreichbar (npm run service).');
-    },
-  );
-  if (head.status === 404) {
-    await check(
-      await fetch(`${SERVICE_URL}/images/${digest}?width=${req.width}&height=${req.height}`, {
-        method: 'PUT',
-        body: req.data as Uint16Array<ArrayBuffer>,
-        headers: { 'Content-Type': 'application/octet-stream' },
-        signal,
-      }),
+  /** Bild einmal hochladen (über SHA-256 adressiert); liefert die Prüfsumme */
+  const upload = async (data: Uint16Array, width: number, height: number): Promise<string> => {
+    const digest = await sha256Hex(data);
+    const head = await fetch(`${SERVICE_URL}/images/${digest}`, { method: 'HEAD', signal }).catch(
+      (e: unknown) => {
+        if (signal.aborted) throw e;
+        throw new Error('Der lokale ML-Dienst ist nicht erreichbar (npm run service).');
+      },
     );
-  }
+    if (head.status === 404) {
+      await check(
+        await fetch(`${SERVICE_URL}/images/${digest}?width=${width}&height=${height}`, {
+          method: 'PUT',
+          body: data as Uint16Array<ArrayBuffer>,
+          headers: { 'Content-Type': 'application/octet-stream' },
+          signal,
+        }),
+      );
+    }
+    return digest;
+  };
+  const digest = await upload(req.data, req.width, req.height);
+  const digestB = req.imageB ? await upload(req.imageB.data, req.imageB.width, req.imageB.height) : null;
   const job = (await (
     await check(
       await fetch(`${SERVICE_URL}/effects/${req.effectId}/render`, {
@@ -61,6 +69,7 @@ export async function renderOnService(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           image: digest,
+          ...(digestB ? { imageB: digestB } : {}),
           params: req.params,
           scale: req.scale,
           origin: req.origin,

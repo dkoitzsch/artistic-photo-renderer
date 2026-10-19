@@ -10,7 +10,8 @@ mkdirSync(dir, { recursive: true });
 const registry = JSON.parse(readFileSync(`${root}models/registry.json`, 'utf8'));
 const sha = (buf) => createHash('sha256').update(buf).digest('hex');
 
-for (const m of registry.models.filter((x) => x.runtime === 'browser')) {
+// Browser-Modelle und Dienst-Modelle mit festen Dateien (z. B. AdaIN für den Test-Dienst)
+for (const m of registry.models.filter((x) => x.runtime === 'browser' || (x.files?.length ?? 0) > 0)) {
   for (const f of m.files ?? []) {
     const path = `${dir}/${f.name}`;
     if (existsSync(path) && sha(readFileSync(path)) === f.sha256) {

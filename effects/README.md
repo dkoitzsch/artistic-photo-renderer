@@ -44,18 +44,18 @@ effects/
 
 ### Parametertypen
 
-| `type`    | Felder                                                    | Im Shader (`params.<key>`)                                              |
-| --------- | --------------------------------------------------------- | ----------------------------------------------------------------------- |
-| `int`     | `min`, `max`, `default`, optional `step`, `unit`, `scale` | `i32`                                                                   |
-| `float`   | wie `int`                                                 | `f32`                                                                   |
-| `angle`   | `default` (Grad)                                          | `f32` in **Radiant**                                                    |
-| `bool`    | `default`                                                 | `u32` (0/1)                                                             |
-| `color`   | `default` `[r, g, b]` sRGB 0..1                           | `vec3f` **linear**                                                      |
-| `enum`    | `options: [{ value, label }]`, `default`                  | `u32` = Index der Option                                                |
-| `point`   | `default` `[x, y]` in Leinwand-px                         | `vec2f`, skaliert                                                       |
-| `seed`    | `default` ganze Zahl ≥ 0                                  | `u32`                                                                   |
-| `palette` | `default` `[[r, g, b], …]` sRGB 0..1, 1–16 Farben         | `array<vec4f, 16>` **linear** + `<key>_count: u32`                      |
-| `image`   | `default` `""` (Wert = ID eines Originals im Projekt)     | `u32` (1 = vorhanden); Bild in `src_b`, höchstens ein `image` je Effekt |
+| `type`    | Felder                                                                                        | Im Shader (`params.<key>`)                                                                                                                     |
+| --------- | --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `int`     | `min`, `max`, `default`, optional `step`, `unit`, `scale`                                     | `i32`                                                                                                                                          |
+| `float`   | wie `int`                                                                                     | `f32`                                                                                                                                          |
+| `angle`   | `default` (Grad)                                                                              | `f32` in **Radiant**                                                                                                                           |
+| `bool`    | `default`                                                                                     | `u32` (0/1)                                                                                                                                    |
+| `color`   | `default` `[r, g, b]` sRGB 0..1                                                               | `vec3f` **linear**                                                                                                                             |
+| `enum`    | `options: [{ value, label }]`, `default`                                                      | `u32` = Index der Option                                                                                                                       |
+| `point`   | `default` `[x, y]` in Leinwand-px                                                             | `vec2f`, skaliert                                                                                                                              |
+| `seed`    | `default` ganze Zahl ≥ 0                                                                      | `u32`                                                                                                                                          |
+| `palette` | `default` `[[r, g, b], …]` sRGB 0..1, 1–16 Farben                                             | `array<vec4f, 16>` **linear** + `<key>_count: u32`                                                                                             |
+| `image`   | `default` `""` (Wert = ID eines Originals im Projekt), optional `notice` (Hinweis beim Laden) | `u32` (1 = vorhanden); Bild in `src_b`, höchstens ein `image` je Effekt; Worker: `ctx.imageB()`, Dienst: `ctx.image_b` (lange Kante ≤ 1024 px) |
 
 - `"group": "Erweitert"`: Parameter erscheinen in einer eingeklappten Gruppe.
 
@@ -93,6 +93,10 @@ Hilfsfunktionen: `src_size()`, `load_src(p)`, `sample_src(uv)`, `load_mask(p)`, 
 `unpremultiply(c)`, `premultiply(c)`, `luminance(rgb)`, `hash21(vec2u)`, `srgb_to_linear(rgb)`, `linear_to_srgb(rgb)`.
 `canvas_px(p)` (Leinwandposition in Render-px) und `sample_src_canvas(qa)` (bilinear an einer Leinwandposition): kachelgenau
 für alles, was an verschobenen Positionen liest – Positionen in Leinwand-Koordinaten rechnen, nicht relativ zur Kachel. `oklab_from_linear(rgb)`, `linear_from_oklab(lab)`: wahrnehmungsnaher Farbraum.
+Analysekarten aus Modellen (E3, mit `requires`): `load_depth(p)` (`depth`), `load_normal(p)` (`normals`, x rechts,
+y unten, z zum Betrachter), `load_saliency(p)` (`saliency`), `load_faces(p)` (`faces`). Fehlende Karten berechnet die App
+automatisch; bis dahin liefern sie neutrale Werte (Tiefe 0, Normale (0, 0, 1), 0). Hilfen für CPU-Effekte (Oklab,
+Messraster, Rauschen, Linien): `src/effects/cpuHelpers.ts`.
 
 **Zufall mit Seed** (für `"randomized": true`, Seed in `params.seed`): `rand_at(canvas_pos(p), params.seed, k)` liefert 0..1 je
 Leinwand-Pixel und Kanal `k`; `rand_noise(cp, zellgröße, seed)` und `rand_fbm(cp, zellgröße, oktaven, seed)` liefern weiches
@@ -168,7 +172,7 @@ export default defineCpuEffect({
   render(img, ctx) {
     // img: Float32Array RGBA (linear, vormultipliziert), ctx.width × ctx.height – ganze Ebene am Stück
     ctx.progress(0.5);
-    const lum = ctx.luminance(); // Analysekarten wie im Shader/Dienst; ctx.edges(), ctx.flow()
+    const lum = ctx.luminance(); // Analysekarten wie im Shader/Dienst; ctx.edges(), ctx.flow(); Zweitbild: ctx.imageB()
     const r = ctx.rand(x, y, 0); // gleicher Zufall wie rand_at(canvas_pos(p), seed, 0) im Shader
     return img;
   },
@@ -187,7 +191,7 @@ Mit `"implementations": { "preview": "webgpu", "final": "python" }` (oder `pytho
 ```python
 def render(image, ctx):  # image: float32 (H, W, 4), linear, vormultipliziert → gleiches Format zurück
     ctx.progress(0.5)             # Fortschritt 0..1; bricht bei Abbruch ab
-    lum = ctx.luminance()         # Analysekarten wie im Browser: ctx.luminance(), ctx.edges(), ctx.flow()
+    lum = ctx.luminance()         # Analysekarten wie im Browser: ctx.luminance(), ctx.edges(), ctx.flow(); Zweitbild: ctx.image_b
     noise = ctx.rand_cell(0)      # gleicher Zufall wie rand_cell im Shader (Seed: ctx.seed)
     return image
 ```
