@@ -174,11 +174,11 @@
       "license": "Apache-2.0",
       "commercialUse": true,
       "source": "https://github.com/xuebinqin/U-2-Net",
-      "revision": "rembg-v0.0.0",
+      "revision": "7112208dbac3a3642496c8d54e2f0f9bb3dc1dc8",
       "files": [
         {
           "name": "u2netp.onnx",
-          "url": "https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2netp.onnx",
+          "url": "https://huggingface.co/BritishWerewolf/U-2-Netp/resolve/7112208dbac3a3642496c8d54e2f0f9bb3dc1dc8/onnx/model.onnx",
           "sha256": "309c8469258dda742793dce0ebea8e6dd393174f89934733ecc8b14c76f4ddd8",
           "size": 4574861
         }
@@ -191,7 +191,7 @@
       "output": "probability-minmax",
       "outputIndex": 0,
       "checkedAt": "2026-10-18",
-      "$note": "U²-Net-p (salient object detection, DUTS-TR) von xuebinqin/U-2-Net (Apache-2.0, Code und Gewichte); ONNX-Export aus der Veröffentlichung v0.0.0 von danielgatis/rembg (MIT). Ausgabe d0 (fusioniert, Sigmoid), min-max-normiert."
+      "$note": "U²-Net-p (salient object detection, DUTS-TR) von xuebinqin/U-2-Net (Apache-2.0, Code und Gewichte); ONNX-Export (byteidentisch zu u2netp.onnx aus danielgatis/rembg v0.0.0, MIT), geladen von huggingface.co/BritishWerewolf/U-2-Netp (Apache-2.0, mit CORS-Kopf; die GitHub-Release-Adresse blockiert der Browser, weil sie ohne CORS-Kopf weiterleitet). Ausgabe d0 (fusioniert, Sigmoid), min-max-normiert."
     },
     {
       "id": "birefnet",
