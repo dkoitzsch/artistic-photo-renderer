@@ -207,6 +207,7 @@ Für jeden Effekt gilt als Mindest-Akzeptanzkriterium: funktioniert mit Maske, D
 | `pointillism` | Pointillismus | Punktgröße, Dichte, Farbvariation, Palette | B/P | E2 |
 | `gouache-flat` | Gouache / flache Malerei | Segmentanzahl, Randunregelmäßigkeit | P | E3 |
 | `stroke-paint` | **Strich-basiertes Rendering** (Hertzmann 1998, erweitert) | Pinselgrößen (Liste), Strichlänge, Krümmung, Richtung aus `flow`, Detail-Schwellwert, Seed | P | E4 |
+| `oil-dissolve` | Auflösende Ölfarbe: Figur löst sich verwirbelt und verwischt auf, Löcher ins Dunkel mit goldenem Rand, Flocken, Bläschen, Hintergrund versinkt in der Leere, Pinselstruktur | Auflösung und Richtung, Motivbezug, Verwirbelung, Wischen, Löcher, Goldrand, Flocken, Bläschen, Schwärze, Vignette, Pinselstruktur, Seed | B | nachträglich (nach E5) |
 | `impasto` | Impasto / Relief-Beleuchtung (auf `stroke-paint` oder `kuwahara`) | Schichtdicke, Lichtwinkel, Glanz | B | E4 |
 | `watercolor-sim` | **Aquarell als Fluidsimulation** (Curtis et al. 1997) | Wassermenge, Pigmentauswahl, Papiertyp, Granulation, Backruns, Trocknungsschritte, Seed | P | E5 |
 

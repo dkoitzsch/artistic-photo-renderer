@@ -29,6 +29,18 @@ Abweichungen von der Spec und Festlegungen bei unklaren Anforderungen. Neueste o
 - Größen in % der Bildkante (wie `painterly-glitch`); Reichweite global, Export am Stück.
 - **Betrifft:** Effektkatalog 5.1; keine Phase, keine neue Abhängigkeit, keine Modelle.
 
+## 2026-10-22 – Auflösende Ölfarbe (`oil-dissolve`), Ergänzung nach E5
+
+- **Frage:** Fünf Referenzen zeitgenössischer Ölmalerei (dunkle Leere, Figur löst sich auf, verwischte Farbe, goldene Fetzen,
+  Bläschen) – Kombination vorhandener Effekte oder eigener Effekt?
+- **Entscheidung:** Eigener GPU-Effekt, Kategorie „Malerei“, ohne Kernänderung: Auflösungsmaske (Verlauf in einer Richtung +
+  fraktales Rauschen, aufs Motiv beschränkbar), Verwirbeln (Domänenverzerrung, 2 Iterationen), gerichtetes Wischen, Löcher
+  als Rauschschwelle mit goldenem Rand, Flocken und Bläschen aus Zufall je Zelle, Hintergrund abdunkeln, Schwärze,
+  Vignette, Pinselstruktur im Streiflicht. Die Ölmalerei selbst (Kuwahara, Impasto) bleibt Sache der vorhandenen Effekte.
+- Größen in % der Bildkante; Reichweite klein (Verwirbelung + Wischlänge + Flocken), also kachelfähig und mit Ausschnitt in
+  voller Auflösung. Motivbezug über Salienz/Gesichter/Fokuskarte.
+- **Betrifft:** Effektkatalog 5.3; keine Phase, keine neue Abhängigkeit, keine Modelle.
+
 <!-- Vorlage
 ## JJJJ-MM-TT – Kurztitel
 - **Frage:**
