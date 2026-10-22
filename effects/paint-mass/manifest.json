@@ -1,0 +1,296 @@
+{
+  "id": "paint-mass",
+  "name": "Dicke Farbmasse",
+  "version": "1.0.0",
+  "category": "Malerei",
+  "description": "Eine dicke, mit dem Spachtel aufgetragene Farbmasse überdeckt Teile des Gesichts: Furchen, Risse, Glanzlichter, zerfranzte Kanten, davonbröckelnde Flocken und herablaufende Tropfen. Der Rest des Bildes bleibt gemalt (zeitgenössische Impasto-Porträts).",
+  "inputs": ["source", "focus"],
+  "passes": 1,
+  "implementations": {
+    "preview": "webgpu",
+    "final": "webgpu"
+  },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung (Höhenfeld aus gerichtetem, verwirbeltem Ridge-Rauschen, Streiflicht und Glanz, Tropfen und Flocken aus Zufall je Zelle)."
+  },
+  "cost": "realtime",
+  "randomized": true,
+  "requires": ["saliency", "faces"],
+  "reach": "max(canvasWidth, canvasHeight) * (smearLength / 100 + dripLength / 100 + flakeSize / 40 + 0.02) + 16",
+  "params": [
+    {
+      "key": "coverage",
+      "label": "Ausdehnung der Masse",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 50,
+      "unit": "%"
+    },
+    {
+      "key": "massAngle",
+      "label": "Richtung der Masse",
+      "hint": "Zu dieser Seite des Motivs sitzt die Masse (270° = oben, z. B. über den Augen)",
+      "type": "angle",
+      "default": 270
+    },
+    {
+      "key": "subjectBias",
+      "label": "Auf Gesicht und Motiv beschränken",
+      "hint": "Gesichter, Salienz und Fokuskarte bestimmen, wo die Masse sitzt",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 70,
+      "unit": "%"
+    },
+    {
+      "key": "raggedness",
+      "label": "Zerfranste Kante",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 55,
+      "unit": "%"
+    },
+    {
+      "key": "thickness",
+      "label": "Farbdicke",
+      "hint": "Stärke des Reliefs im Streiflicht",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 65,
+      "unit": "%"
+    },
+    {
+      "key": "ridgeSize",
+      "label": "Furchengröße",
+      "hint": "% der langen Bildkante",
+      "type": "float",
+      "min": 0.5,
+      "max": 10,
+      "default": 4,
+      "step": 0.1,
+      "unit": "%",
+      "scale": "log"
+    },
+    {
+      "key": "ridgeAngle",
+      "label": "Richtung der Furchen",
+      "type": "angle",
+      "default": 70
+    },
+    {
+      "key": "ridgeWarp",
+      "label": "Verwirbelung der Furchen",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 55,
+      "unit": "%"
+    },
+    {
+      "key": "crevices",
+      "label": "Risse",
+      "hint": "Dunkle Spalten zwischen den Wülsten",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 45,
+      "unit": "%"
+    },
+    {
+      "key": "gloss",
+      "label": "Glanz",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 45,
+      "unit": "%"
+    },
+    {
+      "key": "lightAngle",
+      "label": "Lichtrichtung",
+      "hint": "Streiflicht kommt aus dieser Richtung",
+      "type": "angle",
+      "default": 315
+    },
+    {
+      "key": "smear",
+      "label": "Gewischte Farbe",
+      "hint": "Farbe der Masse wird entlang der Furchen aus dem Bild gezogen",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 60,
+      "unit": "%"
+    },
+    {
+      "key": "smearLength",
+      "label": "Wischlänge",
+      "hint": "% der langen Bildkante",
+      "type": "float",
+      "min": 0.5,
+      "max": 15,
+      "default": 4,
+      "step": 0.1,
+      "unit": "%"
+    },
+    {
+      "key": "tint",
+      "label": "Eigenfarbe der Masse",
+      "type": "color",
+      "default": [0.78, 0.6, 0.5]
+    },
+    {
+      "key": "tintAmount",
+      "label": "Anteil der Eigenfarbe",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 30,
+      "unit": "%"
+    },
+    {
+      "key": "drips",
+      "label": "Tropfen",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 20,
+      "unit": "%"
+    },
+    {
+      "key": "dripLength",
+      "label": "Tropfenlänge",
+      "hint": "% der langen Bildkante",
+      "type": "float",
+      "min": 1,
+      "max": 40,
+      "default": 12,
+      "unit": "%"
+    },
+    {
+      "key": "flakes",
+      "label": "Flocken",
+      "hint": "Losgelöste Farbfetzen an der Kante der Masse",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 35,
+      "unit": "%"
+    },
+    {
+      "key": "flakeSize",
+      "label": "Flockengröße",
+      "hint": "% der langen Bildkante",
+      "type": "float",
+      "min": 0.3,
+      "max": 6,
+      "default": 1.5,
+      "step": 0.1,
+      "unit": "%"
+    }
+  ],
+  "visibleIf": {
+    "smearLength": "smear!=0",
+    "dripLength": "drips!=0",
+    "flakeSize": "flakes!=0"
+  },
+  "presets": [
+    {
+      "name": "Spachtelmasse über den Augen",
+      "values": {
+        "coverage": 50,
+        "massAngle": 270,
+        "subjectBias": 70,
+        "raggedness": 55,
+        "thickness": 70,
+        "ridgeSize": 4,
+        "ridgeAngle": 70,
+        "ridgeWarp": 55,
+        "crevices": 55,
+        "gloss": 40,
+        "lightAngle": 315,
+        "smear": 60,
+        "smearLength": 4,
+        "tintAmount": 30,
+        "drips": 15,
+        "dripLength": 12,
+        "flakes": 30,
+        "flakeSize": 1.5
+      }
+    },
+    {
+      "name": "Zerfallende Farbhaut",
+      "values": {
+        "coverage": 60,
+        "massAngle": 250,
+        "subjectBias": 75,
+        "raggedness": 85,
+        "thickness": 85,
+        "ridgeSize": 2.8,
+        "ridgeAngle": 100,
+        "ridgeWarp": 80,
+        "crevices": 75,
+        "gloss": 55,
+        "lightAngle": 300,
+        "smear": 40,
+        "smearLength": 3,
+        "tintAmount": 20,
+        "drips": 0,
+        "dripLength": 10,
+        "flakes": 70,
+        "flakeSize": 1.8
+      }
+    },
+    {
+      "name": "Tropfende Farbe",
+      "values": {
+        "coverage": 45,
+        "massAngle": 260,
+        "subjectBias": 80,
+        "raggedness": 40,
+        "thickness": 55,
+        "ridgeSize": 5,
+        "ridgeAngle": 90,
+        "ridgeWarp": 30,
+        "crevices": 35,
+        "gloss": 65,
+        "lightAngle": 320,
+        "smear": 70,
+        "smearLength": 5,
+        "tintAmount": 35,
+        "drips": 70,
+        "dripLength": 22,
+        "flakes": 20,
+        "flakeSize": 1.2
+      }
+    },
+    {
+      "name": "Verwischter Auftrag",
+      "values": {
+        "coverage": 55,
+        "massAngle": 280,
+        "subjectBias": 60,
+        "raggedness": 35,
+        "thickness": 30,
+        "ridgeSize": 6,
+        "ridgeAngle": 20,
+        "ridgeWarp": 90,
+        "crevices": 15,
+        "gloss": 25,
+        "lightAngle": 315,
+        "smear": 95,
+        "smearLength": 9,
+        "tintAmount": 15,
+        "drips": 0,
+        "dripLength": 8,
+        "flakes": 10,
+        "flakeSize": 1
+      }
+    }
+  ]
+}

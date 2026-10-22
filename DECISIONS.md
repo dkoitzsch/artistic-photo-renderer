@@ -41,6 +41,18 @@ Abweichungen von der Spec und Festlegungen bei unklaren Anforderungen. Neueste o
   voller Auflösung. Motivbezug über Salienz/Gesichter/Fokuskarte.
 - **Betrifft:** Effektkatalog 5.3; keine Phase, keine neue Abhängigkeit, keine Modelle.
 
+## 2026-10-22 – Dicke Farbmasse (`paint-mass`), Ergänzung nach E5
+
+- **Frage:** Fünf Referenzen dicker Spachtel-/Impasto-Porträts (Farbmasse über Augen und Stirn, Furchen, Risse, Flocken,
+  Tropfen) – Erweiterung von `impasto` oder `oil-dissolve`, oder eigener Effekt?
+- **Entscheidung:** Eigener GPU-Effekt, Kategorie „Malerei“. `impasto` beleuchtet vorhandene Striche, `oil-dissolve`
+  löst die Figur ins Dunkel auf; hier wird ein **lokaler Farbauftrag** simuliert: Maske aus Gesichtern/Salienz/Richtung mit
+  Fransen, Höhenfeld aus gerichtetem, verwirbeltem Ridge-Rauschen (Plateau mit Lippe an der Kante), Streiflicht mit Glanz,
+  Risse in den Tälern, Farbe aus dem Bild entlang der Furchen gewischt und zur Eigenfarbe gezogen, Tropfen unter der Masse,
+  Flocken an der Kante.
+- Größen in % der Bildkante, kleine Reichweite (kachelfähig, Ausschnitt in voller Auflösung).
+- **Betrifft:** Effektkatalog 5.3; keine Phase, keine neue Abhängigkeit, keine Modelle.
+
 <!-- Vorlage
 ## JJJJ-MM-TT – Kurztitel
 - **Frage:**
