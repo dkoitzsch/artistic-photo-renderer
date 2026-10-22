@@ -2,6 +2,20 @@
 
 Abweichungen von der Spec und Festlegungen bei unklaren Anforderungen. Neueste oben.
 
+## 2026-10-22 – Malerischer Glitch (`painterly-glitch`), Ergänzung nach E5
+
+- **Frage:** Ein Effekt für den Stil „painterly Glitch“ (Referenzbilder des Nutzers: Blockmosaik eines Gesichts, digitaler
+  Datenverlust mit Regenbogenstreifen, verwischte Farbbalken) – neue Phase oder Einordnung in den Katalog?
+- **Entscheidung:** Ein GPU-Plugin ohne Kernänderung, Kategorie „Glitch“. Adaptives Blockraster (Quadtree-Art, Teilung nach
+  Kontrast einer Zelle, je Pixel aus den Zellen berechnet – kein Zwischenzustand), verschobene Blöcke mit
+  Farbkanalversatz, Streifen als Segmente zufälliger Länge mit Farbe vom Segmentanfang (Linien oder flache Balken),
+  Ausfallblöcke. Motivschutz über Salienz, Gesichter und Fokuskarte (kleinere Blöcke, weniger Störung).
+- **Größen in % der langen Bildkante** (nicht px): Der Look soll bei Vorschau, 24-MP-Export und beliebigen Bildgrößen
+  gleich aussehen; px-Werte wären bei großen Fotos winzig. Abweichung von der sonstigen px-Konvention der Effekte.
+- **Reichweite** ≈ Streifenlänge + Blockgrößen (meist über der halben Leinwand): Export am Stück, wie die globalen Effekte
+  (kein Ausschnitt in voller Auflösung beim Zoomen).
+- **Betrifft:** Effektkatalog 5.1; keine Phase, keine neue Abhängigkeit, keine Modelle (Salienz und Gesichter aus E3).
+
 <!-- Vorlage
 ## JJJJ-MM-TT – Kurztitel
 - **Frage:**

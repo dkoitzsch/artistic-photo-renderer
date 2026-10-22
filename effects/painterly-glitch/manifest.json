@@ -1,0 +1,268 @@
+{
+  "id": "painterly-glitch",
+  "name": "Malerischer Glitch",
+  "version": "1.0.0",
+  "category": "Glitch",
+  "description": "Das Bild zerfällt in Blöcke nach Detail (klein an Augen und Mund, groß in ruhigen Flächen), Blöcke und Streifen verrutschen, werden zu Farbbalken gezogen oder fallen aus. Motiv und Fokuspunkte bleiben lesbar. Größen in % der langen Bildkante, damit der Look bei jeder Auflösung gleich aussieht.",
+  "inputs": ["source", "focus"],
+  "passes": 1,
+  "implementations": {
+    "preview": "webgpu",
+    "final": "webgpu"
+  },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung (adaptives Blockraster nach Quadtree-Art, Blockversatz, Streifenzug, Farbkanalversatz, Zufall aus Leinwandkoordinaten)."
+  },
+  "cost": "realtime",
+  "randomized": true,
+  "requires": ["saliency", "faces"],
+  "reach": "max(canvasWidth, canvasHeight) * (maxBlock * 2 + shift + smear * 2 + barHeight * 4 + rgbShift) / 100 + 8",
+  "params": [
+    {
+      "key": "maxBlock",
+      "label": "Größter Block",
+      "type": "float",
+      "min": 2,
+      "max": 30,
+      "default": 7,
+      "unit": "%",
+      "scale": "log",
+      "step": 0.5
+    },
+    {
+      "key": "minBlock",
+      "label": "Kleinster Block",
+      "type": "float",
+      "min": 0.2,
+      "max": 5,
+      "default": 0.9,
+      "unit": "%",
+      "scale": "log",
+      "step": 0.1
+    },
+    {
+      "key": "detail",
+      "label": "Detailempfindlichkeit",
+      "hint": "Hoch: kleine Blöcke überall, wo das Bild Kontrast hat",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 55,
+      "unit": "%"
+    },
+    {
+      "key": "keep",
+      "label": "Restdetail im Block",
+      "hint": "0 = flache Farbe, 100 = Originalpixel",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 25,
+      "unit": "%"
+    },
+    {
+      "key": "glitch",
+      "label": "Verschobene Blöcke",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 35,
+      "unit": "%"
+    },
+    {
+      "key": "shift",
+      "label": "Versatz",
+      "type": "float",
+      "min": 0,
+      "max": 40,
+      "default": 8,
+      "unit": "%",
+      "step": 0.5
+    },
+    {
+      "key": "streaks",
+      "label": "Gezogene Streifen",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 25,
+      "unit": "%"
+    },
+    {
+      "key": "smear",
+      "label": "Zuglänge",
+      "type": "float",
+      "min": 1,
+      "max": 80,
+      "default": 18,
+      "unit": "%",
+      "scale": "log",
+      "step": 0.5
+    },
+    {
+      "key": "barHeight",
+      "label": "Balkenhöhe",
+      "type": "float",
+      "min": 0.2,
+      "max": 8,
+      "default": 1.2,
+      "unit": "%",
+      "scale": "log",
+      "step": 0.1
+    },
+    {
+      "key": "painterly",
+      "label": "Farbbalken statt Linien",
+      "hint": "0 = Pixelzeilen werden gezogen (Glitch), 100 = flache Pinselbalken",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 30,
+      "unit": "%"
+    },
+    {
+      "key": "direction",
+      "label": "Richtung",
+      "type": "enum",
+      "options": [
+        {
+          "value": "horizontal",
+          "label": "Waagerecht"
+        },
+        {
+          "value": "vertical",
+          "label": "Senkrecht"
+        },
+        {
+          "value": "mixed",
+          "label": "Gemischt"
+        }
+      ],
+      "default": "horizontal"
+    },
+    {
+      "key": "rgbShift",
+      "label": "Farbkanalversatz",
+      "type": "float",
+      "min": 0,
+      "max": 4,
+      "default": 0.5,
+      "unit": "%",
+      "step": 0.1
+    },
+    {
+      "key": "rainbow",
+      "label": "Regenbogenstreifen",
+      "hint": "Anteil der Streifen mit durchlaufenden Farben",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 25,
+      "unit": "%"
+    },
+    {
+      "key": "dropout",
+      "label": "Ausfallblöcke",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 6,
+      "unit": "%"
+    },
+    {
+      "key": "dropoutColor",
+      "label": "Farbe der Ausfälle",
+      "type": "color",
+      "default": [0, 0, 0]
+    },
+    {
+      "key": "noise",
+      "label": "Rauschen",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 15,
+      "unit": "%"
+    },
+    {
+      "key": "protect",
+      "label": "Motiv schützen",
+      "hint": "Salienz, Gesichter und Fokuspunkte: kleinere Blöcke, weniger Störung",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 70,
+      "unit": "%"
+    }
+  ],
+  "visibleIf": {
+    "shift": "glitch!=0",
+    "dropoutColor": "dropout!=0"
+  },
+  "presets": [
+    {
+      "name": "Datenverlust",
+      "values": {
+        "maxBlock": 7,
+        "minBlock": 0.9,
+        "detail": 55,
+        "keep": 25,
+        "glitch": 35,
+        "shift": 8,
+        "streaks": 25,
+        "smear": 18,
+        "barHeight": 1.2,
+        "painterly": 30,
+        "direction": "horizontal",
+        "rgbShift": 0.5,
+        "rainbow": 25,
+        "dropout": 6,
+        "noise": 15,
+        "protect": 70
+      }
+    },
+    {
+      "name": "Mosaik-Gesicht",
+      "values": {
+        "maxBlock": 8,
+        "minBlock": 1.2,
+        "detail": 75,
+        "keep": 8,
+        "glitch": 28,
+        "shift": 4,
+        "streaks": 35,
+        "smear": 12,
+        "barHeight": 4,
+        "painterly": 90,
+        "direction": "vertical",
+        "rgbShift": 0,
+        "rainbow": 0,
+        "dropout": 0,
+        "noise": 0,
+        "protect": 60
+      }
+    },
+    {
+      "name": "Verwischte Farbbalken",
+      "values": {
+        "maxBlock": 14,
+        "minBlock": 3,
+        "detail": 30,
+        "keep": 0,
+        "glitch": 20,
+        "shift": 6,
+        "streaks": 75,
+        "smear": 45,
+        "barHeight": 2.5,
+        "painterly": 85,
+        "direction": "horizontal",
+        "rgbShift": 0,
+        "rainbow": 0,
+        "dropout": 0,
+        "noise": 0,
+        "protect": 70
+      }
+    }
+  ]
+}

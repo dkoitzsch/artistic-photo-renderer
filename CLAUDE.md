@@ -252,6 +252,9 @@ Autosave (`io/autosave.ts`) beobachtet den Store und schreibt ins OPFS.
 - Worker: `watercolor-sim` (Lasuren per k-Means, Rezepte und Kubelka-Munk-Schichten aus der Pigment-Engine:
   `mixConstants`, `layerReflectance`, `mixGranulation`). Abnahme `acceptanceE5.spec.ts` (alle in 24 MP).
 
+**Nachtrag:** `painterly-glitch` (GPU, Kategorie „Glitch“, DECISIONS 22.10.): adaptive Blöcke, Versatz, Streifen, Ausfälle;
+Größen in % der langen Bildkante, Reichweite global (Export am Stück).
+
 **Neuen Effekt anlegen:** siehe [effects/README.md](effects/README.md) – nur einen Ordner unter `effects/` anlegen.
 
 ## Referenz-Hardware

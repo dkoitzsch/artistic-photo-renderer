@@ -183,6 +183,7 @@ Für jeden Effekt gilt als Mindest-Akzeptanzkriterium: funktioniert mit Maske, D
 | `scanlines-crt` | Scanlines, CRT, VHS | Linienabstand, Wölbung, Rauschen, Tracking-Fehler, Farbbluten | B | E2 |
 | `datamosh` | JPEG-/Block-Korruption | Blockgröße, Stärke, Anteil betroffener Blöcke, Seed | B/P | E2 |
 | `displace` | Slit-Scan / Displacement | Quelle (Analysekarte oder Bild), Stärke, Richtung, Streifenbreite | B | E2 |
+| `painterly-glitch` | Malerischer Glitch: adaptive Blöcke nach Detail, verschobene Blöcke, gezogene Streifen/Farbbalken, Regenbogenstreifen, Ausfälle; Motiv geschützt (Salienz, Gesichter, Fokus) | Blockgrößen (% der Kante), Detailempfindlichkeit, Restdetail, Versatz, Zuglänge, Balkenhöhe, Farbbalken↔Linien, Richtung, Kanalversatz, Ausfälle, Rauschen, Motivschutz, Seed | B | nachträglich (nach E5) |
 | `ascii` | ASCII-/Text-Art | Zeichensatz oder eigener Text, Zellgröße, Farbe ja/nein, Schrift | B | E2 |
 
 ### 5.2 Zeichnung & Grafik
