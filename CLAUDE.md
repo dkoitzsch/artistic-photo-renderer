@@ -253,7 +253,8 @@ Autosave (`io/autosave.ts`) beobachtet den Store und schreibt ins OPFS.
   `mixConstants`, `layerReflectance`, `mixGranulation`). Abnahme `acceptanceE5.spec.ts` (alle in 24 MP).
 
 **Nachtrag:** `painterly-glitch` (GPU, Kategorie „Glitch“, DECISIONS 22.10.): adaptive Blöcke, Versatz, Streifen, Ausfälle;
-Größen in % der langen Bildkante, Reichweite global (Export am Stück).
+Größen in % der langen Bildkante, Reichweite global (Export am Stück). Ebenso `slice-glitch` (fotografische Scheiben und
+Rechtecke, Störung auf dem Motiv; DECISIONS 22.10.).
 
 **Neuen Effekt anlegen:** siehe [effects/README.md](effects/README.md) – nur einen Ordner unter `effects/` anlegen.
 

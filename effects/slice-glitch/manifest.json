@@ -1,0 +1,238 @@
+{
+  "id": "slice-glitch",
+  "name": "Scheiben-Versatz",
+  "version": "1.0.0",
+  "category": "Glitch",
+  "description": "Das Foto bleibt fotografisch, wird aber in waagerechte Scheiben und Rechtecke geschnitten, die gegeneinander verrutschen, dazu gezogene Streifen. Die Störung sammelt sich auf dem Motiv, der Hintergrund bleibt ruhig (Digital-Video-Look, zerfallende Figur).",
+  "inputs": ["source", "focus"],
+  "passes": 1,
+  "implementations": {
+    "preview": "webgpu",
+    "final": "webgpu"
+  },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung (Scheiben und Rechtecke mit Versatz aus Zufall je Zelle, Streifenzug, Zusammenballung über Rauschen und Salienz)."
+  },
+  "cost": "realtime",
+  "randomized": true,
+  "requires": ["saliency", "faces"],
+  "reach": "max(canvasWidth, canvasHeight) * (shift * 2 + blockSize * 2 + sliceLength + rgbShift) / 100 + 8",
+  "params": [
+    {
+      "key": "amount",
+      "label": "Menge",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 45,
+      "unit": "%"
+    },
+    {
+      "key": "subjectBias",
+      "label": "Auf das Motiv konzentrieren",
+      "hint": "Salienz, Gesichter und Fokuskarte: dort die Störung, der Hintergrund bleibt ruhig",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 75,
+      "unit": "%"
+    },
+    {
+      "key": "clusters",
+      "label": "Zusammenballung",
+      "hint": "Die Störung tritt in Nestern auf statt gleichmäßig",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 60,
+      "unit": "%"
+    },
+    {
+      "key": "direction",
+      "label": "Richtung",
+      "type": "enum",
+      "options": [
+        {
+          "value": "horizontal",
+          "label": "Waagerechte Scheiben"
+        },
+        {
+          "value": "vertical",
+          "label": "Senkrechte Scheiben"
+        }
+      ],
+      "default": "horizontal"
+    },
+    {
+      "key": "slices",
+      "label": "Scheiben",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 70,
+      "unit": "%"
+    },
+    {
+      "key": "sliceMin",
+      "label": "Dünnste Scheibe",
+      "hint": "% der Bildhöhe",
+      "type": "float",
+      "min": 0.1,
+      "max": 5,
+      "default": 1,
+      "step": 0.1,
+      "unit": "%"
+    },
+    {
+      "key": "sliceMax",
+      "label": "Dickste Scheibe",
+      "hint": "% der Bildhöhe",
+      "type": "float",
+      "min": 0.5,
+      "max": 20,
+      "default": 6,
+      "step": 0.1,
+      "unit": "%"
+    },
+    {
+      "key": "sliceLength",
+      "label": "Scheibenlänge",
+      "hint": "% der Bildbreite",
+      "type": "float",
+      "min": 2,
+      "max": 100,
+      "default": 40,
+      "unit": "%"
+    },
+    {
+      "key": "shift",
+      "label": "Versatz",
+      "hint": "% der Bildbreite",
+      "type": "float",
+      "min": 0,
+      "max": 40,
+      "default": 9,
+      "step": 0.5,
+      "unit": "%"
+    },
+    {
+      "key": "blocks",
+      "label": "Verschobene Rechtecke",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 35,
+      "unit": "%"
+    },
+    {
+      "key": "blockSize",
+      "label": "Rechteckgröße",
+      "hint": "% der langen Bildkante",
+      "type": "float",
+      "min": 1,
+      "max": 40,
+      "default": 10,
+      "step": 0.5,
+      "unit": "%"
+    },
+    {
+      "key": "stripes",
+      "label": "Streifenzug",
+      "hint": "Senkrechte Streifen in den Scheiben (wiederholte Spalten)",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 20,
+      "unit": "%"
+    },
+    {
+      "key": "stripeWidth",
+      "label": "Streifenbreite",
+      "hint": "% der Bildbreite",
+      "type": "float",
+      "min": 0.1,
+      "max": 5,
+      "default": 0.8,
+      "step": 0.1,
+      "unit": "%"
+    },
+    {
+      "key": "rgbShift",
+      "label": "Farbkanalversatz",
+      "hint": "% der Bildbreite, nur an verschobenen Stellen",
+      "type": "float",
+      "min": 0,
+      "max": 3,
+      "default": 0,
+      "step": 0.1,
+      "unit": "%"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Gesicht zerschnitten",
+      "values": {
+        "amount": 40,
+        "subjectBias": 85,
+        "clusters": 40,
+        "direction": "horizontal",
+        "slices": 85,
+        "sliceMin": 2,
+        "sliceMax": 9,
+        "sliceLength": 55,
+        "shift": 16,
+        "blocks": 10,
+        "blockSize": 8,
+        "stripes": 30,
+        "stripeWidth": 0.8,
+        "rgbShift": 0
+      }
+    },
+    {
+      "name": "Verrutschte Scheiben",
+      "values": {
+        "amount": 55,
+        "subjectBias": 70,
+        "clusters": 70,
+        "direction": "horizontal",
+        "slices": 75,
+        "sliceMin": 0.8,
+        "sliceMax": 6,
+        "sliceLength": 35,
+        "shift": 10,
+        "blocks": 40,
+        "blockSize": 9,
+        "stripes": 45,
+        "stripeWidth": 0.6,
+        "rgbShift": 0
+      }
+    },
+    {
+      "name": "Zerfallende Figur",
+      "values": {
+        "amount": 60,
+        "subjectBias": 90,
+        "clusters": 55,
+        "direction": "horizontal",
+        "slices": 25,
+        "sliceMin": 1,
+        "sliceMax": 5,
+        "sliceLength": 25,
+        "shift": 6,
+        "blocks": 100,
+        "blockSize": 18,
+        "stripes": 5,
+        "stripeWidth": 1,
+        "rgbShift": 0
+      }
+    }
+  ],
+  "visibleIf": {
+    "sliceMin": "slices!=0",
+    "sliceMax": "slices!=0",
+    "sliceLength": "slices!=0",
+    "blockSize": "blocks!=0",
+    "stripeWidth": "stripes!=0"
+  }
+}

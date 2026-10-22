@@ -184,6 +184,7 @@ Für jeden Effekt gilt als Mindest-Akzeptanzkriterium: funktioniert mit Maske, D
 | `datamosh` | JPEG-/Block-Korruption | Blockgröße, Stärke, Anteil betroffener Blöcke, Seed | B/P | E2 |
 | `displace` | Slit-Scan / Displacement | Quelle (Analysekarte oder Bild), Stärke, Richtung, Streifenbreite | B | E2 |
 | `painterly-glitch` | Malerischer Glitch: adaptive Blöcke nach Detail, verschobene Blöcke, gezogene Streifen/Farbbalken, Regenbogenstreifen, Ausfälle; Motiv geschützt (Salienz, Gesichter, Fokus) | Blockgrößen (% der Kante), Detailempfindlichkeit, Restdetail, Versatz, Zuglänge, Balkenhöhe, Farbbalken↔Linien, Richtung, Kanalversatz, Ausfälle, Rauschen, Motivschutz, Seed | B | nachträglich (nach E5) |
+| `slice-glitch` | Scheiben-Versatz: fotografisch bleibende waagerechte Scheiben und Rechtecke verrutschen, gezogene Streifen; Störung sammelt sich auf dem Motiv (Salienz, Gesichter, Fokus) in Nestern | Menge, Motivbezug, Zusammenballung, Richtung, Scheibenhöhe/-länge, Versatz, Rechtecke und Größe, Streifenzug, Kanalversatz, Seed | B | nachträglich (nach E5) |
 | `ascii` | ASCII-/Text-Art | Zeichensatz oder eigener Text, Zellgröße, Farbe ja/nein, Schrift | B | E2 |
 
 ### 5.2 Zeichnung & Grafik

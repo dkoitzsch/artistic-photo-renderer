@@ -16,6 +16,19 @@ Abweichungen von der Spec und Festlegungen bei unklaren Anforderungen. Neueste o
   (kein Ausschnitt in voller Auflösung beim Zoomen).
 - **Betrifft:** Effektkatalog 5.1; keine Phase, keine neue Abhängigkeit, keine Modelle (Salienz und Gesichter aus E3).
 
+## 2026-10-22 – Scheiben-Versatz (`slice-glitch`), Ergänzung nach E5
+
+- **Frage:** Vier weitere Referenzbilder (Videoporträts mit waagerecht zerschnittenen, verrutschten Scheiben, kleinen
+  verschobenen Rechtecken und senkrechten Streifen, sonst unberührtes Foto) – Erweiterung von `painterly-glitch` oder
+  eigener Effekt?
+- **Entscheidung:** Eigener GPU-Effekt, Kategorie „Glitch“. Anders als `painterly-glitch` (flache Blockfarben, Farbbalken,
+  Regenbogen) bleibt hier alles fotografisch: Pixel werden nur von verschobenen Stellen gelesen. Scheiben (Bänder
+  unregelmäßiger Höhe mit Segmenten zufälliger Länge), zwei Raster verschobener Rechtecke, Streifenzug durch wiederholte
+  Spalten, optional Farbkanalversatz. Aktivität = Menge × Motiv (Salienz, Gesichter, Fokus) × Zusammenballung; die
+  Störung wird anders als beim Motivschutz von `painterly-glitch` **auf** das Motiv konzentriert.
+- Größen in % der Bildkante (wie `painterly-glitch`); Reichweite global, Export am Stück.
+- **Betrifft:** Effektkatalog 5.1; keine Phase, keine neue Abhängigkeit, keine Modelle.
+
 <!-- Vorlage
 ## JJJJ-MM-TT – Kurztitel
 - **Frage:**
