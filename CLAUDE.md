@@ -255,7 +255,8 @@ Autosave (`io/autosave.ts`) beobachtet den Store und schreibt ins OPFS.
 **Nachtrag:** `painterly-glitch` (GPU, Kategorie „Glitch“, DECISIONS 22.10.): adaptive Blöcke, Versatz, Streifen, Ausfälle;
 Größen in % der langen Bildkante, Reichweite global (Export am Stück). Ebenso `slice-glitch` (fotografische Scheiben und
 Rechtecke, Störung auf dem Motiv; DECISIONS 22.10.) und `oil-dissolve` (auflösende Ölfarbe, kleine Reichweite) sowie `paint-mass` (dicker Farbauftrag mit Furchen,
-Rissen, Tropfen und Flocken) sowie `dream-blur` (mehrstufig: Kern-Gauß, Leuchten, Komposition; Analog-Look) sowie `ink-void` (Schwarzweiß-Leere im Gesicht, kleine Reichweite).
+Rissen, Tropfen und Flocken) sowie `dream-blur` (mehrstufig: Kern-Gauß, Leuchten, Komposition; Analog-Look) sowie `ink-void` (Schwarzweiß-Leere im Gesicht, kleine Reichweite) und `wet-glass` (beschlagene, regennasse Scheibe:
+Beschlagfeld, Tropfenlinsen, Laufspuren).
 
 **Neuen Effekt anlegen:** siehe [effects/README.md](effects/README.md) – nur einen Ordner unter `effects/` anlegen.
 

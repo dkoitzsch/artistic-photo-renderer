@@ -80,6 +80,19 @@ Abweichungen von der Spec und Festlegungen bei unklaren Anforderungen. Neueste o
 - Größen in % der Bildkante, kleine Reichweite (kachelfähig, Ausschnitt in voller Auflösung).
 - **Betrifft:** Effektkatalog 5.3; keine Phase, keine neue Abhängigkeit, keine Modelle.
 
+## 2026-10-23 – Beschlagene Scheibe (`wet-glass`), Ergänzung nach E5
+
+- **Frage:** Neun Referenzen (Straßenfotografie hinter beschlagenem, regennassem Glas: weiche Farbflächen, klare
+  Wischspuren, Tropfen, senkrechte Schlieren) – bestehenden Unschärfe-Effekt erweitern oder neuer Effekt?
+- **Entscheidung:** Eigener mehrstufiger GPU-Effekt (Kategorie „Licht & Atmosphäre“): Beschlagfeld aus verzerrtem
+  fraktalem Rauschen mit senkrechter Struktur, freigewischten Stellen und Motivschonung; zwei Kern-Gauß-Stufen, je nach
+  Beschlag gemischt; senkrechte Schlieren; Schleier; Tropfen als Linsen mit umgekehrter, verkleinerter Abbildung des
+  scharfen Bildes (Glanzpunkt, Rand); Laufspuren großer Tropfen als klare Streifen. Alles aus Leinwandkoordinaten und
+  Seed (kachelgleich).
+- Größen in % der langen Bildkante; Reichweite = Unschärfe + Schlieren + Tropfenspur, meist ab halber Leinwand (Export am
+  Stück).
+- **Betrifft:** Effektkatalog 5.7; keine Phase, keine neue Abhängigkeit, keine Modelle.
+
 <!-- Vorlage
 ## JJJJ-MM-TT – Kurztitel
 - **Frage:**

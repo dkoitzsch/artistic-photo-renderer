@@ -254,6 +254,7 @@ Texturen werden **prozedural erzeugt** (keine fremden Textur-Dateien → keine L
 | ID | Effekt | Kernparameter | Ausf. | Phase |
 |---|---|---|---|---|
 | `dream-blur` | Analoger Traum: weiche Unschärfe mit schärfer gehaltenem Motiv, Leuchten heller Flächen, Lichtleck, Geisterbild, Bewegungsspur, Farbstich, tiefes Schwarz, grobe Filmkörnung mit Farbrauschen, Vignette | Unschärfe, Motivunschärfe, Leuchten (Schwelle, Weite, Farbe), Lichtleck, Geisterbild, Bewegungsspur, Farbstich, Sättigung, Kontrast, Schwärze, Körnung, Vignette, Seed | B | nachträglich (nach E5) |
+| `wet-glass` | Beschlagene Scheibe: Straßenfotografie hinter nassem Glas – Beschlagfelder mit weicher Unschärfe, freigewischte Stellen, senkrechte Schlieren, milchiger Schleier, Tropfen mit umgekehrtem Spiegelbild, Laufspuren | Beschlag (Menge, Unschärfe, Feldgröße), Wischstellen, Motiv klarer, Schlieren, Schleier, Tropfen (Menge, Größe), Laufspuren, Sättigung, Kontrast, Körnung, Vignette, Seed | B | nachträglich (nach E5) |
 | `bloom` | Bloom / Glow | Schwellwert, Radius, Intensität | B | E1 |
 | `god-rays` | Lichtstrahlen | Lichtquelle (Punkt), Länge, Dichte, Maske als Verdeckung | B | E2 |
 | `tilt-shift` | Tilt-Shift / Miniatur (nutzt vorhandene Unschärfe-Engine) | Schärfeband Position/Breite/Winkel, Sättigungsanhebung | B | E1 |

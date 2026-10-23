@@ -1,0 +1,263 @@
+{
+  "id": "wet-glass",
+  "name": "Beschlagene Scheibe",
+  "version": "1.0.0",
+  "category": "Licht & Atmosphäre",
+  "description": "Das Bild wird durch eine beschlagene, regennasse Scheibe gesehen: weicher Beschlag in Feldern, freigewischte Stellen, senkrechte Schlieren, milchiger Schleier, Tropfen mit umgekehrtem Spiegelbild und Laufspuren (Straßenfotografie hinter nassem Glas).",
+  "inputs": ["source", "focus"],
+  "passes": 4,
+  "implementations": { "preview": "webgpu", "final": "webgpu" },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung (Gauß-Pyramide des Kerns, Beschlagfeld aus verzerrtem fraktalem Rauschen, Tropfen als Linsen mit invertierter Abbildung, Laufspuren aus Zufall je Zelle)."
+  },
+  "cost": "realtime",
+  "randomized": true,
+  "requires": ["saliency", "faces"],
+  "reach": "max(canvasWidth, canvasHeight) * (fogBlur * 1.2 + smearLength + dropSize * 12 + 4) / 100 + 16",
+  "params": [
+    {
+      "key": "fog",
+      "label": "Beschlag",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 55,
+      "unit": "%"
+    },
+    {
+      "key": "fogBlur",
+      "label": "Unschärfe im Beschlag",
+      "hint": "% der langen Bildkante",
+      "type": "float",
+      "min": 0.5,
+      "max": 10,
+      "default": 3,
+      "step": 0.1,
+      "unit": "%"
+    },
+    {
+      "key": "fogSize",
+      "label": "Größe der Beschlagfelder",
+      "hint": "% der langen Bildkante",
+      "type": "float",
+      "min": 5,
+      "max": 60,
+      "default": 25,
+      "unit": "%"
+    },
+    {
+      "key": "wipe",
+      "label": "Freigewischte Stellen",
+      "hint": "Senkrechte Wischspuren, durch die das Bild klar bleibt",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 35,
+      "unit": "%"
+    },
+    {
+      "key": "subjectClear",
+      "label": "Motiv klarer",
+      "hint": "Salienz, Gesichter und Fokuskarte: dort weniger Beschlag",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 40,
+      "unit": "%"
+    },
+    {
+      "key": "smearV",
+      "label": "Senkrechte Schlieren",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 40,
+      "unit": "%"
+    },
+    {
+      "key": "smearLength",
+      "label": "Länge der Schlieren",
+      "hint": "% der langen Bildkante",
+      "type": "float",
+      "min": 0.5,
+      "max": 15,
+      "default": 3,
+      "step": 0.1,
+      "unit": "%"
+    },
+    {
+      "key": "haze",
+      "label": "Milchiger Schleier",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 35,
+      "unit": "%"
+    },
+    {
+      "key": "fogColor",
+      "label": "Farbe des Schleiers",
+      "type": "color",
+      "default": [0.86, 0.89, 0.93]
+    },
+    {
+      "key": "drops",
+      "label": "Tropfen",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 40,
+      "unit": "%"
+    },
+    {
+      "key": "dropSize",
+      "label": "Tropfengröße",
+      "hint": "% der langen Bildkante",
+      "type": "float",
+      "min": 0.3,
+      "max": 4,
+      "default": 1.2,
+      "step": 0.1,
+      "unit": "%"
+    },
+    {
+      "key": "trails",
+      "label": "Laufspuren",
+      "hint": "Große Tropfen ziehen eine klare Spur nach unten",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 50,
+      "unit": "%"
+    },
+    {
+      "key": "saturation",
+      "label": "Sättigung",
+      "type": "float",
+      "min": 0,
+      "max": 200,
+      "default": 115,
+      "unit": "%"
+    },
+    {
+      "key": "contrast",
+      "label": "Kontrast",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 15,
+      "unit": "%"
+    },
+    {
+      "key": "grain",
+      "label": "Körnung",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 20,
+      "unit": "%"
+    },
+    {
+      "key": "vignette",
+      "label": "Vignette",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 20,
+      "unit": "%"
+    }
+  ],
+  "visibleIf": {
+    "fogBlur": "fog!=0",
+    "fogSize": "fog!=0",
+    "smearLength": "smearV!=0",
+    "fogColor": "haze!=0",
+    "dropSize": "drops!=0",
+    "trails": "drops!=0"
+  },
+  "presets": [
+    {
+      "name": "Regenfenster",
+      "values": {
+        "fog": 50,
+        "fogBlur": 2.6,
+        "fogSize": 22,
+        "wipe": 30,
+        "subjectClear": 35,
+        "smearV": 45,
+        "smearLength": 3,
+        "haze": 20,
+        "drops": 75,
+        "dropSize": 1.3,
+        "trails": 65,
+        "saturation": 125,
+        "contrast": 20,
+        "grain": 20,
+        "vignette": 25
+      }
+    },
+    {
+      "name": "Schneetreiben",
+      "values": {
+        "fog": 85,
+        "fogBlur": 4.5,
+        "fogSize": 35,
+        "wipe": 15,
+        "subjectClear": 45,
+        "smearV": 25,
+        "smearLength": 2,
+        "haze": 75,
+        "fogColor": [0.93, 0.95, 0.98],
+        "drops": 10,
+        "dropSize": 1,
+        "trails": 20,
+        "saturation": 80,
+        "contrast": 10,
+        "grain": 25,
+        "vignette": 10
+      }
+    },
+    {
+      "name": "Beschlagenes Café",
+      "values": {
+        "fog": 65,
+        "fogBlur": 3.4,
+        "fogSize": 30,
+        "wipe": 25,
+        "subjectClear": 30,
+        "smearV": 55,
+        "smearLength": 4,
+        "haze": 25,
+        "fogColor": [0.9, 0.84, 0.72],
+        "drops": 25,
+        "dropSize": 0.9,
+        "trails": 45,
+        "saturation": 120,
+        "contrast": 25,
+        "grain": 25,
+        "vignette": 30
+      }
+    },
+    {
+      "name": "Straße hinter Glas",
+      "values": {
+        "fog": 30,
+        "fogBlur": 2,
+        "fogSize": 20,
+        "wipe": 55,
+        "subjectClear": 50,
+        "smearV": 30,
+        "smearLength": 2.5,
+        "haze": 15,
+        "drops": 35,
+        "dropSize": 1,
+        "trails": 40,
+        "saturation": 115,
+        "contrast": 25,
+        "grain": 15,
+        "vignette": 30
+      }
+    }
+  ]
+}
