@@ -53,6 +53,20 @@ Abweichungen von der Spec und Festlegungen bei unklaren Anforderungen. Neueste o
 - Größen in % der Bildkante, kleine Reichweite (kachelfähig, Ausschnitt in voller Auflösung).
 - **Betrifft:** Effektkatalog 5.3; keine Phase, keine neue Abhängigkeit, keine Modelle.
 
+## 2026-10-23 – Analoger Traum (`dream-blur`), Ergänzung nach E5
+
+- **Frage:** Neun Referenzen verträumter Analogfotografie (starke weiche Unschärfe, orange/blau glühende Fenster und
+  Silhouetten, Geisterbilder, Bewegungsspuren, grobe Körnung) – bestehende Effekte kombinieren oder ein Effekt?
+- **Entscheidung:** Ein mehrstufiger GPU-Effekt (Kategorie „Licht & Atmosphäre“): Kern-Gauß für Hintergrund und Motiv
+  (Motiv über Salienz/Gesichter/Fokus schärfer gehalten), Leuchten aus hellen Flächen (eigener Gauß, Farbe einstellbar),
+  danach Komposition aus Bewegungsspur, Geisterbild, Leuchten, Lichtleck, Splittoning, Sättigung, Kontrast, Schwärze,
+  Vignette und Körnung (Zufall nur aus Leinwandkoordinaten). Einzeln gibt es das bereits (Bloom, Linsenunschärfe,
+  Filmkorn); hier entsteht der Look erst im Zusammenspiel mit abgestimmten Presets.
+- Größen in % der langen Bildkante. Reichweite = Unschärfe + Leuchtweite + Geisterabstand + Spur (meist ab halber
+  Leinwand: Export am Stück). Das Leuchtbild bleibt als Licht mit Alpha 1 (kein Entvormultiplizieren: führte zu
+  Überläufen).
+- **Betrifft:** Effektkatalog 5.7; keine Phase, keine neue Abhängigkeit, keine Modelle.
+
 <!-- Vorlage
 ## JJJJ-MM-TT – Kurztitel
 - **Frage:**

@@ -1,0 +1,349 @@
+{
+  "id": "dream-blur",
+  "name": "Analoger Traum",
+  "version": "1.0.0",
+  "category": "Licht & Atmosphäre",
+  "description": "Verträumter Analog-Look: starke weiche Unschärfe mit schärfer gehaltenem Motiv, Leuchten heller Flächen (Halation), Lichtlecks, Geisterbild und Bewegungsspur, Farbstich in Schatten und Lichtern, tiefes Schwarz, grobe Filmkörnung mit Farbrauschen und Vignette.",
+  "inputs": ["source", "focus"],
+  "passes": 5,
+  "implementations": {
+    "preview": "webgpu",
+    "final": "webgpu"
+  },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung (Gauß-Pyramide des Kerns, Highlight-Leuchten, Splittoning, Zufallskörnung aus Leinwandkoordinaten)."
+  },
+  "cost": "realtime",
+  "randomized": true,
+  "requires": ["saliency", "faces"],
+  "reach": "max(canvasWidth, canvasHeight) * (blur + glowSize + ghostDistance + motionLength) / 100 + 16",
+  "params": [
+    {
+      "key": "blur",
+      "label": "Unschärfe",
+      "hint": "% der langen Bildkante",
+      "type": "float",
+      "min": 0,
+      "max": 12,
+      "default": 3.2,
+      "step": 0.1,
+      "unit": "%"
+    },
+    {
+      "key": "subjectBlur",
+      "label": "Unschärfe des Motivs",
+      "hint": "Anteil der Hintergrund-Unschärfe, den das Motiv (Salienz, Gesichter, Fokus) behält",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 20,
+      "unit": "%"
+    },
+    {
+      "key": "subjectKeep",
+      "label": "Motiv schärfer halten",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 70,
+      "unit": "%"
+    },
+    {
+      "key": "glow",
+      "label": "Leuchten",
+      "hint": "Helle Flächen strahlen in die Umgebung (Halation)",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 50,
+      "unit": "%"
+    },
+    {
+      "key": "glowThreshold",
+      "label": "Leuchtschwelle",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 55,
+      "unit": "%"
+    },
+    {
+      "key": "glowSize",
+      "label": "Leuchtweite",
+      "hint": "% der langen Bildkante",
+      "type": "float",
+      "min": 0.5,
+      "max": 15,
+      "default": 4,
+      "step": 0.1,
+      "unit": "%"
+    },
+    {
+      "key": "glowColor",
+      "label": "Farbe des Leuchtens",
+      "type": "color",
+      "default": [1, 0.52, 0.28]
+    },
+    {
+      "key": "leak",
+      "label": "Lichtleck",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 0,
+      "unit": "%"
+    },
+    {
+      "key": "leakAngle",
+      "label": "Richtung des Lichtlecks",
+      "type": "angle",
+      "default": 20
+    },
+    {
+      "key": "leakColor",
+      "label": "Farbe des Lichtlecks",
+      "type": "color",
+      "default": [1, 0.35, 0.2]
+    },
+    {
+      "key": "ghost",
+      "label": "Geisterbild",
+      "hint": "Zweites, blasses Abbild des Motivs, versetzt",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 0,
+      "unit": "%"
+    },
+    {
+      "key": "ghostDistance",
+      "label": "Abstand des Geisterbilds",
+      "hint": "% der langen Bildkante",
+      "type": "float",
+      "min": 0.5,
+      "max": 20,
+      "default": 6,
+      "step": 0.1,
+      "unit": "%"
+    },
+    {
+      "key": "motion",
+      "label": "Bewegungsspur",
+      "hint": "Das Motiv verwischt in Richtung des Versatzes",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 0,
+      "unit": "%"
+    },
+    {
+      "key": "motionLength",
+      "label": "Länge der Spur",
+      "hint": "% der langen Bildkante",
+      "type": "float",
+      "min": 0.5,
+      "max": 20,
+      "default": 5,
+      "step": 0.1,
+      "unit": "%"
+    },
+    {
+      "key": "driftAngle",
+      "label": "Richtung von Geisterbild und Spur",
+      "type": "angle",
+      "default": 10
+    },
+    {
+      "key": "tone",
+      "label": "Farbstich",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 45,
+      "unit": "%"
+    },
+    {
+      "key": "shadowTone",
+      "label": "Farbe der Schatten",
+      "type": "color",
+      "default": [0.08, 0.18, 0.5]
+    },
+    {
+      "key": "highlightTone",
+      "label": "Farbe der Lichter",
+      "type": "color",
+      "default": [1, 0.78, 0.6]
+    },
+    {
+      "key": "saturation",
+      "label": "Sättigung",
+      "type": "float",
+      "min": 0,
+      "max": 200,
+      "default": 125,
+      "unit": "%"
+    },
+    {
+      "key": "contrast",
+      "label": "Kontrast",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 25,
+      "unit": "%"
+    },
+    {
+      "key": "crush",
+      "label": "Schwärze",
+      "hint": "Tiefe, abgesoffene Schatten",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 40,
+      "unit": "%"
+    },
+    {
+      "key": "grain",
+      "label": "Körnung",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 45,
+      "unit": "%"
+    },
+    {
+      "key": "grainSize",
+      "label": "Korngröße",
+      "hint": "% der langen Bildkante",
+      "type": "float",
+      "min": 0.03,
+      "max": 0.5,
+      "default": 0.09,
+      "step": 0.01,
+      "unit": "%"
+    },
+    {
+      "key": "grainColor",
+      "label": "Farbrauschen",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 35,
+      "unit": "%"
+    },
+    {
+      "key": "vignette",
+      "label": "Vignette",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 40,
+      "unit": "%"
+    }
+  ],
+  "visibleIf": {
+    "glowThreshold": "glow!=0",
+    "glowSize": "glow!=0",
+    "glowColor": "glow!=0",
+    "leakAngle": "leak!=0",
+    "leakColor": "leak!=0",
+    "ghostDistance": "ghost!=0",
+    "motionLength": "motion!=0",
+    "grainSize": "grain!=0",
+    "grainColor": "grain!=0"
+  },
+  "presets": [
+    {
+      "name": "Fensterlicht",
+      "values": {
+        "blur": 6,
+        "subjectBlur": 100,
+        "glow": 70,
+        "glowThreshold": 50,
+        "glowSize": 6,
+        "leak": 35,
+        "leakAngle": 20,
+        "ghost": 0,
+        "motion": 0,
+        "tone": 55,
+        "saturation": 140,
+        "contrast": 30,
+        "crush": 50,
+        "grain": 55,
+        "grainSize": 0.1,
+        "grainColor": 40,
+        "vignette": 50
+      }
+    },
+    {
+      "name": "Geisterbild",
+      "values": {
+        "blur": 1.4,
+        "subjectBlur": 15,
+        "subjectKeep": 85,
+        "glow": 25,
+        "glowSize": 3,
+        "leak": 0,
+        "ghost": 55,
+        "ghostDistance": 6,
+        "motion": 0,
+        "driftAngle": 5,
+        "tone": 50,
+        "saturation": 95,
+        "contrast": 35,
+        "crush": 55,
+        "grain": 40,
+        "grainSize": 0.08,
+        "grainColor": 20,
+        "vignette": 45
+      }
+    },
+    {
+      "name": "Bewegungsspur",
+      "values": {
+        "blur": 2.4,
+        "subjectBlur": 40,
+        "subjectKeep": 80,
+        "glow": 45,
+        "glowSize": 4,
+        "leak": 15,
+        "ghost": 0,
+        "motion": 85,
+        "motionLength": 7,
+        "driftAngle": 350,
+        "tone": 35,
+        "saturation": 125,
+        "contrast": 25,
+        "crush": 35,
+        "grain": 60,
+        "grainSize": 0.11,
+        "grainColor": 45,
+        "vignette": 35
+      }
+    },
+    {
+      "name": "Abendrot-Silhouette",
+      "values": {
+        "blur": 1.6,
+        "subjectBlur": 10,
+        "subjectKeep": 90,
+        "glow": 55,
+        "glowThreshold": 55,
+        "glowSize": 5,
+        "leak": 25,
+        "leakAngle": 100,
+        "ghost": 0,
+        "motion": 0,
+        "tone": 60,
+        "saturation": 135,
+        "contrast": 40,
+        "crush": 60,
+        "grain": 45,
+        "grainSize": 0.09,
+        "grainColor": 30,
+        "vignette": 45
+      }
+    }
+  ]
+}
