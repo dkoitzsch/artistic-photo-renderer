@@ -736,6 +736,27 @@ export const EFFECT_CASES: EffectCase[] = [
     flatBorder: false,
     tileTolerance: 1,
   },
+  {
+    // Regression: dunkles Bild auf Schwarz, Motiv scharf gehalten – kein dunkler Saum zwischen Motiv und Unschärfe
+    name: 'dream-blur-dark-subject',
+    fixture: 'dark-subject',
+    effectId: 'dream-blur',
+    params: {
+      blur: 5,
+      subjectBlur: 0,
+      subjectKeep: 100,
+      glow: 0,
+      grain: 0,
+      vignette: 0,
+      tone: 0,
+      crush: 0,
+      contrast: 0,
+      saturation: 100,
+    },
+    syntheticSaliency: true,
+    flatBorder: false,
+    tileTolerance: 1,
+  },
   { name: 'watercolor-sim-landscape', fixture: 'landscape', effectId: 'watercolor-sim', flatBorder: false },
   {
     name: 'watercolor-sim-wet-portrait',

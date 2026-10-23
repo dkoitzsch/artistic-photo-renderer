@@ -7,11 +7,14 @@ export default defineEffect({
     const subjectRadius = (radius * (ctx.raw.subjectBlur as number)) / 100;
     const glowRadius = ((ctx.raw.glowSize as number) / 100) * L;
 
-    // weiche Unschärfe des Hintergrunds und (schwächer) des Motivs
-    let bg = ctx.source;
+    // Hintergrund ohne das Motiv weichzeichnen (normierte Faltung): sonst blutet das Motiv als dunkler oder heller Saum in
+    // den Übergang. prep_bg schreibt Licht × (1 − Motivgewicht) und das Restgewicht in Alpha.
+    const prep = ctx.texture(ctx.width, ctx.height);
+    ctx.run('prep_bg', { src: ctx.source, dst: prep });
+    let bg = prep;
     if (radius >= 0.75) {
       bg = ctx.texture(ctx.width, ctx.height);
-      ctx.gaussian(ctx.source, bg, radius, 'mirror');
+      ctx.gaussian(prep, bg, radius, 'mirror');
     }
     let subj = ctx.source;
     if (subjectRadius >= 0.75) {

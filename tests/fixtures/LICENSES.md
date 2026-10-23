@@ -13,3 +13,4 @@ Für die Tests auf 1600 px lange Kante verkleinert, EXIF entfernt. Geprüft am 2
 | `photo-architecture-paris.jpg` | Palais Garnier, Paris (Fassade, Ornamente, Himmel; Architektur)          | Sebastien Gabriel | CC0 1.0 | [Commons](<https://commons.wikimedia.org/wiki/File:Old_Paris_building_(Unsplash).jpg>), ursprünglich [Unsplash MavdFrachN0](https://unsplash.com/photos/MavdFrachN0) (2016, damals CC0); geprüft 2026-10-17 |
 
 `synthetic-400x300.png` und `sharp-256x192.png` erzeugt `generate.mjs` (eigene Werke, keine Fremdrechte).
+`golden/dark-subject.png` ist `golden/portrait.png` (CC0, siehe oben) mit hartem elliptischem Ausschnitt auf Schwarz (Regressionstest für Übergänge zwischen scharfem Motiv und Unschärfe in dunklen Bildern).

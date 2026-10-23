@@ -10,7 +10,7 @@ import { expect, type Page, type TestInfo } from '@playwright/test';
 import { PNG } from 'pngjs';
 import { diffStats, openFixture, renderExport } from './helpers';
 
-export type GoldenFixture = 'portrait' | 'landscape' | 'architecture' | 'still-life';
+export type GoldenFixture = 'portrait' | 'landscape' | 'architecture' | 'still-life' | 'dark-subject';
 
 export type EffectCase = {
   /** Dateiname der Referenz (ohne .png) */

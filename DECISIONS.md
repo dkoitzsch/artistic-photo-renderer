@@ -64,7 +64,8 @@ Abweichungen von der Spec und Festlegungen bei unklaren Anforderungen. Neueste o
   Filmkorn); hier entsteht der Look erst im Zusammenspiel mit abgestimmten Presets.
 - Größen in % der langen Bildkante. Reichweite = Unschärfe + Leuchtweite + Geisterabstand + Spur (meist ab halber
   Leinwand: Export am Stück). Das Leuchtbild bleibt als Licht mit Alpha 1 (kein Entvormultiplizieren: führte zu
-  Überläufen).
+  Überläufen). Der Hintergrund wird per normierter Faltung ohne das Motiv weichgezeichnet (kein Glühen des Motivs in den
+  Übergang, siehe PROGRESS S37).
 - **Betrifft:** Effektkatalog 5.7; keine Phase, keine neue Abhängigkeit, keine Modelle.
 
 <!-- Vorlage

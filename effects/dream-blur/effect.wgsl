@@ -12,13 +12,32 @@ fn subject_at(p: vec2i) -> f32 {
 
 fn subject_w(p: vec2i) -> f32 { return smoothstep(0.05, 0.55, subject_at(p)); }
 
+/** Gewicht, mit dem das Motiv das Hintergrundbild verdrängt (wie beim Mischen in mix_focus) */
+fn keep_w(p: vec2i) -> f32 { return subject_w(p) * params.subjectKeep / 100.0; }
+
+@compute @workgroup_size(8, 8)
+fn prep_bg(@builtin(global_invocation_id) id: vec3u) {
+  let size = textureDimensions(dst);
+  if (id.x >= size.x || id.y >= size.y) { return; }
+  let p = vec2i(id.xy);
+  let c = textureLoad(src, p, 0);
+  let k = 1.0 - keep_w(p);
+  textureStore(dst, p, vec4f(c.rgb * k, c.a * k));
+}
+
 @compute @workgroup_size(8, 8)
 fn mix_focus(@builtin(global_invocation_id) id: vec3u) {
   let size = textureDimensions(dst);
   if (id.x >= size.x || id.y >= size.y) { return; }
   let p = vec2i(id.xy);
-  let w = subject_w(p) * params.subjectKeep / 100.0;
-  textureStore(dst, p, mix(textureLoad(src, p, 0), textureLoad(src_b, p, 0), w));
+  let w = keep_w(p);
+  let subj = textureLoad(src_b, p, 0);
+  let num = textureLoad(src, p, 0);
+  // normierte Faltung: Hintergrundfarbe aus den Nachbarn ohne Motiv; fehlt dort jede Spur, bleibt die Motivfarbe
+  let conf = smoothstep(0.0, 0.03, num.a);
+  let bgc = select(subj, num / max(num.a, 1e-4) * subj.a, num.a > 1e-4);
+  let bg = mix(subj, bgc, conf);
+  textureStore(dst, p, mix(bg, subj, w));
 }
 
 @compute @workgroup_size(8, 8)
