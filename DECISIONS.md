@@ -68,6 +68,18 @@ Abweichungen von der Spec und Festlegungen bei unklaren Anforderungen. Neueste o
   Übergang, siehe PROGRESS S37).
 - **Betrifft:** Effektkatalog 5.7; keine Phase, keine neue Abhängigkeit, keine Modelle.
 
+## 2026-10-23 – Schwarze Leere (`ink-void`), Ergänzung nach E5
+
+- **Frage:** Fünf Referenzen (Schwarzweiß-Gemälde und -Fotos, das Gesicht als schwarze, verwirbelte Leere, Kreide-Silber auf
+  Schwarz) – Kombination aus `black-white` und `oil-dissolve`, oder eigener Effekt?
+- **Entscheidung:** Eigener GPU-Effekt, Kategorie „Malerei“: Feld aus Motivkarte (Gesichter, Salienz, Fokus) an
+  domänenverwirbelter Position bestimmt die Leere (Größe, Verschiebung); in der Randzone Schlieren entlang einer Spirale
+  (Maskengradient, zur Tangente gedreht); danach Schwarzweiß mit Silberton, Tonwertkurve, Randlicht aus der Kantenkarte,
+  Kreidestruktur, feine Spritzer, Hintergrund abdunkeln, Vignette. Unterschied zu `oil-dissolve`: farblos, Leere statt
+  Auflösung ins Dunkel mit Gold, ohne Flocken und Bläschen.
+- Größen in % der Bildkante, kleine Reichweite (kachelfähig, Ausschnitt in voller Auflösung).
+- **Betrifft:** Effektkatalog 5.3; keine Phase, keine neue Abhängigkeit, keine Modelle.
+
 <!-- Vorlage
 ## JJJJ-MM-TT – Kurztitel
 - **Frage:**
