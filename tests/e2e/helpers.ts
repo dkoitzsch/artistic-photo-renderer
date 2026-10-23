@@ -12,8 +12,15 @@ export async function enableTestEffects(page: Page): Promise<void> {
 
 export async function waitForApp(page: Page): Promise<void> {
   await page.goto('/');
-  // großzügig: im langen Gesamtlauf braucht der Dev-Server nach einem Neuladen gelegentlich länger
-  await expect(page.locator('.statusbar-gpu')).toContainText('WebGPU ·', { timeout: 15_000 });
+  // Nach den Plugin-Tests (Ordner anlegen/löschen) optimiert Vite neu und die erste Seite bleibt gelegentlich leer:
+  // dann einmal neu laden, statt den Test scheitern zu lassen (Stolperstein S34).
+  const ready = page.locator('.statusbar-gpu');
+  try {
+    await expect(ready).toContainText('WebGPU ·', { timeout: 15_000 });
+  } catch {
+    await page.reload();
+    await expect(ready).toContainText('WebGPU ·', { timeout: 30_000 });
+  }
   // Plugins kompiliert?
   await expect
     .poll(

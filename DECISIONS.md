@@ -86,8 +86,9 @@ Abweichungen von der Spec und Festlegungen bei unklaren Anforderungen. Neueste o
   Wischspuren, Tropfen, senkrechte Schlieren) – bestehenden Unschärfe-Effekt erweitern oder neuer Effekt?
 - **Entscheidung:** Eigener mehrstufiger GPU-Effekt (Kategorie „Licht & Atmosphäre“): Beschlagfeld aus verzerrtem
   fraktalem Rauschen mit senkrechter Struktur, freigewischten Stellen und Motivschonung; zwei Kern-Gauß-Stufen, je nach
-  Beschlag gemischt; senkrechte Schlieren; Schleier; Tropfen als Linsen mit umgekehrter, verkleinerter Abbildung des
-  scharfen Bildes (Glanzpunkt, Rand); Laufspuren großer Tropfen als klare Streifen. Alles aus Leinwandkoordinaten und
+  Beschlag gemischt; senkrechte Schlieren; Schleier; Tropfen als Linsen (unregelmäßiger Eiumriss, drei Größen in Nestern, umgekehrte und zum Rand
+  stark gestauchte Abbildung aus halb scharfem, halb weichem Bild, leichter Farbsaum, Lichtbündelung unten, weicher
+  dunkler Rand, schwacher Glanz); Laufspuren großer Tropfen als klare Streifen. Alles aus Leinwandkoordinaten und
   Seed (kachelgleich).
 - Größen in % der langen Bildkante; Reichweite = Unschärfe + Schlieren + Tropfenspur, meist ab halber Leinwand (Export am
   Stück).

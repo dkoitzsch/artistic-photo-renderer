@@ -14,6 +14,13 @@ fn sharp_at(q: vec2f) -> vec3f {
   return unpremultiply(sample_src_canvas(clamp(mirror_canvas(q), vec2f(0.5), params.canvas_size - 0.5))).rgb;
 }
 
+/** weiches Bild (Bindung src_b) an einer Leinwandposition; nur in compose verwendet */
+fn soft_at(q: vec2f) -> vec3f {
+  let sz = vec2f(textureDimensions(src_b));
+  let qc = clamp(mirror_canvas(q) - params.origin, vec2f(0.5), sz - 0.5);
+  return unpremultiply(textureSampleLevel(src_b, linear_sampler, qc / sz, 0.0)).rgb;
+}
+
 fn subject_p(p: vec2i) -> f32 {
   var v = max(load_saliency(p), load_faces(p));
   if (has_focus()) { v = max(v, load_focus(p)); }
@@ -87,44 +94,65 @@ fn compose(@builtin(global_invocation_id) id: vec3u) {
   // milchiger Schleier
   c = mix(c, params.fogColor * (0.55 + 0.9 * luminance(c)), F * params.haze / 100.0 * 0.6);
 
-  // Tropfen (zwei Größen) und Laufspuren
+  // Tropfen (drei Größen: viele kleine, wenige große, in Nestern) und Laufspuren
   if (params.drops > 0.0) {
-    for (var g = 0; g < 2; g++) {
+    let nest = 0.35 + 0.65 * smoothstep(0.3, 0.7, rand_fbm(cp, 0.12 * L, 2u, params.seed + 9u));
+    for (var g = 0; g < 3; g++) {
       let big = g == 0;
-      let S = max(params.dropSize / 100.0 * L * select(1.0, 3.2, big), 5.0);
+      let S = max(params.dropSize / 100.0 * L * select(select(1.3, 2.6, g == 1), 5.2, big), 4.0);
       let cell0 = vec2i(floor(cp / S));
       let salt = params.seed + 1200u + u32(g) * 40u;
       for (var k = 0; k < 4; k++) {
         if (k > 0 && (!big || params.trails <= 0.0)) { break; }
         let cell = vec2i(cell0.x, cell0.y - k);
         let jit = vec2f(rand_cell(cell, salt, 1u), rand_cell(cell, salt, 2u));
-        let r = S * (0.2 + 0.2 * rand_cell(cell, salt, 3u));
-        let centre = (vec2f(cell) + vec2f(0.5) + (jit - 0.5) * 0.5) * S;
-        let chance = params.drops / 100.0 * select(0.5, 0.28, big);
+        let r = S * (0.15 + 0.12 * rand_cell(cell, salt, 3u) * (0.4 + 0.6 * rand_cell(cell, salt, 9u)));
+        let centre = (vec2f(cell) + vec2f(0.5) + (jit - 0.5) * 0.24) * S;
+        let chance = params.drops / 100.0 * select(select(0.2, 0.3, g == 1), 0.14, big) * nest;
         if (rand_cell(cell, salt, 4u) >= chance) { continue; }
-        if (rand_cell(cell, salt, 5u) >= 0.35 + 0.65 * fog_at(centre)) { continue; }
+        if (rand_cell(cell, salt, 5u) >= 0.3 + 0.7 * fog_at(centre)) { continue; }
         let l = cp - centre;
         if (k == 0) {
-          let d = length(l / vec2f(r * 0.92, r * 1.08));
-          if (d < 1.0) {
-            var dc = sharp_at(centre - l * 2.4) * 1.05;
-            dc = dc * (1.0 - 0.3 * smoothstep(0.75, 1.0, d));
-            let hl = 1.0 - smoothstep(0.1, 0.22, length(l + vec2f(0.35, 0.4) * r) / r);
-            let rimv = smoothstep(0.78, 0.97, d) * max(dot(normalize(l + vec2f(1e-3)), vec2f(0.7, 0.7)), 0.0);
-            dc = dc + vec3f(1.0, 0.97, 0.92) * (hl * 0.7 + rimv * 0.3);
-            c = mix(c, dc, 1.0 - smoothstep(0.93, 1.0, d));
+          // unregelmäßiger Umriss, unten schwerer (Eiform), große Tropfen etwas länglich
+          let ang = atan2(l.y, l.x);
+          let ph = rand_cell(cell, salt, 10u) * 6.2831853;
+          let wob = 1.0 + 0.1 * sin(ang * 3.0 + ph) + 0.06 * sin(ang * 5.0 + ph * 1.7);
+          let sag = select(1.0, 1.0 + 0.14 + select(0.0, 0.12, big), l.y > 0.0);
+          let rv = vec2f(r * wob, r * wob * sag * select(1.0, 1.12, big));
+          let u = l / rv;
+          let d = length(u);
+          if (d < 1.08) {
+            // Linse: umgekehrte, am Rand stark gestauchte Abbildung, halb scharf, halb weich (Schärfeebene dahinter)
+            let q = centre - u * r * (1.2 + 2.6 * d * d);
+            let ca = vec2f(0.012 * r * d, 0.0);
+            var dc = vec3f(
+              mix(sharp_at(q + ca).r, soft_at(q + ca).r, 0.55),
+              mix(sharp_at(q).g, soft_at(q).g, 0.55),
+              mix(sharp_at(q - ca).b, soft_at(q - ca).b, 0.55),
+            );
+            // Licht: unten gebündelt (heller), oben Schatten; weicher dunkler Rand, helle Kaustik unten rechts
+            let nrm = normalize(u + vec2f(1e-4));
+            let lightSide = dot(nrm, vec2f(0.55, 0.8));
+            dc = dc * (1.0 + 0.22 * u.y * d + 0.1 * smoothstep(0.2, 1.0, d) * lightSide);
+            dc = dc * (1.0 - 0.38 * smoothstep(0.6, 1.0, d) * (0.5 - 0.5 * lightSide));
+            dc = dc + vec3f(1.0, 0.97, 0.92) * 0.22 * smoothstep(0.55, 0.95, d) * max(lightSide, 0.0) * (1.0 - smoothstep(0.95, 1.05, d));
+            // weicher Glanz oben links
+            let hp = (u - vec2f(-0.38, -0.44)) / vec2f(0.34, 0.2);
+            dc = dc + vec3f(1.0, 0.98, 0.95) * 0.32 * exp(-dot(hp, hp) * 2.2);
+            let edgeSoft = 0.06 + 0.1 * F;
+            c = mix(c, dc, (1.0 - smoothstep(1.0 - edgeSoft, 1.0 + edgeSoft, d)) * 0.92);
           }
         } else if (rand_cell(cell, salt, 6u) < params.trails / 100.0) {
           let tl = S * (1.0 + 2.8 * rand_cell(cell, salt, 7u));
-          let wob = sin(l.y / (0.03 * L) + rand_cell(cell, salt, 8u) * 6.0) * r * 0.08;
-          let w = max(r * 0.16, 0.8);
+          let wob = sin(l.y / (0.03 * L) + rand_cell(cell, salt, 8u) * 6.0) * r * 0.1;
+          let w = max(r * 0.2, 0.8);
           let dx = abs(l.x - wob) / w;
           if (l.y > 0.0 && l.y < tl && dx < 1.0) {
-            let along = 1.0 - smoothstep(0.6, 1.0, l.y / tl);
-            let edge = smoothstep(0.55, 1.0, dx);
-            var tc = sharp * (0.92 - 0.35 * edge);
-            tc = tc + vec3f(0.08) * (1.0 - edge) * along;
-            c = mix(c, tc, along * (1.0 - smoothstep(0.85, 1.0, dx)) * 0.9);
+            let along = 1.0 - smoothstep(0.55, 1.0, l.y / tl);
+            let edge = smoothstep(0.45, 1.0, dx);
+            var tc = mix(sharp, soft, 0.25) * (0.94 - 0.28 * edge);
+            tc = tc + vec3f(0.05) * (1.0 - edge) * along;
+            c = mix(c, tc, along * (1.0 - smoothstep(0.8, 1.0, dx)) * 0.85);
           }
         }
       }
