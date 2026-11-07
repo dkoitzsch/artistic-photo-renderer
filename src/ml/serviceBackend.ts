@@ -167,3 +167,60 @@ export async function serviceObjects(
   const map = decodeMaskPng(new Uint8Array(await res.arrayBuffer()));
   return { labels: map.data, width: map.width, height: map.height, objects };
 }
+
+/**
+ * Bildbearbeitung per Prompt im Dienst (Rolle `image-edit`, z. B. FLUX.2 klein): Quellbild + Referenzbilder + Prompt →
+ * Ergebnisbild (PNG) und verwendeter Seed. Fehlermeldungen des Dienstes (kein Modell, Lizenz, Ordner fehlt) kommen im Klartext.
+ */
+export async function serviceMlEdit(
+  opts: {
+    image: Blob;
+    refs: Blob[];
+    prompt: string;
+    seed: number;
+    steps: number;
+    guidance: number;
+    maxEdge: number;
+    modelId?: string;
+    licenseMode: LicenseMode;
+  },
+  onProgress: (p: Progress) => void,
+): Promise<{ blob: Blob; seed: number }> {
+  const form = new FormData();
+  form.append('image', opts.image, 'image.png');
+  opts.refs.forEach((r, i) => form.append('refs', r, `ref${i + 1}`));
+  form.append('prompt', opts.prompt);
+  form.append('seed', String(opts.seed));
+  form.append('steps', String(opts.steps));
+  form.append('guidance', String(opts.guidance));
+  form.append('max_edge', String(opts.maxEdge));
+  form.append('license_mode', opts.licenseMode);
+  if (opts.modelId) form.append('model', opts.modelId);
+  const sent = await fetch(`${SERVICE_URL}/ml/edit`, { method: 'POST', body: form });
+  if (!sent.ok) {
+    const body = (await sent.json().catch(() => ({}))) as { detail?: string };
+    throw new Error(body.detail ?? `Dienst antwortet mit HTTP ${sent.status}`);
+  }
+  const job = (await sent.json()) as Job;
+  for (;;) {
+    const s = await fetchJson<Job>(`${SERVICE_URL}/jobs/${job.id}`, undefined, 5000);
+    if (s.status === 'error') throw new Error(s.message ?? 'Dienst-Job fehlgeschlagen.');
+    if ((s.status as string) === 'cancelled') throw new Error('abgebrochen');
+    onProgress({
+      stage: s.status === 'queued' ? 'load' : 'infer',
+      label: 'Bildbearbeitung (Dienst)',
+      loaded: s.progress,
+      total: 1,
+    });
+    if (s.status === 'done') break;
+    await new Promise((r) => setTimeout(r, 400));
+  }
+  const res = await fetch(`${SERVICE_URL}/jobs/${job.id}/result`);
+  if (!res.ok) throw new Error(`Ergebnis des Dienstes nicht abrufbar (HTTP ${res.status}).`);
+  return { blob: await res.blob(), seed: Number(res.headers.get('X-Seed') ?? opts.seed) };
+}
+
+/** Bricht einen laufenden Dienst-Job ab. */
+export async function serviceCancelJob(id: string): Promise<void> {
+  await fetch(`${SERVICE_URL}/jobs/${id}`, { method: 'DELETE' }).catch(() => undefined);
+}

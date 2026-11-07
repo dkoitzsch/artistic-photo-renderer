@@ -37,6 +37,9 @@ export default defineConfig({
         BLS_TEST_EFFECTS: '1',
         BLS_PREFETCH: '0',
         BLS_CACHE: join(tmpdir(), 'bls-e2e-service-cache'),
+        // eigene ML-Modellkonfiguration und CPU: die echte Konfiguration des Nutzers bleibt unberührt
+        BLS_ML_CONFIG: join(tmpdir(), 'bls-e2e-service-cache', 'ml-models.yaml'),
+        BLS_ML_DEVICE: 'cpu',
       },
     },
   ],

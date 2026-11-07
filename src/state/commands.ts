@@ -51,6 +51,7 @@ import {
 } from './project';
 import { buildRegionGroup, type RegionSpec } from './regions';
 import { getProject, newHistory, useAppStore } from './store';
+import { applyStyleRun, type ApplyArgs } from '../ml/styleFluxModel';
 import { instancesFrom, type StackPreset } from '../presets/model';
 import { normalizeMalplan, type MalplanSettings } from '../malplan/model';
 
@@ -542,6 +543,29 @@ export function setHoleFillCommand(layerId: string, holeFill: boolean): void {
   commit(holeFill ? 'Lochfüllung ein' : 'Lochfüllung aus', (p) =>
     updateLayer(p, layerId, (l) => ({ ...l, holeFill })),
   );
+}
+
+/** Mehrere Parameter eines Effekts in einem Verlaufseintrag setzen (z. B. Prompt-Vorlage + Prompt). */
+export function setParamsCommand(
+  nodeId: string,
+  instanceId: string,
+  values: Record<string, ParamValue>,
+  label: string,
+): void {
+  commit(label, (p) => setEffectParams(p, nodeId, instanceId, values));
+  endGesture();
+}
+
+/** Ergebnis einer Stil-Übertragung (FLUX) anwenden: ein Verlaufseintrag (Effektparameter, Original, ggf. neue Ebene). */
+export function applyStyleRunCommand(args: ApplyArgs): string | null {
+  let newLayerId: string | null = null;
+  commit('Stil-Übertragung (FLUX)', (p) => {
+    const r = applyStyleRun(p, args);
+    newLayerId = r.newLayerId;
+    return r.project;
+  });
+  endGesture();
+  return newLayerId;
 }
 
 /** KI-Lochfüllung (LaMa) einer Ebene setzen: ein Verlaufseintrag, das Ergebnisbild wird Original des Projekts. */

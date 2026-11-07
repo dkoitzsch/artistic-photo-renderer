@@ -17,6 +17,7 @@ import { findHost, walkLayers, type EffectInstance } from '../../state/project';
 import { getProject } from '../../state/store';
 import { ParamControl } from '../controls/ParamControl';
 import { EffectMixSection } from './EffectMixSection';
+import { EffectPanel } from './effectPanels';
 import { EffectPresetMenu } from './PresetMenus';
 import { Slider } from '../controls/Slider';
 import {
@@ -201,13 +202,16 @@ export function EffectCard({
             <span className="control-label">Preset</span>
             <EffectPresetMenu nodeId={nodeId} effect={effect} manifest={manifest} />
           </div>
-          {renderParams(manifest.params.filter((p) => visible(p.key) && !p.group))}
+          {manifest.panel ? <EffectPanel name={manifest.panel} nodeId={nodeId} effect={effect} /> : null}
+          {renderParams(manifest.params.filter((p) => visible(p.key) && !p.group && !p.hidden))}
           {[
-            ...new Set(manifest.params.filter((p) => p.group && visible(p.key)).map((p) => p.group ?? '')),
+            ...new Set(
+              manifest.params.filter((p) => p.group && visible(p.key) && !p.hidden).map((p) => p.group ?? ''),
+            ),
           ].map((group) => (
             <details key={group} className="param-group" data-testid={`param-group-${group}`}>
               <summary>{group}</summary>
-              {renderParams(manifest.params.filter((p) => p.group === group && visible(p.key)))}
+              {renderParams(manifest.params.filter((p) => p.group === group && visible(p.key) && !p.hidden))}
             </details>
           ))}
           <div className="effect-card-sep" />

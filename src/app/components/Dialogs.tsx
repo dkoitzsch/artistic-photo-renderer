@@ -13,6 +13,7 @@ import { findNode, type LicenseMode } from '../../state/project';
 import { useAppStore, useProject, type MlMode } from '../../state/store';
 import { licenseNoticeShown, markLicenseNoticeShown, setLicenseMode, setMlMode } from '../settings';
 import { DepthSplitPanel } from './DepthSplit';
+import { MlModelsSettings } from './MlModelsSettings';
 import { Slider } from '../controls/Slider';
 import { LicenseBadge } from './LayerSections';
 
@@ -324,6 +325,7 @@ export function SettingsDialog() {
             </label>
           ))}
         </fieldset>
+        <MlModelsSettings />
         <div className="service-status" data-testid="service-status">
           <span className={`status-dot ${service.state}`} />
           Dienst:{' '}

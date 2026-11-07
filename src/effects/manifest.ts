@@ -50,6 +50,8 @@ type ParamBase = {
   hint?: string;
   /** UI-Gruppe, z. B. "Erweitert" (eingeklappt) */
   group?: string;
+  /** true: Parameter erscheint nicht in der Reglerliste (ein `panel` des Effekts bedient ihn), wird aber gespeichert */
+  hidden?: boolean;
 };
 
 export type NumberParam = ParamBase & {
@@ -123,6 +125,8 @@ export type EffectManifest = {
   reach?: string;
   /** Parameter, die nur sichtbar sind, wenn eine Bedingung gilt: { "shadowColor": "duotone" } */
   visibleIf?: Record<string, string>;
+  /** Name eines in der App registrierten Bedienfelds (`effectPanels.tsx`) für Effekte mit eigener Bedienung (z. B. ML-Läufe) */
+  panel?: string;
   // ---- Manifest v2 (Effekt-Erweiterung); fehlende Angaben ergänzt die Prüfung mit Standardwerten ----
   /** Ausführungsort der Vorschau und des Endrenders (Standard: beide webgpu) */
   implementations: { preview: Implementation; final: Implementation };

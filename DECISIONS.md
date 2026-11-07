@@ -115,6 +115,25 @@ Abweichungen von der Spec und Festlegungen bei unklaren Anforderungen. Neueste o
 - **Betrifft:** Basis-Spec Phase 6, Abschnitte „Modus 3 – Objekte“ und „Lokaler Python-Dienst“; neue Python-Abhängigkeit
   onnxruntime (MIT; protobuf BSD-3-Clause, flatbuffers Apache-2.0).
 
+## 2026-11-07 – ML-Spec als zusätzliche Spec; M0; Stil-Übertragung mit FLUX vorgezogen
+
+- **Spec:** `spec-ml-fotobearbeitung_v2.md` (Repo-Wurzel) gilt als zusätzliche Spec (Phase 7 der Basis-Spec); die ältere Fassung
+  `docs/spec-ml-fotobearbeitung.md` bleibt unverändert. Neu in v1.2: Leinwand vergrößern (M1b) und Outpainting.
+- **Modellverwaltung:** Große Bildmodelle (FLUX) stehen **nicht** in `models/registry.json` (Download-Manager, feste Revision), sondern
+  in der Nutzer-Konfiguration `~/.config/artistic-photo-renderer/models.yaml` (nur Pfade; `BLS_ML_CONFIG`). Der Dienst liest sie
+  nur, lädt nichts nach, kopiert nichts (`local_files_only`). Die Einstufung `outputCommercialUse` trifft der Nutzer in den
+  Einstellungen; der Lizenzmodus „Kommerziell“ prüft bei `/ml/edit` dieses Feld (403 sonst).
+- **Pipeline-unabhängig:** Die Klasse kommt aus `model_index.json` (diffusers wählt sie) – FLUX.2 klein heute, später z. B. FLUX 3,
+  ohne Codeänderung, solange die Pipeline Referenzbilder (`image`) annimmt. Ob ein neueres Modell besser für Stil-Übertragung ist,
+  entscheidet der Vergleich in M0 (Messskript).
+- **Stil-Übertragung als Effekt `style-flux`:** Ergebnis wird als Original im Projekt gespeichert (reproduzierbar, offline
+  exportierbar) und vom Effekt angezeigt; der Lauf startet nur auf Aktion (Stilbild gewählt, wenn ein Modell bereit ist, oder
+  Knopf „Aktualisieren“), nie bei jeder Parameteränderung. Verlauf: „Jeder Transfer als neue Ebene“ (frühere Ebenen bleiben,
+  ausgeblendet) oder „Ergebnis im Effekt“ (überschreibt). Prompt-Vorlagen (3, englisch) in den Einstellungen und je Effekt änderbar.
+- **Allgemeine Kernerweiterung (klein):** Manifest-Felder `panel` (Bedienfeld der App für Effekte mit eigener Bedienung) und `hidden`
+  (Parameter ohne Regler); Textparameter dürfen leer starten. Der Kern kennt weiter keine konkreten Effekte.
+- **Abhängigkeiten (Dienst):** diffusers 0.42.1 (Apache-2.0), accelerate 1.15.0 (Apache-2.0), pyyaml 6.0.3 (MIT), psutil 7.2.2 (BSD-3).
+
 <!-- Vorlage
 ## JJJJ-MM-TT – Kurztitel
 - **Frage:**

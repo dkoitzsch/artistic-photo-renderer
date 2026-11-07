@@ -1,0 +1,23 @@
+# Beispiel für ~/.config/artistic-photo-renderer/models.yaml (Pfad per BLS_ML_CONFIG änderbar).
+# Normalerweise wird die Datei in der App unter Einstellungen > ML-Modelle geschrieben.
+# Modelle werden nur GELESEN, nie kopiert; der Dienst lädt nichts aus dem Internet.
+models:
+  - id: flux2-klein-9b                 # frei vergebene, eindeutige Kennung (a-z, 0-9, . _ -)
+    name: "FLUX.2 [klein] 9B"
+    roles: [image-edit]                # später auch image-generate, inpaint, upscale, translate
+    backend: diffusers
+    paths:
+      root: /Volumes/Modelle/flux-2-klein-9b   # absoluter Pfad, Ordner mit model_index.json
+    precision: bf16                    # bf16 | fp16 | fp32
+    device: auto                       # auto | mps | cuda | cpu
+    memory:
+      offload: auto                    # auto | none | model | sequential
+    defaults:
+      steps: 4
+      guidance: 1.0
+    license:
+      name: "FLUX Non-Commercial License"
+      url: ""
+      notes: "Tool privat/nicht-kommerziell genutzt, erzeugte Bilder kommerziell (meine Einstufung)."
+    outputCommercialUse: true          # MEINE Einstufung der Nutzungsrechte an den erzeugten Bildern
+    defaultForRoles: [image-edit]

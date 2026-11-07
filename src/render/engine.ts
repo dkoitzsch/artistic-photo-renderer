@@ -921,6 +921,40 @@ export class Engine {
     return new ImageData(pixels, region.width, region.height);
   }
 
+  /**
+   * Eingangsbild eines Effekts: die Ebene allein (ohne Schatten) mit den Effekten vor `instanceId`, als Leinwandbild
+   * (8-Bit-sRGB, lange Kante höchstens maxEdge). Transparente Stellen werden über Mittelgrau gelegt (Modelle kennen
+   * keine Transparenz).
+   */
+  async renderEffectInput(
+    project: Project,
+    layerId: string,
+    instanceId: string,
+    maxEdge: number,
+  ): Promise<ImageData | null> {
+    const layer = findNode(project.root, layerId);
+    if (layer?.kind !== 'layer') return null;
+    const i = layer.effects.findIndex((e) => e.instanceId === instanceId);
+    const only = { ...layer, effects: i < 0 ? layer.effects : layer.effects.slice(0, i), visible: true, opacity: 1 };
+    delete (only as { shadow?: unknown }).shadow;
+    const alone: Project = {
+      ...project,
+      root: { ...project.root, children: [only], effects: [], visible: true, opacity: 1 },
+    };
+    const img = await this.renderRegionImage(alone, { x: 0, y: 0, width: 1, height: 1 }, maxEdge);
+    const d = img.data;
+    for (let k = 0; k < d.length; k += 4) {
+      const a = (d[k + 3] ?? 255) / 255;
+      if (a < 1) {
+        d[k] = Math.round((d[k] ?? 0) * a + 128 * (1 - a));
+        d[k + 1] = Math.round((d[k + 1] ?? 0) * a + 128 * (1 - a));
+        d[k + 2] = Math.round((d[k + 2] ?? 0) * a + 128 * (1 - a));
+        d[k + 3] = 255;
+      }
+    }
+    return img;
+  }
+
   /** Rendert das Projekt in voller Auflösung am Stück als Arbeitstextur (z. B. Eingang einer Gruppenmaske). */
   async renderTexture(project: Project): Promise<{ tex: GPUTexture; owned: boolean }> {
     const { width: W, height: H } = project.canvas;

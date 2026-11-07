@@ -1,0 +1,183 @@
+{
+  "id": "style-flux",
+  "name": "Stil übertragen (FLUX)",
+  "version": "1.0.0",
+  "category": "Stil",
+  "description": "Überträgt den Stil eines Bildes mit einem Bildbearbeitungsmodell (z. B. FLUX.2 klein) auf die Ebene. Das Modell wird in den Einstellungen eingerichtet; der Prompt ist anpassbar, „Aktualisieren“ startet einen neuen Lauf.",
+  "inputs": ["source"],
+  "passes": 1,
+  "implementations": {
+    "preview": "webgpu",
+    "final": "webgpu"
+  },
+  "license": {
+    "commercialUse": true,
+    "notes": "Der Effekt selbst ist eigener Code. Das Modell (z. B. FLUX.2 klein 9B: FLUX Non-Commercial License) und die Einstufung der erzeugten Bilder legst du in den Einstellungen fest. Für verkaufte Werke nur eigene oder lizenzfreie Stilbilder verwenden."
+  },
+  "cost": "very-slow",
+  "randomized": true,
+  "requires": [],
+  "panel": "style-flux",
+  "reach": "max(canvasWidth, canvasHeight) / 256 + 4",
+  "params": [
+    {
+      "key": "result",
+      "label": "Ergebnis",
+      "type": "image",
+      "default": "",
+      "hidden": true
+    },
+    {
+      "key": "styleId",
+      "label": "Stilbild",
+      "type": "text",
+      "default": "",
+      "maxLength": 64,
+      "hidden": true
+    },
+    {
+      "key": "prompt",
+      "label": "Prompt",
+      "type": "text",
+      "default": "",
+      "maxLength": 1500,
+      "hidden": true
+    },
+    {
+      "key": "promptPreset",
+      "label": "Prompt-Vorlage",
+      "type": "enum",
+      "options": [
+        {
+          "value": "faithful",
+          "label": "Stiltreu (Inhalt bleibt)"
+        },
+        {
+          "value": "painterly",
+          "label": "Malerisch frei"
+        },
+        {
+          "value": "colour",
+          "label": "Nur Farbe und Licht"
+        },
+        {
+          "value": "custom",
+          "label": "Eigener Prompt"
+        }
+      ],
+      "default": "faithful",
+      "hidden": true
+    },
+    {
+      "key": "history",
+      "label": "Verlauf",
+      "type": "enum",
+      "options": [
+        {
+          "value": "layers",
+          "label": "Jeder Transfer als neue Ebene"
+        },
+        {
+          "value": "overwrite",
+          "label": "Ergebnis im Effekt (überschreibt)"
+        }
+      ],
+      "default": "layers",
+      "hidden": true
+    },
+    {
+      "key": "workSize",
+      "label": "Arbeitsauflösung",
+      "type": "enum",
+      "options": [
+        {
+          "value": "1024",
+          "label": "1024 px (schnell)"
+        },
+        {
+          "value": "1536",
+          "label": "1536 px"
+        },
+        {
+          "value": "2048",
+          "label": "2048 px (langsam)"
+        }
+      ],
+      "default": "1024",
+      "hidden": true
+    },
+    {
+      "key": "appliedKey",
+      "label": "Letzter Lauf",
+      "type": "text",
+      "default": "",
+      "maxLength": 16,
+      "hidden": true
+    },
+    {
+      "key": "historyIds",
+      "label": "Verlaufsebenen",
+      "type": "text",
+      "default": "",
+      "maxLength": 2000,
+      "hidden": true
+    },
+    {
+      "key": "keepDetail",
+      "label": "Details des Originals behalten",
+      "hint": "Feine Struktur des Eingangsbilds wieder einblenden (das Modell rechnet mit weniger Auflösung)",
+      "type": "float",
+      "min": 0,
+      "max": 100,
+      "default": 0,
+      "unit": "%"
+    },
+    {
+      "key": "steps",
+      "label": "Schritte",
+      "hint": "0 = Standard des Modells",
+      "type": "int",
+      "min": 0,
+      "max": 50,
+      "default": 0,
+      "group": "Erweitert"
+    },
+    {
+      "key": "guidance",
+      "label": "Guidance",
+      "hint": "0 = Standard des Modells",
+      "type": "float",
+      "min": 0,
+      "max": 10,
+      "default": 0,
+      "step": 0.1,
+      "group": "Erweitert"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Stiltreu (Inhalt bleibt)",
+      "values": {
+        "promptPreset": "faithful",
+        "prompt": "",
+        "keepDetail": 0
+      }
+    },
+    {
+      "name": "Malerisch frei",
+      "values": {
+        "promptPreset": "painterly",
+        "prompt": "",
+        "keepDetail": 0
+      }
+    },
+    {
+      "name": "Nur Farbe und Licht",
+      "values": {
+        "promptPreset": "colour",
+        "prompt": "",
+        "keepDetail": 30
+      }
+    }
+  ]
+}

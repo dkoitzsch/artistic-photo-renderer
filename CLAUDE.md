@@ -18,7 +18,9 @@ Abgeschlossen: **Phase 0 – Gerüst**, **Phase 1 – Ganzes Bild**, **Phase 2 �
 [docs/abnahme-E1.md](docs/abnahme-E1.md), [docs/abnahme-E2.md](docs/abnahme-E2.md), [docs/abnahme-E3.md](docs/abnahme-E3.md),
 [docs/abnahme-E4.md](docs/abnahme-E4.md), [docs/abnahme-E5.md](docs/abnahme-E5.md); Ideen für später:
 [docs/optimierungen-und-varianten.md](docs/optimierungen-und-varianten.md)).
-Nächste (wartet auf Freigabe): `docs/spec-ml-fotobearbeitung.md` (Datei nicht anfassen).
+Zusätzliche Spec **ML-Fotobearbeitung** (Phase 7): [spec-ml-fotobearbeitung_v2.md](spec-ml-fotobearbeitung_v2.md) (Phasen M0–M3, M1b);
+**M0 durchgeführt** ([docs/m0-bericht.md](docs/m0-bericht.md)), Stil-Übertragung (FLUX) vorab umgesetzt. Weiter nur nach Freigabe je Phase.
+Die ältere `docs/spec-ml-fotobearbeitung.md` bleibt unverändert.
 Nach jedem Schritt: Tests, [PROGRESS.md](PROGRESS.md) nachführen (Stand, offene Punkte, Logbuch, Stolpersteine, Messwerte), Commit, Push.
 
 ## Ordnerstruktur (✓ = existiert)
@@ -273,6 +275,20 @@ Beschlagfeld, Tropfenlinsen, Laufspuren).
 - Große Zusatzmodelle (`lama`, `sam2.1-large`) tragen im Register `onDemand` (Download auf Knopfdruck); `testAssets` im Register
   = Test-Gewichte (SAM 2.1 Tiny, transformers-Format). `npm run models:fetch` lädt LaMa und SAM Tiny für die Tests.
 
+**Phase 7 / M0 (ML-Spec, vorgezogen: Stil-Übertragung mit FLUX):**
+
+- ML-Modellverwaltung im Dienst: `ml_service/mlconfig.py` (Nutzer-Konfiguration `~/.config/artistic-photo-renderer/models.yaml`, `BLS_ML_CONFIG`;
+  Rollen, `outputCommercialUse`, Status, Fingerprint), `mlengine.py` (`DiffusersEngine`: Pipeline von `model_index.json`, nur lokal
+  gelesen, bf16/MPS, Auslagerung automatisch nach Arbeitsspeicher, `BLS_ML_DEVICE`), Endpunkte `/ml/models…`, `/ml/unload`,
+  `POST /ml/edit` (Bild + Referenzbilder + Prompt → PNG, Seed im Kopf `X-Seed`). Messskript `ml-service/prototypes/m0_flux_prototype.py`;
+  Tests mit winzigem FLUX.2-Ordner (`ml-service/tests/mini_flux.py`).
+- App: `ml/mlModels.ts` (Dienst-Zugriff, Zustand, `roleAvailability`), Einstellungen „ML-Modelle“ + Prompt-Vorlagen
+  (`MlModelsSettings.tsx`, `ml/stylePrompts.ts`), Effekt `effects/style-flux` (Ergebnis = Original im Projekt, Shader zeigt es,
+  optional Details des Eingangs), Lauf `ml/styleFlux.ts` (`runStyleTransfer`), reine Logik `ml/styleFluxModel.ts` (Lauf-Schlüssel,
+  `applyStyleRun`), Befehl `applyStyleRunCommand`, `Engine.renderEffectInput` (Eingangsbild der Ebene mit den Effekten davor).
+- Effekt-Kern allgemein erweitert: Manifest `panel` (Bedienfeld, `app/components/effectPanels.tsx` → `StyleFluxPanel.tsx`) und
+  Parameter `hidden`; Textparameter dürfen leer starten.
+
 **Neuen Effekt anlegen:** siehe [effects/README.md](effects/README.md) – nur einen Ordner unter `effects/` anlegen.
 
 ## Referenz-Hardware
@@ -321,4 +337,7 @@ Eine neue Phase beginnt nur nach ausdrücklicher Freigabe durch den Nutzer.
   von „Pinselstriche“ für den Malplan neu (ähnlich, nicht identisch). Schichtplan-Regeln fest je Technik.
 - LaMa rechnet mit 512 × 512 px je Lochbereich (große Löcher werden weicher), Dienst nötig, Modell auf Wunsch laden (208 MB).
   Objekt-Aufteilung: Im Browser SAM Tiny (geringere Qualität als SAM 2.1 Large im Dienst), Personen oft als ein Objekt.
+- Stil-Übertragung (FLUX): Das Modell (z. B. FLUX.2 klein 9B, ca. 35 GB) wird nur über den Speicherort in den Einstellungen
+  genutzt; Zeit und Speicher mit dem echten Modell sind noch nicht gemessen (M0-Messskript). Eingang auf 1024–2048 px begrenzt; ohne
+  Dienst und Modell bleibt der Effekt wirkungslos. Die Einstufung `outputCommercialUse` trifft der Nutzer.
 - Lange Testläufe brauchen einen wachen Rechner: im Akkubetrieb mit geschlossenem Deckel schläft der Mac (Stolperstein S23).

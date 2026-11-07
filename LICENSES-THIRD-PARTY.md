@@ -40,6 +40,10 @@ Zentrale Liste aller Fremdkomponenten (Spec „Effekte & Malvorlagen“, Abschni
 | einops           | 0.8.2          | MIT                                                                                  | ja          |
 | scipy            | 1.18.1         | BSD-3-Clause                                                                         | ja          |
 | onnxruntime      | 1.31.1         | MIT                                                                                  | ja          |
+| diffusers        | 0.42.1         | Apache-2.0                                                                           | ja          |
+| accelerate       | 1.15.0         | Apache-2.0                                                                           | ja          |
+| pyyaml           | 6.0.3          | MIT                                                                                  | ja          |
+| psutil           | 7.2.2          | BSD-3-Clause                                                                         | ja          |
 | protobuf         | 7.36.2         | BSD-3-Clause (von onnxruntime)                                                       | ja          |
 | flatbuffers      | 25.12.19       | Apache-2.0 (von onnxruntime)                                                         | ja          |
 | pytest, httpx    | 9.1.1, 0.28.1  | MIT, BSD-3-Clause (nur Tests)                                                        | ja          |

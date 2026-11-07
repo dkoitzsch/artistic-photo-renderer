@@ -268,6 +268,7 @@ Texturen werden **prozedural erzeugt** (keine fremden Textur-Dateien → keine L
 
 | ID | Effekt | Kernparameter | Ausf. | Phase |
 |---|---|---|---|---|
+| `style-flux` | Stil-Übertragung per Bildbearbeitungsmodell (FLUX.2 klein u. a.): Stilbild als Referenz, Prompt-Vorlagen, Aktualisieren-Knopf, Verlauf als Ebenen (ML-Spec 5.10) | Stilbild, Prompt (Vorlagen), Verlauf, Arbeitsauflösung, Seed | P | nachträglich (ML-Spec M0) |
 | `style-transfer` | Neural Style Transfer (z. B. AdaIN-basiert, schnell; optional optimierungsbasiert, langsam) | Stilbild, Stärke, Farberhalt ja/nein, Detailgrad | P | E3 |
 | `style-per-region` | Unterschiedlicher Effekt/Stil pro Segment oder Tiefenbereich | Zuordnung Region → Effekt-Stapel | B/P | E3 |
 

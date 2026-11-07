@@ -2282,7 +2282,7 @@ button:disabled {
   width: 14px;
   height: 14px;
   border-radius: 3px;
-  background: var(--accent, #3b82f6);
+  background: var(--accent);
   cursor: nwse-resize;
 }
 
@@ -2594,4 +2594,50 @@ button:disabled {
   border-radius: 2px;
   margin-right: 6px;
   vertical-align: middle;
+}
+
+/* ---------- Effekt-Bedienfeld „Stil übertragen (FLUX)“ ---------- */
+.style-flux-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.style-flux-panel textarea {
+  width: 100%;
+  min-height: 92px;
+  resize: vertical;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.35;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: inherit;
+}
+.style-flux-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.style-flux-refresh {
+  position: relative;
+}
+.style-flux-refresh .dirty-dot {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.style-flux-refresh.spinning svg {
+  animation: style-flux-spin 1s linear infinite;
+}
+@keyframes style-flux-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }

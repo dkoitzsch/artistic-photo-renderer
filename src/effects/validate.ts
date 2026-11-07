@@ -93,6 +93,7 @@ export function validateManifest(raw: unknown, folder?: string): ValidationResul
       const { key, label, type, group } = p;
       const at = isStr(key) ? `Parameter "${key}"` : where;
       if (group !== undefined && !isStr(group)) errors.push(`${at}: "group" muss Text sein.`);
+      if (p.hidden !== undefined && typeof p.hidden !== 'boolean') errors.push(`${at}: "hidden" muss true/false sein.`);
       if (!isStr(key) || !KEY_RE.test(key))
         errors.push(`${where}: "key" muss ein Bezeichner sein (Buchstaben, Ziffern, _).`);
       else if (RESERVED_KEYS.includes(key)) errors.push(`${at}: "${key}" ist für den Kern reserviert.`);
@@ -151,7 +152,8 @@ export function validateManifest(raw: unknown, folder?: string): ValidationResul
           if (max !== undefined && (!isNum(max) || !Number.isInteger(max) || max < 1 || max > 2000))
             errors.push(`${at}: "maxLength" muss eine ganze Zahl von 1 bis 2000 sein.`);
           const limit = isNum(max) ? max : DEFAULT_TEXT_LENGTH;
-          if (!isStr(d)) errors.push(`${at}: "default" muss ein Text sein.`);
+          // leerer Standardtext ist erlaubt (z. B. gespeicherte IDs oder Prompts, die erst gesetzt werden)
+          if (typeof d !== 'string') errors.push(`${at}: "default" muss ein Text sein.`);
           else if (Array.from(d).length > limit)
             errors.push(`${at}: "default" ist länger als ${limit} Zeichen.`);
           break;
@@ -241,6 +243,7 @@ export function validateManifest(raw: unknown, folder?: string): ValidationResul
         ...(isStr(license.notes) ? { notes: license.notes } : {}),
       };
   }
+  if (raw.panel !== undefined && !isStr(raw.panel)) errors.push('"panel" muss Text sein.');
   if (cost !== undefined && !oneOf(COSTS, cost))
     errors.push(`"cost" muss einer von ${COSTS.join(', ')} sein.`);
   if (randomized !== undefined && typeof randomized !== 'boolean')

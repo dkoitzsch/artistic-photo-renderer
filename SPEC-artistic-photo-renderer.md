@@ -77,7 +77,9 @@ Ein Python-Dienst läuft neben der Web-App auf dem Mac und liefert bessere Maske
 | `POST /depth` | Bild | Tiefenkarte (16 Bit) | 3 |
 | `POST /segment/points` | Bild, Positiv-/Negativ-Punkte | Maske | 5 |
 | `POST /segment/objects` | Bild | Liste von Instanzmasken | 6 |
-| `POST /inpaint` | Bild, Maske | aufgefülltes Bild | 6 |
+| `POST /inpaint` | Bild, Maske | aufgefülltes Bild (LaMa, ohne Prompt) | 6 |
+| `GET/PUT/DELETE /ml/models…`, `POST /ml/unload` | ML-Modellverwaltung (Speicherort, Rollen, Lizenzeinstufung) | Konfiguration, Status | 7 (M1) |
+| `POST /ml/edit` | Bild, Referenzbilder, Prompt, Seed | bearbeitetes Bild (Rolle `image-edit`, z. B. FLUX.2 klein) | 7 (M2) |
 
 ## Datenmodell
 
@@ -417,6 +419,18 @@ Sieben Phasen (0–6); jede endet mit einer lauffähigen App. Das Plugin-System 
 - [x] SAM-Objektaufteilung (Modus 3) über `/segment/objects`
 - [x] Inpainting-Lochfüllung mit LaMa über `/inpaint`
       (07.11.2026, [docs/abnahme-P6.md](docs/abnahme-P6.md))
+
+### Phase 7 – ML-Fotobearbeitung mit Prompts (eigenständige Spec)
+
+Umfang, Lizenzlogik, Modellverwaltung, ML-Ebenen, Inpainting, **Leinwand vergrößern und Outpainting** und der Phasenplan stehen
+in [spec-ml-fotobearbeitung_v2.md](spec-ml-fotobearbeitung_v2.md) (Phasen M0–M3, M1b). Sie gilt als Erweiterung dieser Spec;
+die vorhandenen Abschnitte bleiben unverändert gültig. Freigabe je Phase durch den Nutzer.
+
+- [x] M0 – Analyse und Machbarkeit ([docs/m0-bericht.md](docs/m0-bericht.md))
+- [ ] M1 – Modellverwaltung (Teil vorgezogen: Modellort in den Einstellungen für die Stil-Übertragung)
+- [ ] M1b – Leinwand vergrößern
+- [ ] M2 – ML-Ebenen (Bearbeiten, Generieren, Erweitern)
+- [ ] M3 – Ausbau (Inpainting-Modell, Prompt-Bibliothek, remote-api …)
 
 ## Hinweise für Claude Code und offene Punkte
 

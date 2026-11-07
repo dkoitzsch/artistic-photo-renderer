@@ -18,6 +18,7 @@ from .downloads import Downloader
 from .effects import EffectDef, is_effect_allowed, load_effects, run_effect
 from .imageio import decode_image, decode_mask, encode_image_png, encode_mask_png16
 from .jobs import JobRunner
+from . import mlconfig
 from .store import BlobStore, decode_f16, encode_f16, sha256
 from .registry import ServiceModel, is_allowed, load_registry
 
@@ -37,6 +38,7 @@ class State:
         downloader: Downloader | None = None,
         cache_dir: Path | None = None,
         effects: dict[str, EffectDef] | None = None,
+        ml_factory: Callable | None = None,
     ):
         from . import models
 
@@ -51,6 +53,10 @@ class State:
         self.lock = threading.Lock()
         self.jobs = JobRunner()
         self._models = models
+        # ML-Modellverwaltung (Spec „ML-Fotobearbeitung“): Konfiguration beliebig, Engines je Modell gecacht
+        self.ml_config_path = mlconfig.config_path()
+        self.ml_factory: Callable = ml_factory or _default_ml_factory
+        self.ml_engines: dict[str, tuple[str, object]] = {}
         self.factory = factory or models.make_model
         self.device = "test" if factory else models.pick_device()
         self.downloads = downloader or Downloader(models.CACHE_DIR / "models", token=models.hf_token)
@@ -61,6 +67,29 @@ class State:
             for m in self.models.values():
                 if m.commercial_use and not m.gated and not m.on_demand and not self.path(m):
                     self.downloads.start(m)
+
+    def ml_models(self) -> list[mlconfig.MlModel]:
+        return mlconfig.load_models(self.ml_config_path)
+
+    def ml_engine(self, m: mlconfig.MlModel):
+        """Engine zum Modell (gecacht; ändert sich der Eintrag, wird die alte entladen)."""
+        sig = json.dumps(mlconfig.to_dict(m), sort_keys=True)
+        with self.lock:
+            cur = self.ml_engines.get(m.id)
+            if cur is None or cur[0] != sig:
+                if cur is not None:
+                    unload = getattr(cur[1], "unload", None)
+                    if unload:
+                        unload()
+                # nur ein großes Modell gleichzeitig im Speicher
+                for other_id, (_s, eng) in list(self.ml_engines.items()):
+                    if other_id != m.id:
+                        unload = getattr(eng, "unload", None)
+                        if unload:
+                            unload()
+                        del self.ml_engines[other_id]
+                self.ml_engines[m.id] = (sig, self.ml_factory(m))
+            return self.ml_engines[m.id][1]
 
     def path(self, m: ServiceModel) -> Path | None:
         """Ordner mit dem fertigen Modell (eigener Download oder älterer Hugging-Face-Cache)."""
@@ -101,6 +130,12 @@ class State:
             return self.loaded[m.id]
 
 
+def _default_ml_factory(model: mlconfig.MlModel):
+    from .mlengine import DiffusersEngine
+
+    return DiffusersEngine(model)
+
+
 def create_app(state: State | None = None) -> FastAPI:
     st = state or State()
     app = FastAPI(title="Blur & Layer Studio ML-Dienst", version=__version__)
@@ -109,7 +144,7 @@ def create_app(state: State | None = None) -> FastAPI:
         allow_origins=ALLOWED_ORIGINS,
         allow_methods=["GET", "POST", "PUT", "HEAD", "DELETE"],
         allow_headers=["*"],
-        expose_headers=["X-Width", "X-Height", "X-Cached", "X-Objects"],
+        expose_headers=["X-Width", "X-Height", "X-Cached", "X-Objects", "X-Seed"],
     )
     app.state.st = st
 
@@ -230,6 +265,114 @@ def create_app(state: State | None = None) -> FastAPI:
             return encode_mask_png16(np.asarray(depth_map, dtype=np.float32))
 
         job = st.jobs.submit(run)
+        return {"id": job.id, "status": job.status, "progress": job.progress}
+
+    # ---------- ML-Modellverwaltung und Bildbearbeitung (Spec „ML-Fotobearbeitung“) ----------
+
+    def ml_json(m: mlconfig.MlModel, models: list[mlconfig.MlModel]) -> dict:
+        d = mlconfig.to_dict(m)
+        d["status"] = mlconfig.status_of(m)
+        d["loaded"] = m.id in st.ml_engines and getattr(st.ml_engines[m.id][1], "pipe", None) is not None
+        d["roleDefaults"] = [r for r in m.roles if mlconfig.default_for(models, r) is m]
+        return d
+
+    @app.get("/ml/models")
+    def ml_list() -> dict:
+        from .mlengine import hardware_info
+
+        models = st.ml_models()
+        return {
+            "configPath": str(st.ml_config_path),
+            "hardware": hardware_info(),
+            "roles": list(mlconfig.ROLES),
+            "models": [ml_json(m, models) for m in models],
+        }
+
+    @app.put("/ml/models/{model_id}")
+    def ml_put(model_id: str, body: dict = Body(...)) -> dict:
+        try:
+            m = mlconfig.from_dict({**body, "id": model_id})
+        except (mlconfig.ConfigError, ValueError, TypeError) as e:
+            raise HTTPException(400, str(e)) from e
+        models = mlconfig.upsert(st.ml_models(), m)
+        mlconfig.save_models(models, st.ml_config_path)
+        return ml_json(m, models)
+
+    @app.delete("/ml/models/{model_id}")
+    def ml_delete(model_id: str) -> dict:
+        """Entfernt nur den Eintrag – die Modelldateien bleiben unberührt."""
+        models = [m for m in st.ml_models() if m.id != model_id]
+        mlconfig.save_models(models, st.ml_config_path)
+        with st.lock:
+            cur = st.ml_engines.pop(model_id, None)
+        if cur is not None and getattr(cur[1], "unload", None):
+            cur[1].unload()
+        return {"removed": model_id}
+
+    @app.post("/ml/models/{model_id}/check")
+    def ml_check(model_id: str) -> dict:
+        models = st.ml_models()
+        m = next((x for x in models if x.id == model_id), None)
+        if m is None:
+            raise HTTPException(404, f"Unbekanntes Modell {model_id}")
+        return ml_json(m, models)
+
+    @app.post("/ml/unload")
+    def ml_unload() -> dict:
+        with st.lock:
+            engines = list(st.ml_engines.values())
+            st.ml_engines.clear()
+        for _sig, eng in engines:
+            if getattr(eng, "unload", None):
+                eng.unload()
+        return {"unloaded": len(engines)}
+
+    @app.post("/ml/edit")
+    async def ml_edit(
+        image: UploadFile = File(...),
+        refs: list[UploadFile] = File(default=[]),
+        prompt: str = Form(...),
+        seed: int = Form(0),
+        steps: int = Form(0),
+        guidance: float = Form(-1.0),
+        max_edge: int = Form(1024),
+        model: str = Form(""),
+        license_mode: str = Form("commercial"),
+    ) -> dict:
+        """Bildbearbeitung per Prompt mit Referenzbildern (Rolle `image-edit`): Ergebnis als PNG, Seed im Kopf `X-Seed`."""
+        models = st.ml_models()
+        m = next((x for x in models if x.id == model), None) if model else mlconfig.default_for(models, "image-edit")
+        if m is None or "image-edit" not in m.roles:
+            raise HTTPException(404, "Kein Modell für die Rolle image-edit eingerichtet (Einstellungen > ML-Modelle).")
+        if not (m.output_commercial_use or license_mode == "all"):
+            raise HTTPException(
+                403, f"{m.name} ist im Lizenzmodus „Kommerziell“ gesperrt (Einstufung der erzeugten Bilder: nicht kommerziell)."
+            )
+        status = mlconfig.status_of(m)
+        if not status["available"]:
+            raise HTTPException(503, f"{m.name}: {status['note']}")
+        max_edge = max(256, min(2048, max_edge))
+        data = await image.read()
+        ref_data = [await r.read() for r in refs]
+
+        def run(progress: Callable[[float], None]) -> bytes:
+            src = decode_image(data)
+            engine = st.ml_engine(m)
+            out = engine.edit(
+                [src] + [decode_image(d) for d in ref_data],
+                prompt,
+                seed,
+                steps or None,
+                guidance if guidance >= 0 else None,
+                max_edge,
+                progress,
+            )
+            job_ref["job"].meta.update({"width": out.width, "height": out.height, "seed": seed})
+            return encode_image_png(out)
+
+        job_ref: dict = {}
+        job = st.jobs.submit(run)
+        job_ref["job"] = job
         return {"id": job.id, "status": job.status, "progress": job.progress}
 
     @app.post("/segment/objects")
@@ -405,6 +548,8 @@ def create_app(state: State | None = None) -> FastAPI:
         headers = {}
         if "width" in job.meta:
             headers = {"X-Width": str(job.meta["width"]), "X-Height": str(job.meta["height"])}
+        if "seed" in job.meta:
+            headers["X-Seed"] = str(job.meta["seed"])
         if "objects" in job.meta:
             headers["X-Objects"] = json.dumps(job.meta["objects"], separators=(",", ":"))
         headers["X-Cached"] = "1" if job.cached else "0"
