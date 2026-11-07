@@ -413,9 +413,10 @@ Sieben Phasen (0–6); jede endet mit einer lauffähigen App. Das Plugin-System 
 
 ### Phase 6 – Ausbau
 
-- [ ] Effekte wie Echo-Versatz, Doppelbelichtung, Korn, Halation
-- [ ] SAM-Objektaufteilung (Modus 3) über `/segment/objects`
-- [ ] Inpainting-Lochfüllung mit LaMa über `/inpaint`
+- [x] Effekte wie Echo-Versatz, Doppelbelichtung, Korn, Halation (Echo-Versatz neu; die übrigen lieferte E1)
+- [x] SAM-Objektaufteilung (Modus 3) über `/segment/objects`
+- [x] Inpainting-Lochfüllung mit LaMa über `/inpaint`
+      (07.11.2026, [docs/abnahme-P6.md](docs/abnahme-P6.md))
 
 ## Hinweise für Claude Code und offene Punkte
 

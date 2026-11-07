@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from 'react';
 import { parseCondition } from '../../effects/expr';
 import { usePluginStore } from '../../effects/pluginStore';
+import { clearInpaintCommand, inpaintAvailability, inpaintLayer } from '../../ml/inpaint';
 import { modelById } from '../../ml/registry';
 import { detectFocusForLayer } from '../../ml/split';
 import {
@@ -175,9 +176,14 @@ export function MaskSection({ layer }: { layer: Layer }) {
         }}
       />
       {layer.holeFill ? (
-        <p className="section-note">
-          Der ausgeblendete Bereich wird aus der Umgebung aufgefüllt; die Ebene ist deckend.
-        </p>
+        <>
+          <p className="section-note">
+            {layer.inpaint
+              ? 'Der ausgeblendete Bereich ist mit LaMa (KI, Dienst) aufgefüllt; die Ebene ist deckend.'
+              : 'Der ausgeblendete Bereich wird aus der Umgebung aufgefüllt; die Ebene ist deckend.'}
+          </p>
+          <InpaintButtons layer={layer} />
+        </>
       ) : (
         <>
           <Slider
@@ -388,6 +394,40 @@ export function ShadowParams({ layer }: { layer: Layer }) {
           setNodeBlendCommand(sh.id, v as BlendMode);
         }}
       />
+    </div>
+  );
+}
+
+/** KI-Lochfüllung (LaMa im Dienst) für eine Ebene mit Lochfüllung: besser bei strukturiertem Hintergrund. */
+function InpaintButtons({ layer }: { layer: Layer }) {
+  const busy = useAppStore((st) => st.tasks.some((t) => t.label === 'Lochfüllung (LaMa)'));
+  useAppStore((st) => st.service.state);
+  useAppStore((st) => st.service.info);
+  const avail = inpaintAvailability();
+  return (
+    <div className="button-row">
+      <button
+        className="button small"
+        data-testid="inpaint-lama"
+        disabled={!avail.ok || busy}
+        title={avail.ok ? 'Loch mit dem KI-Modell LaMa auffüllen (lokaler ML-Dienst)' : avail.reason}
+        onClick={() => {
+          void inpaintLayer(layer.id);
+        }}
+      >
+        {layer.inpaint ? 'Mit LaMa neu auffüllen' : 'Mit LaMa auffüllen (KI)'}
+      </button>
+      {layer.inpaint ? (
+        <button
+          className="button small"
+          data-testid="inpaint-clear"
+          onClick={() => {
+            clearInpaintCommand(layer.id);
+          }}
+        >
+          Schnelle Füllung
+        </button>
+      ) : null}
     </div>
   );
 }

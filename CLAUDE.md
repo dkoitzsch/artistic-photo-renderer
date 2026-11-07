@@ -10,7 +10,8 @@ Abweichungen nur mit Eintrag in [DECISIONS.md](DECISIONS.md) und Hinweis an den 
 ## Status
 
 Abgeschlossen: **Phase 0 – Gerüst**, **Phase 1 – Ganzes Bild**, **Phase 2 – Vordergrund, Fokus, Schatten**,
-**Phase 3 – Tiefenebenen und Gruppen**, **Phase 4 – Weitere Bilder**, **Phase 5 – Pinsel** ([docs/abnahme-P5.md](docs/abnahme-P5.md)). Erledigte Punkte werden in der Spec abgehakt.
+**Phase 3 – Tiefenebenen und Gruppen**, **Phase 4 – Weitere Bilder**, **Phase 5 – Pinsel** ([docs/abnahme-P5.md](docs/abnahme-P5.md)),
+**Phase 6 – Ausbau** ([docs/abnahme-P6.md](docs/abnahme-P6.md)). Erledigte Punkte werden in der Spec abgehakt.
 
 **Erweiterung „Effekte & Malvorlagen“** ([docs/spec-effekte-und-malvorlagen.md](docs/spec-effekte-und-malvorlagen.md)):
 **Phasen E1 bis E5 abgeschlossen** (Pläne `docs/plan-E1.md` … `docs/plan-E5.md`; Abnahme und Demo-Listen:
@@ -258,6 +259,20 @@ Rechtecke, Störung auf dem Motiv; DECISIONS 22.10.) und `oil-dissolve` (auflös
 Rissen, Tropfen und Flocken) sowie `dream-blur` (mehrstufig: Kern-Gauß, Leuchten, Komposition; Analog-Look) sowie `ink-void` (Schwarzweiß-Leere im Gesicht, kleine Reichweite) und `wet-glass` (beschlagene, regennasse Scheibe:
 Beschlagfeld, Tropfenlinsen, Laufspuren).
 
+**Phase 6 (Ausbau):**
+
+- Effekt `echo-offset` (GPU). Doppelbelichtung und Korn/Halation gab es schon (`double-exposure`, `film-grain`).
+- Objekte (Modus 3): `ml/objects.ts` (`splitObjects`, `findObjects`, `buildObjectsGroup`: Gruppe „Objekte“ = Original ausgeblendet,
+  Hintergrund mit Lochfüllung, eine Ebene je Objekt), Auswahlregeln `ml/objectsSelect.ts` (rein; gleiche Regeln in
+  `ml-service/.../objects.py`), Worker-Anfrage `sam-objects` (Punktraster, SAM Tiny), Dienst `POST /segment/objects`
+  (SAM 2.1 Large, `transformers`), Etikettenkarte als 16-Bit-PNG, Objektliste im Kopf `X-Objects`. Dialog „Aufteilen“ → „Objekte“.
+- LaMa: Dienst `POST /inpaint` (`inpaint.py`, onnxruntime, Ausschnitt je Lochbereich auf 512 px). App: `ml/inpaint.ts`
+  (`inpaintLayer`), `Engine.inpaintRequest` (Quellbild + Lochmaske in Ebenen-Auflösung ≤ 1024 px), `Layer.inpaint` (Projektformat 10:
+  Ergebnis als Original im Projekt), Compositor `holeBuilder`/`fillHole` (`core.mixInpaint` legt das Ergebnis im Loch über das Bild,
+  sonst Push-Pull), Schaltfläche im Inspektor (`LayerSections.tsx`).
+- Große Zusatzmodelle (`lama`, `sam2.1-large`) tragen im Register `onDemand` (Download auf Knopfdruck); `testAssets` im Register
+  = Test-Gewichte (SAM 2.1 Tiny, transformers-Format). `npm run models:fetch` lädt LaMa und SAM Tiny für die Tests.
+
 **Neuen Effekt anlegen:** siehe [effects/README.md](effects/README.md) – nur einen Ordner unter `effects/` anlegen.
 
 ## Referenz-Hardware
@@ -288,7 +303,8 @@ Eine neue Phase beginnt nur nach ausdrücklicher Freigabe durch den Nutzer.
   Änderungen an bestehenden Plugin-Dateien laden ohne Neuladen nach. Ein Produktions-Build braucht für neue Plugins einen Neubau.
 - Die Anzeige zeigt die Vorschau (≤ 2048 px); beim Hineinzoomen folgt nach 150 ms Ruhe der sichtbare Ausschnitt in voller Auflösung (nicht bei Worker-/Dienst-Effekten und Parallax).
 - Ist der Dienst aus, meldet die Browser-Konsole alle 20 s einen fehlgeschlagenen `/health`-Aufruf (ML-Modus „Browser“ vermeidet das).
-- Tiefenebenen „objekttreu“ (SAM-Objekte, Basis-Spec Phase 6) fehlt noch. Die Tiefe einer Ebene ist für Parallax die
+- Tiefenebenen „objekttreu“ (Objekte nicht quer durch Tiefenbänder schneiden) fehlt noch; die Objekt-Aufteilung (Modus 3) gibt
+  es seit Phase 6. Die Tiefe einer Ebene ist für Parallax die
   Bandmitte bzw. bei „Stil je Bereich“ die mittlere Tiefe des Bereichs.
 - Analysekarten aus Modellen nutzen Depth Anything Small; Salienz ist eine weiche 320er-Karte. „Stil übertragen (KI)“ braucht
   Dienst + AdaIN-Gewichte (nur Modus „Alle“). „Stil je Bereich“ legt Bereiche einmalig als Ebenen an.
@@ -303,4 +319,6 @@ Eine neue Phase beginnt nur nach ausdrücklicher Freigabe durch den Nutzer.
   wirkt erst mit dem Schichtplan (E4). Beamer-Ecken beziehen sich auf das Beamer-Fenster.
 - Pigmentspektren sind Näherungen (keine Messdaten); Rezepte zeigen die Richtung. Die Strichführung erzeugt die Striche
   von „Pinselstriche“ für den Malplan neu (ähnlich, nicht identisch). Schichtplan-Regeln fest je Technik.
+- LaMa rechnet mit 512 × 512 px je Lochbereich (große Löcher werden weicher), Dienst nötig, Modell auf Wunsch laden (208 MB).
+  Objekt-Aufteilung: Im Browser SAM Tiny (geringere Qualität als SAM 2.1 Large im Dienst), Personen oft als ein Objekt.
 - Lange Testläufe brauchen einen wachen Rechner: im Akkubetrieb mit geschlossenem Deckel schläft der Mac (Stolperstein S23).

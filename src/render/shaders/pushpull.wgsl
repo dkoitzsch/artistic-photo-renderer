@@ -69,3 +69,24 @@ fn finish(@builtin(global_invocation_id) id: vec3u) {
   if (f.a > 0.0) { rgb = f.rgb / f.a; }
   textureStore(dst, id.xy, vec4f(rgb, 1.0));
 }
+
+// Eingefügtes Inpainting-Ergebnis (LaMa): pack_inpaint macht aus Ergebnisbild (src_a) und Lochmaske (src_b) ein
+// vormultipliziertes Teilbild (rgb · m, m); overlay_over legt es über das Bild (src_a) – außerhalb des Lochs unverändert.
+@compute @workgroup_size(8, 8)
+fn pack_inpaint(@builtin(global_invocation_id) id: vec3u) {
+  let size = textureDimensions(dst);
+  if (id.x >= size.x || id.y >= size.y) { return; }
+  let uv = (vec2f(id.xy) + 0.5) / vec2f(size);
+  let c = textureSampleLevel(src_a, samp, uv, 0.0);
+  let m = clamp(textureSampleLevel(src_b, samp, uv, 0.0).r * 1.25, 0.0, 1.0);
+  textureStore(dst, id.xy, vec4f(c.rgb * m, c.a * m));
+}
+
+@compute @workgroup_size(8, 8)
+fn overlay_over(@builtin(global_invocation_id) id: vec3u) {
+  let size = textureDimensions(dst);
+  if (id.x >= size.x || id.y >= size.y) { return; }
+  let a = textureLoad(src_a, vec2i(id.xy), 0);
+  let b = textureLoad(src_b, vec2i(id.xy), 0);
+  textureStore(dst, id.xy, a * (1.0 - b.a) + b);
+}

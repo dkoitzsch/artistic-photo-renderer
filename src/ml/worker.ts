@@ -7,6 +7,7 @@ import * as ort from 'onnxruntime-web/webgpu';
 import type { LicenseMode } from '../state/project';
 import type { LandmarkResult, Progress, WorkerRequest, WorkerResponse } from './protocol';
 import * as downloads from './downloads';
+import { candidateFromLogits, selectObjects, type ObjectCandidate } from './objectsSelect';
 import { assertAllowed, MODELS, modelById, type ModelEntry, type ModelFile } from './registry';
 
 declare const self: DedicatedWorkerGlobalScope;
@@ -344,6 +345,67 @@ async function samDecode(
   return { mask, width: w, height: h };
 }
 
+/**
+ * Objekt-Aufteilung: je Rasterpunkt eine Positiv-Aufforderung, drei Maskenkandidaten; Güte-, Stabilitäts- und
+ * Flächenfilter, NMS und Etikettenkarte in objectsSelect.ts (gleiche Regeln wie im Dienst).
+ */
+async function samObjects(
+  model: ModelEntry,
+  pair: SamPair,
+  emb: ort.Tensor[],
+  grid: number,
+  maxObjects: number,
+  onProgress: (p: Progress) => void,
+): Promise<{
+  labels: Uint16Array;
+  width: number;
+  height: number;
+  objects: { label: number; score: number; area: number }[];
+}> {
+  const S = model.input?.size ?? 1024;
+  const [e0, e1, e2] = emb;
+  if (!e0 || !e1 || !e2) throw new Error('Bildmerkmale unvollständig.');
+  const cands: ObjectCandidate[] = [];
+  let width = 256;
+  let height = 256;
+  const total = grid * grid;
+  for (let j = 0; j < grid; j++)
+    for (let i = 0; i < grid; i++) {
+      const out = await pair.decoder.run({
+        input_points: new ort.Tensor(
+          'float32',
+          new Float32Array([((i + 0.5) / grid) * S, ((j + 0.5) / grid) * S]),
+          [1, 1, 1, 2],
+        ),
+        input_labels: new ort.Tensor('int64', new BigInt64Array([1n]), [1, 1, 1]),
+        input_boxes: new ort.Tensor('float32', new Float32Array(0), [1, 0, 4]),
+        'image_embeddings.0': e0,
+        'image_embeddings.1': e1,
+        'image_embeddings.2': e2,
+      });
+      const iou = out.iou_scores;
+      const masks = out.pred_masks;
+      if (!iou || !masks) throw new Error(`${model.name}: keine Maske.`);
+      const scores = tensorToFloat32(iou);
+      const dims = masks.dims;
+      height = dims[dims.length - 2] ?? 256;
+      width = dims[dims.length - 1] ?? 256;
+      const raw = tensorToFloat32(masks);
+      for (let k = 0; k < scores.length; k++) {
+        const c = candidateFromLogits(raw, k * width * height, width * height, scores[k] ?? 0);
+        if (c) cands.push(c);
+      }
+      iou.dispose();
+      masks.dispose();
+      out.object_score_logits?.dispose();
+      const done = j * grid + i + 1;
+      if (done % 8 === 0 || done === total)
+        onProgress({ stage: 'infer', label: model.name, loaded: done / total, total: 1 });
+    }
+  const { labels, objects } = selectObjects(cands, width, height, maxObjects);
+  return { labels, width, height, objects };
+}
+
 // ---------- Tiefe (Depth Anything) ----------
 
 /**
@@ -535,7 +597,7 @@ self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
     post({ type: 'progress', id: req.id, progress });
   };
   const t0 = performance.now();
-  if (req.type === 'sam') {
+  if (req.type === 'sam' || req.type === 'sam-objects') {
     try {
       const model = modelById(req.modelId);
       if (!model || model.runtime !== 'browser')
@@ -557,6 +619,11 @@ self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
           for (const t of samEmbeddings.get(oldest) ?? []) t.dispose();
           samEmbeddings.delete(oldest);
         }
+      }
+      if (req.type === 'sam-objects') {
+        const r = await samObjects(model, pair, emb, req.grid, req.maxObjects, onProgress);
+        post({ type: 'sam-objects-result', id: req.id, ...r, ms: performance.now() - t0 }, [r.labels.buffer]);
+        return;
       }
       const r = await samDecode(model, pair, emb, req.points);
       onProgress({ stage: 'infer', label: model.name, loaded: 1, total: 1 });

@@ -192,7 +192,7 @@ export class GpuCore {
       'pushpull',
       pushpullWgsl,
       ['uniform', 'tex', 'tex', 'sampler', 'storage'],
-      ['init', 'down', 'pull', 'finish'],
+      ['init', 'down', 'pull', 'finish', 'pack_inpaint', 'overlay_over'],
     );
     this.analysis = new ModulePipelines(
       device,
@@ -750,6 +750,31 @@ export class GpuCore {
     }
     if (coarse) run('finish', coarse, coarse, dst);
     for (const t of temps) this.pool.release(t);
+  }
+
+  /**
+   * Legt ein fertiges Inpainting-Ergebnis (gleiche Größe wie image) im Lochbereich (hole.r) über das Bild; außerhalb
+   * des Lochs bleibt das Bild unverändert.
+   */
+  mixInpaint(frame: Frame, image: GPUTexture, inpainted: GPUTexture, hole: GPUTexture, dst: GPUTexture): void {
+    const packed = this.pool.acquire(dst.width, dst.height, 'inpaint-pack');
+    const run = (entry: string, a: GPUTexture, b: GPUTexture, out: GPUTexture) =>
+      this.pushPull.run(
+        frame,
+        entry,
+        [
+          { buffer: frame.uniform(new Float32Array([1, 0, 0, 0])) },
+          a.createView(),
+          b.createView(),
+          this.linearSampler,
+          out.createView(),
+        ],
+        out.width,
+        out.height,
+      );
+    run('pack_inpaint', inpainted, hole, packed);
+    run('overlay_over', image, packed, dst);
+    this.pool.release(packed);
   }
 
   // ---------- Fokuskarte ----------

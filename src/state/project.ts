@@ -5,7 +5,7 @@ import type { ParamValue } from '../effects/manifest';
 
 import type { MalplanSettings } from '../malplan/model';
 
-export const PROJECT_FORMAT_VERSION = 9;
+export const PROJECT_FORMAT_VERSION = 10;
 
 export type BlendMode =
   'normal' | 'multiply' | 'screen' | 'overlay' | 'soft-light' | 'lighten' | 'darken' | 'difference';
@@ -185,6 +185,11 @@ export type Layer = {
   maskEdge: MaskEdge;
   /** Lochfüllung: den durch die Maske ausgeblendeten Bereich aus der Umgebung auffüllen; Ebene wird deckend. */
   holeFill: boolean;
+  /**
+   * Lochfüllung aus einem KI-Ergebnis (LaMa, Dienst): ein gespeichertes Bild (Original im Projekt, Größe ≤ 1024 px)
+   * ersetzt im Lochbereich die schnelle Füllung aus der Umgebung (Projektformat 10).
+   */
+  inpaint?: { originalId: string; provenance: Provenance };
   focusMap?: FocusMapSpec;
   shadow?: ShadowLayer;
   /** Tiefenkarte des Originals (Ansicht „Tiefe“, Effekt-Eingang depth) */

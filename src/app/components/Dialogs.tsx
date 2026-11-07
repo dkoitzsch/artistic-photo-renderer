@@ -6,6 +6,8 @@ import { DEFAULT_EXPORT, exportAs, exportConfirmed, type ExportFormat } from '..
 import { checkService } from '../../ml/backend';
 import { familiesFor, modelFor } from '../../ml/registry';
 import { SERVICE_URL } from '../../ml/serviceBackend';
+import { SAM_BROWSER_ID, SAM_SERVICE_ID, splitObjects } from '../../ml/objects';
+import { modelById } from '../../ml/registry';
 import { recomputeWithCommercialModels, splitForeground } from '../../ml/split';
 import { findNode, type LicenseMode } from '../../state/project';
 import { useAppStore, useProject, type MlMode } from '../../state/store';
@@ -60,7 +62,8 @@ export function SplitDialog() {
   const families = familiesFor('foreground');
   const [family, setFamily] = useState('birefnet');
   const [landmarks, setLandmarks] = useState(true);
-  const [mode, setMode] = useState<'fg' | 'depth'>('fg');
+  const [mode, setMode] = useState<'fg' | 'depth' | 'objects'>('fg');
+  const [maxObjects, setMaxObjects] = useState(6);
   const node = project && layerId ? findNode(project.root, layerId) : undefined;
   const selected = families.find((f) => f.family === family);
   const allowed = selected ? selected.commercialUse || licenseMode === 'all' : false;
@@ -109,6 +112,18 @@ export function SplitDialog() {
           />
           <span>Tiefenebenen (2–8)</span>
         </label>
+        <label className="choice">
+          <input
+            type="radio"
+            name="split-mode"
+            checked={mode === 'objects'}
+            onChange={() => {
+              setMode('objects');
+            }}
+            data-testid="mode-objects"
+          />
+          <span>Objekte (automatisch, SAM)</span>
+        </label>
       </fieldset>
       {mode === 'depth' && layerId ? (
         <DepthSplitPanel
@@ -117,6 +132,55 @@ export function SplitDialog() {
             close(null);
           }}
         />
+      ) : mode === 'objects' && layerId ? (
+        <>
+          <Slider
+            label="Höchstens … Objekte"
+            hint="Jedes größere Objekt wird eine eigene Ebene; der Rest ist der Hintergrund (mit Lochfüllung)."
+            value={maxObjects}
+            min={2}
+            max={12}
+            defaultValue={6}
+            step={1}
+            onChange={(v) => {
+              setMaxObjects(v);
+            }}
+            testId="objects-max"
+          />
+          <p className="section-note">
+            {(() => {
+              const large = modelById(SAM_SERVICE_ID);
+              const svc =
+                mlMode !== 'browser' &&
+                service.state === 'online' &&
+                (service.info?.models.some((m) => m.id === large?.id && m.available) ?? false);
+              return svc
+                ? `${large?.name ?? 'SAM 2.1 Large'} im Dienst`
+                : `${modelById(SAM_BROWSER_ID)?.name ?? 'SAM 2.1 Tiny'} im Browser`;
+            })()}
+          </p>
+          <div className="dialog-actions">
+            <button
+              className="button"
+              onClick={() => {
+                close(null);
+              }}
+            >
+              Abbrechen
+            </button>
+            <button
+              className="button primary"
+              disabled={!node}
+              data-testid="objects-start"
+              onClick={() => {
+                close(null);
+                void splitObjects(layerId, maxObjects);
+              }}
+            >
+              Objekte suchen
+            </button>
+          </div>
+        </>
       ) : (
         <>
           <fieldset className="choice-list">

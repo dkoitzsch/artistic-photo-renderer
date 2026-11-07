@@ -98,7 +98,7 @@ describe('Projektformat 9', () => {
       /fehlendes Original/,
     );
     expect(() => parseProject({ ...withMaps, analysis: { o1: { faces: ref() } } })).toThrow(/faceCount/);
-    expect(parseProject({ ...p, formatVersion: 8 }).formatVersion).toBe(9);
+    expect(parseProject({ ...p, formatVersion: 8 }).formatVersion).toBe(10);
   });
 });
 

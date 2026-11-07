@@ -104,6 +104,14 @@ def make_model(model: ServiceModel, device: str, path: Path):
     """Passendes Modell zur Aufgabe aus dem Register."""
     if model.task == "depth":
         return HfDepth(model, device, path)
+    if model.task == "objects":
+        from .objects import HfSam2Objects
+
+        return HfSam2Objects(model, device, path)
+    if model.task == "inpaint":
+        from .inpaint import OnnxInpainter
+
+        return OnnxInpainter(model, device, path)
     return HfSegmenter(model, device, path)
 
 

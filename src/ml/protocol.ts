@@ -51,6 +51,18 @@ export type WorkerRequest =
       mirror?: string | null;
     }
   | {
+      /** Objekt-Aufteilung: Raster von Punktaufforderungen (grid × grid) → Instanzmasken (Etikettenkarte) */
+      type: 'sam-objects';
+      id: number;
+      modelId: string;
+      licenseMode: LicenseMode;
+      key: string;
+      image?: ImageBitmap;
+      grid: number;
+      maxObjects: number;
+      mirror?: string | null;
+    }
+  | {
       type: 'downloads';
       id: number;
       cmd: DownloadCommand;
@@ -66,6 +78,16 @@ export type WorkerResponse =
   /** Wahrscheinlichkeit 0..1 je Pixel (256 × 256 über das gestreckte Bild); needImage: Merkmale fehlen */
   | { type: 'sam-result'; id: number; mask: Float32Array; width: number; height: number; ms: number }
   | { type: 'sam-need-image'; id: number }
+  /** Etikettenkarte (0 = kein Objekt) 256 × 256 über das gestreckte Bild und die gewählten Objekte */
+  | {
+      type: 'sam-objects-result';
+      id: number;
+      labels: Uint16Array;
+      width: number;
+      height: number;
+      objects: { label: number; score: number; area: number }[];
+      ms: number;
+    }
   | { type: 'error'; id: number; message: string }
   | { type: 'done'; id: number }
   | { type: 'download-state'; states: DownloadState[] };

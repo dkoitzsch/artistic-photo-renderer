@@ -8,6 +8,8 @@ import type { browserDepth } from '../../src/ml/browserBackend';
 import type { modelById } from '../../src/ml/registry';
 import type * as split from '../../src/ml/split';
 import type * as analysis from '../../src/ml/analysis';
+import type { clearInpaintCommand, inpaintAvailability, inpaintLayer } from '../../src/ml/inpaint';
+import type { splitObjects } from '../../src/ml/objects';
 import type { presetsSaved, usePresetStore } from '../../src/presets/store';
 import type { useMalplanStore } from '../../src/malplan/store';
 
@@ -35,6 +37,10 @@ declare global {
           width: number,
           height: number,
         ) => Promise<void>;
+        inpaintLayer: typeof inpaintLayer;
+        inpaintAvailability: typeof inpaintAvailability;
+        clearInpaintCommand: typeof clearInpaintCommand;
+        splitObjects: typeof splitObjects;
       };
       presets: { store: typeof usePresetStore; saved: typeof presetsSaved };
       malplan: typeof useMalplanStore;

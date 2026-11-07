@@ -108,11 +108,11 @@ describe('parseProject', () => {
     expect(() => parseProject({ ...p, root: { ...p.root, kind: 'layer' } })).toThrow();
   });
 
-  it('migriert Format 2 → 9 und prüft Tiefenmasken und Transformation', () => {
+  it('migriert Format 2 → 10 und prüft Tiefenmasken und Transformation', () => {
     const p = createProjectFromImage(original);
     const v2 = JSON.parse(JSON.stringify({ ...p, formatVersion: 2 })) as Record<string, unknown>;
     const migrated = parseProject(v2);
-    expect(migrated.formatVersion).toBe(9);
+    expect(migrated.formatVersion).toBe(10);
     expect(migrated.root).toEqual(p.root);
 
     const layer = p.root.children[0];
@@ -155,7 +155,7 @@ describe('parseProject', () => {
 
   it('Format 5/6: Mischmodus und Maske je Effekt', () => {
     const p = addEffect(createProjectFromImage(original), createProjectFromImage(original).root.id, fx('m'));
-    expect(p.formatVersion).toBe(9);
+    expect(p.formatVersion).toBe(10);
     const withMix = {
       ...p,
       root: {
@@ -181,7 +181,7 @@ describe('parseProject', () => {
     ).toThrow(/Kartenbereich/);
     expect(() => parseProject(bad({ mask: { kind: 'brush' } }))).toThrow(/mask\.kind/);
     // altes Projekt (Format 4) wird ohne Änderung auf 6 gehoben
-    expect(parseProject({ ...JSON.parse(JSON.stringify(p)), formatVersion: 4 }).formatVersion).toBe(9);
+    expect(parseProject({ ...JSON.parse(JSON.stringify(p)), formatVersion: 4 }).formatVersion).toBe(10);
   });
 
   it('Format 6: Maske einer Gruppe', () => {
@@ -281,5 +281,40 @@ describe('Gruppen: Baum umbauen und Gruppenbearbeitung', () => {
     expect(parsed.malplan?.colors).toBe(9);
     expect(parsed.malplan?.values.levels).toBe(4);
     expect(() => parseProject({ ...(raw as object), malplan: 3 })).toThrow(/malplan/);
+  });
+});
+
+describe('KI-Lochfüllung (Projektformat 10)', () => {
+  const prov = { modelId: 'lama', commercialUse: true, createdAt: '2026-11-07T00:00:00Z' };
+  const withInpaint = (originalId: string) => {
+    const p = createProjectFromImage(original);
+    const layer = p.root.children[0];
+    if (layer?.kind !== 'layer') throw new Error('keine Ebene');
+    return {
+      ...p,
+      originals: { ...p.originals, abc: { ...original, id: 'abc', fileName: 'Lochfüllung.png' } },
+      root: { ...p.root, children: [{ ...layer, inpaint: { originalId, provenance: prov } }] },
+    };
+  };
+
+  it('akzeptiert eine Lochfüllung mit vorhandenem Original und übernimmt sie unverändert', () => {
+    const p = withInpaint('abc');
+    const parsed = parseProject(JSON.parse(JSON.stringify(p)));
+    const layer = parsed.root.children[0];
+    expect(layer?.kind === 'layer' ? layer.inpaint?.originalId : null).toBe('abc');
+  });
+
+  it('lehnt eine Lochfüllung ab, deren Original fehlt oder deren Herkunft fehlt', () => {
+    expect(() => parseProject(JSON.parse(JSON.stringify(withInpaint('fehlt'))))).toThrow(/inpaint/);
+    const bad = JSON.parse(JSON.stringify(withInpaint('abc'))) as {
+      root: { children: { inpaint?: { provenance?: unknown } }[] };
+    };
+    delete bad.root.children[0]?.inpaint?.provenance;
+    expect(() => parseProject(bad)).toThrow();
+  });
+
+  it('migriert Format 9 → 10 ohne Änderung', () => {
+    const p = createProjectFromImage(original);
+    expect(parseProject({ ...JSON.parse(JSON.stringify(p)), formatVersion: 9 }).formatVersion).toBe(10);
   });
 });

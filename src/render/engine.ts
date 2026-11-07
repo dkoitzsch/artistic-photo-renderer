@@ -566,6 +566,45 @@ export class Engine {
     return out;
   }
 
+  /**
+   * Eingabe für das Inpainting (LaMa im Dienst): Quellbild der Ebene (8-Bit-sRGB, RGBA) und Lochmaske (8 Bit) in
+   * Ebenen-Auflösung, lange Kante höchstens maxEdge. null, wenn die Ebene kein Loch hat.
+   */
+  async inpaintRequest(
+    project: Project,
+    layerId: string,
+    maxEdge = 1024,
+  ): Promise<{ width: number; height: number; image: Uint8ClampedArray<ArrayBuffer>; mask: Uint8Array } | null> {
+    const layer = findNode(project.root, layerId);
+    if (layer?.kind !== 'layer') return null;
+    const o = project.originals[layer.originalId];
+    const { width: W, height: H } = project.canvas;
+    let s = Math.min(1, maxEdge / Math.max(W, H));
+    if (o) s = Math.min(s, maxEdge / (Math.max(o.width, o.height) * Math.max(Math.abs(layer.transform.scale), 1e-3)));
+    const cs: [number, number] = [Math.max(1, Math.round(W * s)), Math.max(1, Math.round(H * s))];
+    const frame = new Frame(this.device, this.core.pool, 'inpaint-input');
+    const input = this.compositor.inpaintInput(frame, project, layer, {
+      scale: s,
+      canvasSize: cs,
+      region: { x: 0, y: 0, width: cs[0], height: cs[1] },
+      ignoreEffects: true,
+      cache: null,
+      variant: 'inpaint',
+    });
+    frame.submit();
+    this.sources.endFrame();
+    if (!input) return null;
+    try {
+      const image = await this.encode(input.image, [0, 0], input.width, input.height);
+      const f = await this.readFloat(input.hole);
+      const mask = new Uint8Array(input.width * input.height);
+      for (let i = 0; i < mask.length; i++) mask[i] = Math.round(Math.min(1, Math.max(0, f[i * 4] ?? 0)) * 255);
+      return { width: input.width, height: input.height, image, mask };
+    } finally {
+      input.release();
+    }
+  }
+
   /** Analysekarte einer Ebene in voller Leinwandauflösung (Tests, Fehlersuche). */
   async readMap(project: Project, layerId: string, kind: OverlayKind): Promise<Float32Array | null> {
     const { width: W, height: H } = project.canvas;

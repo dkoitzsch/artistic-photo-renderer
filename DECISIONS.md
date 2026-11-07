@@ -94,6 +94,27 @@ Abweichungen von der Spec und Festlegungen bei unklaren Anforderungen. Neueste o
   Stück).
 - **Betrifft:** Effektkatalog 5.7; keine Phase, keine neue Abhängigkeit, keine Modelle.
 
+## 2026-11-07 – Phase 6: Ausbau (Echo-Versatz, SAM-Objekte, LaMa)
+
+- **Effekte:** Doppelbelichtung (`double-exposure`), Korn und Halation (`film-grain`) existierten seit E1; neu ist nur
+  `echo-offset`. Kein Doppel-Effekt für Halation (`film-grain` + `bloom` decken sie ab).
+- **LaMa:** ONNX-Export von Carve/LaMa-ONNX (Apache-2.0, feste Eingabe 512 × 512) über **onnxruntime** (MIT) im Dienst statt
+  PyTorch-LaMa (benötigt das Paket `saicinpainting`, das nicht auf PyPI gepflegt ist). Je Lochbereich ein quadratischer Ausschnitt
+  (2 × Lochgröße) auf 512 px, Rückskalierung und weiches Einblenden nur im Loch. CPU statt CoreML: deterministisch, 1 s je Bild.
+  Ergebnis als **Original im Projekt** (`Layer.inpaint`, Projektformat 10) und nur im (erweiterten) Lochbereich über die
+  Ebene gelegt; die schnelle Push-Pull-Füllung bleibt Standard und Rückfall. Hintergrund: Projektdatei und Undo kommen ohne
+  Sonderfall aus; die Lochfüllung bleibt exportierbar.
+- **Objekt-Aufteilung:** Etikettenkarte statt überlappender Masken (große Objekte zuerst, kleinere überschreiben): jede Ebene
+  hat eigenen Inhalt, nichts wird doppelt weichgezeichnet. Regeln wie die „automatische Maskenerzeugung“ von SAM (Punktraster,
+  Güte ≥ 0,8, Stabilität ≥ 0,85, Fläche 1–75 %, NMS bei IoU ≥ 0,6, mindestens 25 % sichtbar). Im Dienst **SAM 2.1 Large** über
+  `transformers` (`Sam2Model`, 16 × 16 Punkte, CPU), im Browser das vorhandene **SAM 2.1 Tiny** (8 × 8 Punkte); Auswahl in
+  Python und TypeScript gleich und getestet. Die Auswahl läuft im Worker, damit keine 50 MB Masken übertragen werden.
+- **Große Zusatzmodelle:** `onDemand` im Register: `lama` (208 MB) und `sam2.1-large` (898 MB) lädt der Dienst nicht beim
+  Start, sondern auf Knopfdruck im Dialog „Modelle“. Für `sam2.1-large` sind nur die vier benötigten Dateien festgelegt
+  (nicht die doppelte `.pt`-Datei). Test-Gewichte liegen unter `testAssets` im Register (SAM 2.1 Tiny im transformers-Format).
+- **Betrifft:** Basis-Spec Phase 6, Abschnitte „Modus 3 – Objekte“ und „Lokaler Python-Dienst“; neue Python-Abhängigkeit
+  onnxruntime (MIT; protobuf BSD-3-Clause, flatbuffers Apache-2.0).
+
 <!-- Vorlage
 ## JJJJ-MM-TT – Kurztitel
 - **Frage:**

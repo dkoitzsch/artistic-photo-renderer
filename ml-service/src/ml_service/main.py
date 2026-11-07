@@ -16,7 +16,7 @@ from fastapi.responses import Response
 from . import __version__
 from .downloads import Downloader
 from .effects import EffectDef, is_effect_allowed, load_effects, run_effect
-from .imageio import decode_image, encode_mask_png16
+from .imageio import decode_image, decode_mask, encode_image_png, encode_mask_png16
 from .jobs import JobRunner
 from .store import BlobStore, decode_f16, encode_f16, sha256
 from .registry import ServiceModel, is_allowed, load_registry
@@ -59,7 +59,7 @@ class State:
         if prefetch:
             # Kommerziell nutzbare Modelle beim Start herunterladen (Fortschritt in /health, pausier-/stoppbar)
             for m in self.models.values():
-                if m.commercial_use and not m.gated and not self.path(m):
+                if m.commercial_use and not m.gated and not m.on_demand and not self.path(m):
                     self.downloads.start(m)
 
     def path(self, m: ServiceModel) -> Path | None:
@@ -109,7 +109,7 @@ def create_app(state: State | None = None) -> FastAPI:
         allow_origins=ALLOWED_ORIGINS,
         allow_methods=["GET", "POST", "PUT", "HEAD", "DELETE"],
         allow_headers=["*"],
-        expose_headers=["X-Width", "X-Height", "X-Cached"],
+        expose_headers=["X-Width", "X-Height", "X-Cached", "X-Objects"],
     )
     app.state.st = st
 
@@ -232,6 +232,66 @@ def create_app(state: State | None = None) -> FastAPI:
         job = st.jobs.submit(run)
         return {"id": job.id, "status": job.status, "progress": job.progress}
 
+    @app.post("/segment/objects")
+    async def segment_objects(
+        image: UploadFile = File(...),
+        model: str = Form("sam2.1-large"),
+        license_mode: str = Form("commercial"),
+        max_objects: int = Form(8),
+        grid: int = Form(16),
+    ) -> dict:
+        m = st.models.get(model)
+        if m is None or m.task != "objects":
+            raise HTTPException(404, f"Unbekanntes Objektmodell {model}")
+        if not is_allowed(m, license_mode):
+            raise HTTPException(403, f"{m.name} ist nur nicht-kommerziell nutzbar (Lizenzmodus „Kommerziell“).")
+        ok, note = st.available(m)
+        if not ok:
+            raise HTTPException(503, note or "Modell nicht verfügbar")
+        max_objects = max(1, min(24, max_objects))
+        grid = max(4, min(32, grid))
+        data = await image.read()
+        job_ref: dict = {}
+
+        def run(progress: Callable[[float], None]) -> bytes:
+            img = decode_image(data)
+            progress(0.05)
+            labels, objs = st.segmenter(m).objects(img, max_objects, grid, progress)
+            job_ref["job"].meta.update({"objects": objs, "width": labels.shape[1], "height": labels.shape[0]})
+            return encode_mask_png16(labels.astype(np.float32) / 65535.0)
+
+        job = st.jobs.submit(run)
+        job_ref["job"] = job
+        return {"id": job.id, "status": job.status, "progress": job.progress}
+
+    @app.post("/inpaint")
+    async def inpaint(
+        image: UploadFile = File(...),
+        mask: UploadFile = File(...),
+        model: str = Form("lama"),
+        license_mode: str = Form("commercial"),
+    ) -> dict:
+        m = st.models.get(model)
+        if m is None or m.task != "inpaint":
+            raise HTTPException(404, f"Unbekanntes Inpainting-Modell {model}")
+        if not is_allowed(m, license_mode):
+            raise HTTPException(403, f"{m.name} ist nur nicht-kommerziell nutzbar (Lizenzmodus „Kommerziell“).")
+        ok, note = st.available(m)
+        if not ok:
+            raise HTTPException(503, note or "Modell nicht verfügbar")
+        image_data = await image.read()
+        mask_data = await mask.read()
+
+        def run(progress: Callable[[float], None]) -> bytes:
+            img = decode_image(image_data)
+            hole = decode_mask(mask_data, img.size) > 0.5
+            progress(0.05)
+            out = st.segmenter(m).inpaint(img, hole, progress)
+            return encode_image_png(out)
+
+        job = st.jobs.submit(run)
+        return {"id": job.id, "status": job.status, "progress": job.progress}
+
     # ---------- Effekte (Spec „Effekte“ 3.2) ----------
 
     @app.put("/images/{digest}")
@@ -345,6 +405,8 @@ def create_app(state: State | None = None) -> FastAPI:
         headers = {}
         if "width" in job.meta:
             headers = {"X-Width": str(job.meta["width"]), "X-Height": str(job.meta["height"])}
+        if "objects" in job.meta:
+            headers["X-Objects"] = json.dumps(job.meta["objects"], separators=(",", ":"))
         headers["X-Cached"] = "1" if job.cached else "0"
         return Response(job.result, media_type=job.media_type, headers=headers)
 

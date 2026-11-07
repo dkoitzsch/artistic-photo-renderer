@@ -299,6 +299,78 @@
       },
       "checkedAt": "2026-10-18",
       "$note": "Code MIT (naoto0804/pytorch-AdaIN, Original xunhuang1995/AdaIN-style MIT). Für die Gewichte ist keine Lizenz angegeben; der Decoder ist mit MS-COCO und WikiArt (Kaggle „Painter by Numbers“) trainiert, das VGG-19 normalisiert (Gatys et al.). Daher nur im Modus „Alle“."
+    },
+    {
+      "id": "lama",
+      "family": "lama",
+      "name": "LaMa (Inpainting)",
+      "task": "inpaint",
+      "runtime": "service",
+      "license": "Apache-2.0",
+      "commercialUse": true,
+      "onDemand": true,
+      "source": "https://github.com/advimman/lama",
+      "revision": "c3c0c9e468934d62e79c329e35d82dd09ff8c444",
+      "files": [
+        {
+          "name": "lama_fp32.onnx",
+          "url": "https://huggingface.co/Carve/LaMa-ONNX/resolve/c3c0c9e468934d62e79c329e35d82dd09ff8c444/lama_fp32.onnx",
+          "sha256": "1faef5301d78db7dda502fe59966957ec4b79dd64e16f03ed96913c7a4eb68d6",
+          "size": 208044816
+        }
+      ],
+      "input": {
+        "size": 512,
+        "mean": [0, 0, 0],
+        "std": [1, 1, 1]
+      },
+      "checkedAt": "2026-11-07",
+      "$note": "big-lama (Suvorov et al., WACV 2022; Code und Gewichte Apache-2.0, advimman/lama), ONNX-Export fp32 von Carve/LaMa-ONNX (Apache-2.0, feste Eingabe 512 × 512). Ausgabe 0…255. Läuft im Dienst über onnxruntime (MIT); Ausschnitt um das Loch wird auf 512 px skaliert."
+    },
+    {
+      "id": "sam2.1-large",
+      "family": "sam2",
+      "name": "SAM 2.1 Hiera Large (Objekte)",
+      "task": "objects",
+      "runtime": "service",
+      "license": "Apache-2.0",
+      "commercialUse": true,
+      "onDemand": true,
+      "source": "https://huggingface.co/facebook/sam2.1-hiera-large",
+      "revision": "665f8e2ad61cf5f53d65644ff27c8ee525124610",
+      "files": [
+        {
+          "name": "config.json",
+          "url": "https://huggingface.co/facebook/sam2.1-hiera-large/resolve/665f8e2ad61cf5f53d65644ff27c8ee525124610/config.json",
+          "sha256": "00446988cf4d617118d2d347eabe2c46aebed744628facdd540508be30b69ec3",
+          "size": 5705
+        },
+        {
+          "name": "preprocessor_config.json",
+          "url": "https://huggingface.co/facebook/sam2.1-hiera-large/resolve/665f8e2ad61cf5f53d65644ff27c8ee525124610/preprocessor_config.json",
+          "sha256": "6ebf229ee259368ce4a8d4f2fe893a72b053023710853e257253939e601f583d",
+          "size": 683
+        },
+        {
+          "name": "processor_config.json",
+          "url": "https://huggingface.co/facebook/sam2.1-hiera-large/resolve/665f8e2ad61cf5f53d65644ff27c8ee525124610/processor_config.json",
+          "sha256": "f8a68e865cfad115c1c2763f3d93eca7b1c622da06da2a9273eb437fb2389b6d",
+          "size": 95
+        },
+        {
+          "name": "model.safetensors",
+          "url": "https://huggingface.co/facebook/sam2.1-hiera-large/resolve/665f8e2ad61cf5f53d65644ff27c8ee525124610/model.safetensors",
+          "sha256": "dc407dce21301fd94abb395c5099b4f2c455fdc8a8f261ac3d0ea6d4cd197230",
+          "size": 897897416
+        }
+      ],
+      "input": {
+        "size": 1024,
+        "mean": [0.485, 0.456, 0.406],
+        "std": [0.229, 0.224, 0.225]
+      },
+      "checkedAt": "2026-11-07",
+      "$note": "SAM 2.1 Hiera Large (facebook/sam2.1-hiera-large, Apache-2.0, Code und Gewichte) im transformers-Format; Raster von Punktaufforderungen → Instanzmasken (Objekt-Aufteilung, Modus 3). Läuft im Dienst auf der CPU (BLS_SAM_DEVICE=mps für die Apple-GPU)."
     }
   ],
   "libraries": [
@@ -346,6 +418,38 @@
       "commercialUse": true,
       "source": "https://github.com/Agamnentzar/ag-psd",
       "checkedAt": "2026-10-14"
+    }
+  ],
+  "testAssets": [
+    {
+      "dir": "sam2.1-hiera-tiny",
+      "note": "Nur für Tests des Dienstes (SAM 2.1 Tiny im transformers-Format, Apache-2.0, facebook/sam2.1-hiera-tiny); nicht Teil der App.",
+      "files": [
+        {
+          "name": "config.json",
+          "url": "https://huggingface.co/facebook/sam2.1-hiera-tiny/resolve/de431c4043854a71d8101e17995dfe596bf101a5/config.json",
+          "sha256": "860aff9751b139d83a4ad7df1e5535416fded533e0ead02625edbefcb9953cce",
+          "size": 5695
+        },
+        {
+          "name": "preprocessor_config.json",
+          "url": "https://huggingface.co/facebook/sam2.1-hiera-tiny/resolve/de431c4043854a71d8101e17995dfe596bf101a5/preprocessor_config.json",
+          "sha256": "6ebf229ee259368ce4a8d4f2fe893a72b053023710853e257253939e601f583d",
+          "size": 683
+        },
+        {
+          "name": "processor_config.json",
+          "url": "https://huggingface.co/facebook/sam2.1-hiera-tiny/resolve/de431c4043854a71d8101e17995dfe596bf101a5/processor_config.json",
+          "sha256": "f8a68e865cfad115c1c2763f3d93eca7b1c622da06da2a9273eb437fb2389b6d",
+          "size": 95
+        },
+        {
+          "name": "model.safetensors",
+          "url": "https://huggingface.co/facebook/sam2.1-hiera-tiny/resolve/de431c4043854a71d8101e17995dfe596bf101a5/model.safetensors",
+          "sha256": "48c14467e5cf9e51870511feb72c89688e82dd74523142c0538b663e193ac2a7",
+          "size": 155908064
+        }
+      ]
     }
   ]
 }

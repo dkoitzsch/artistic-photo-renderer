@@ -152,6 +152,12 @@ function checkLayer(n: Record<string, unknown>, where: string, originals: Record
   checkStrokes(n.maskStrokes, `${where}.maskStrokes`);
   checkPainted(n.selection, `${where}.selection`);
   checkPainted(n.holeMask, `${where}.holeMask`);
+  if (n.inpaint !== undefined) {
+    const ip = n.inpaint;
+    if (!isObj(ip) || !isStr(ip.originalId) || !(ip.originalId in originals))
+      fail(`${where}.inpaint verweist auf ein fehlendes Original`);
+    checkProvenance(ip.provenance, `${where}.inpaint`);
+  }
   if (n.initial !== undefined) {
     if (!isObj(n.initial)) fail(`${where}.initial unvollständig`);
     checkMaskRef(n.initial.mask, `${where}.initial.mask`);
@@ -220,6 +226,8 @@ function migrate(raw: Record<string, unknown>): Record<string, unknown> {
   if (v.formatVersion === 7) v = { ...v, formatVersion: 8 };
   // 8 → 9: optionale Analysekarten je Original und Segmente
   if (v.formatVersion === 8) v = { ...v, formatVersion: 9 };
+  // 9 → 10: optionale KI-Lochfüllung (inpaint) je Ebene
+  if (v.formatVersion === 9) v = { ...v, formatVersion: 10 };
   return v;
 }
 

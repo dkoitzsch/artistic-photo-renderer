@@ -169,6 +169,21 @@ async function hasTransparency(blob: Blob): Promise<boolean> {
   return false;
 }
 
+/**
+ * Speichert ein erzeugtes Bild (z. B. KI-Lochfüllung) als Original (OPFS + GPU) und liefert die Referenz – ohne
+ * Verlaufseintrag; der Aufrufer trägt sie zusammen mit seiner Änderung ins Projekt ein.
+ */
+export async function registerOriginalFromBlob(blob: Blob, fileName: string): Promise<OriginalRef> {
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  const bitmap = await decode(new Blob([bytes], { type: blob.type || 'image/png' }));
+  const id = await sha256Hex(bytes);
+  await saveOriginal(id, bytes);
+  getEngine()?.sources.add(id, bitmap);
+  const { width, height } = bitmap;
+  bitmap.close();
+  return { id, fileName, mimeType: blob.type || 'image/png', width, height };
+}
+
 /** Lädt eine Bilddatei als Original ins offene Projekt (ohne Ebene) – z. B. als Zweitbild eines Effekts. */
 export async function importOriginal(file: File): Promise<OriginalRef | null> {
   const { notify, setBusy } = useAppStore.getState();

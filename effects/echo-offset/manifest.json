@@ -1,0 +1,152 @@
+{
+  "id": "echo-offset",
+  "name": "Echo-Versatz",
+  "version": "1.0.0",
+  "category": "Digital & Glitch",
+  "description": "Das Bild wiederholt sich als versetzte, abklingende Echos in einer Richtung (Zeitspur, Mehrfachbelichtung, Stroboskop). Jedes Echo kann seinen Farbton drehen und sich vergrößern.",
+  "inputs": ["source"],
+  "passes": 1,
+  "implementations": {
+    "preview": "webgpu",
+    "final": "webgpu"
+  },
+  "license": {
+    "commercialUse": true,
+    "notes": "Eigene Implementierung (verschobene Abtastungen, abklingende Überlagerung)."
+  },
+  "cost": "realtime",
+  "randomized": false,
+  "requires": [],
+  "reach": "max(canvasWidth, canvasHeight) * distance * count / 100 + 16",
+  "params": [
+    {
+      "key": "count",
+      "label": "Anzahl der Echos",
+      "type": "int",
+      "min": 1,
+      "max": 16,
+      "default": 6
+    },
+    {
+      "key": "distance",
+      "label": "Abstand",
+      "hint": "% der langen Bildkante je Echo",
+      "type": "float",
+      "min": 0.1,
+      "max": 15,
+      "default": 2.5,
+      "step": 0.1,
+      "unit": "%"
+    },
+    {
+      "key": "angle",
+      "label": "Richtung",
+      "type": "angle",
+      "default": 0
+    },
+    {
+      "key": "decay",
+      "label": "Abklingen",
+      "hint": "Helligkeitsverlust je Echo",
+      "type": "float",
+      "min": 0,
+      "max": 90,
+      "default": 25,
+      "unit": "%"
+    },
+    {
+      "key": "mode",
+      "label": "Überlagerung",
+      "type": "enum",
+      "options": [
+        {
+          "value": "lighten",
+          "label": "Aufhellen (Zeitspur)"
+        },
+        {
+          "value": "screen",
+          "label": "Negativ multiplizieren"
+        },
+        {
+          "value": "average",
+          "label": "Mittelwert (Mehrfachbelichtung)"
+        },
+        {
+          "value": "behind",
+          "label": "Hinter dem Original"
+        }
+      ],
+      "default": "lighten"
+    },
+    {
+      "key": "hueShift",
+      "label": "Farbton je Echo",
+      "type": "float",
+      "min": -90,
+      "max": 90,
+      "default": 0,
+      "unit": "°"
+    },
+    {
+      "key": "zoom",
+      "label": "Vergrößerung je Echo",
+      "hint": "% um die Bildmitte",
+      "type": "float",
+      "min": -10,
+      "max": 10,
+      "default": 0,
+      "step": 0.1,
+      "unit": "%"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Zeitspur",
+      "values": {
+        "count": 8,
+        "distance": 1.6,
+        "angle": 0,
+        "decay": 30,
+        "mode": "lighten",
+        "hueShift": 0,
+        "zoom": 0
+      }
+    },
+    {
+      "name": "Mehrfachbelichtung",
+      "values": {
+        "count": 5,
+        "distance": 3.5,
+        "angle": 20,
+        "decay": 15,
+        "mode": "average",
+        "hueShift": 12,
+        "zoom": 0
+      }
+    },
+    {
+      "name": "Farbiges Echo",
+      "values": {
+        "count": 8,
+        "distance": 1.2,
+        "angle": 315,
+        "decay": 40,
+        "mode": "screen",
+        "hueShift": 30,
+        "zoom": 0.6
+      }
+    },
+    {
+      "name": "Schatten dahinter",
+      "values": {
+        "count": 6,
+        "distance": 2,
+        "angle": 45,
+        "decay": 45,
+        "mode": "behind",
+        "hueShift": 0,
+        "zoom": 0
+      }
+    }
+  ]
+}

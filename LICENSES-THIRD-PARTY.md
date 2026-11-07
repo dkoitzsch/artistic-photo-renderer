@@ -39,6 +39,9 @@ Zentrale Liste aller Fremdkomponenten (Spec „Effekte & Malvorlagen“, Abschni
 | timm / kornia    | 1.0.30 / 0.8.3 | Apache-2.0                                                                           | ja          |
 | einops           | 0.8.2          | MIT                                                                                  | ja          |
 | scipy            | 1.18.1         | BSD-3-Clause                                                                         | ja          |
+| onnxruntime      | 1.31.1         | MIT                                                                                  | ja          |
+| protobuf         | 7.36.2         | BSD-3-Clause (von onnxruntime)                                                       | ja          |
+| flatbuffers      | 25.12.19       | Apache-2.0 (von onnxruntime)                                                         | ja          |
 | pytest, httpx    | 9.1.1, 0.28.1  | MIT, BSD-3-Clause (nur Tests)                                                        | ja          |
 
 ## Modelle

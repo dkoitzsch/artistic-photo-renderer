@@ -185,6 +185,7 @@ Für jeden Effekt gilt als Mindest-Akzeptanzkriterium: funktioniert mit Maske, D
 | `displace` | Slit-Scan / Displacement | Quelle (Analysekarte oder Bild), Stärke, Richtung, Streifenbreite | B | E2 |
 | `painterly-glitch` | Malerischer Glitch: adaptive Blöcke nach Detail, verschobene Blöcke, gezogene Streifen/Farbbalken, Regenbogenstreifen, Ausfälle; Motiv geschützt (Salienz, Gesichter, Fokus) | Blockgrößen (% der Kante), Detailempfindlichkeit, Restdetail, Versatz, Zuglänge, Balkenhöhe, Farbbalken↔Linien, Richtung, Kanalversatz, Ausfälle, Rauschen, Motivschutz, Seed | B | nachträglich (nach E5) |
 | `slice-glitch` | Scheiben-Versatz: fotografisch bleibende waagerechte Scheiben und Rechtecke verrutschen, gezogene Streifen; Störung sammelt sich auf dem Motiv (Salienz, Gesichter, Fokus) in Nestern | Menge, Motivbezug, Zusammenballung, Richtung, Scheibenhöhe/-länge, Versatz, Rechtecke und Größe, Streifenzug, Kanalversatz, Seed | B | nachträglich (nach E5) |
+| `echo-offset` | Echo-Versatz: das Bild wiederholt sich als versetzte, abklingende Echos (Zeitspur, Mehrfachbelichtung, Stroboskop) | Anzahl, Abstand, Richtung, Abklingen, Überlagerung, Farbton und Vergrößerung je Echo | B | Phase 6 (Basis-Spec) |
 | `ascii` | ASCII-/Text-Art | Zeichensatz oder eigener Text, Zellgröße, Farbe ja/nein, Schrift | B | E2 |
 
 ### 5.2 Zeichnung & Grafik

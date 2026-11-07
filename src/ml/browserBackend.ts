@@ -132,3 +132,28 @@ export async function browserSam(
   if (res.type !== 'sam-result') throw new Error('Unerwartete Antwort des ML-Workers.');
   return res;
 }
+
+/**
+ * Objekt-Aufteilung (SAM) im Browser: Etikettenkarte 256 × 256 über das gestreckte Bild und die gewählten Objekte.
+ * Bildmerkmale je key bleiben im Worker (wie bei der Smarten Auswahl).
+ */
+export async function browserSamObjects(
+  model: ModelEntry,
+  key: string,
+  image: () => Promise<ImageBitmap>,
+  grid: number,
+  maxObjects: number,
+  licenseMode: LicenseMode,
+  onProgress: (p: Progress) => void,
+): Promise<{
+  labels: Uint16Array;
+  width: number;
+  height: number;
+  objects: { label: number; score: number; area: number }[];
+}> {
+  const base = { type: 'sam-objects' as const, modelId: model.id, licenseMode, key, grid, maxObjects };
+  let res = await request(base, onProgress);
+  if (res.type === 'sam-need-image') res = await request({ ...base, image: await image() }, onProgress);
+  if (res.type !== 'sam-objects-result') throw new Error('Unerwartete Antwort des ML-Workers.');
+  return res;
+}

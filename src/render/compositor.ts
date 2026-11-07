@@ -501,7 +501,12 @@ export class Compositor {
     const o = this.originals[id];
     if (!o || !this.sources.has(id)) return null;
     const f = Math.min(1, 1024 / Math.max(o.width, o.height));
-    return this.sources.at(frame, id, Math.max(1, Math.round(o.width * f)), Math.max(1, Math.round(o.height * f)));
+    return this.sources.at(
+      frame,
+      id,
+      Math.max(1, Math.round(o.width * f)),
+      Math.max(1, Math.round(o.height * f)),
+    );
   }
 
   /**
@@ -786,10 +791,75 @@ export class Compositor {
     return { tex, key };
   }
 
+  /** Cache-Schlüssel-Zusatz, wenn die Lochfüllung aus einem LaMa-Ergebnis kommt */
+  private inpaintKey(layer: Layer): string {
+    return layer.inpaint ? `|lama:${layer.inpaint.originalId}` : '';
+  }
+
+  /** Füllt das Loch: gespeichertes LaMa-Ergebnis der Ebene (falls vorhanden), sonst Push-Pull aus der Umgebung. */
+  private fillHole(
+    frame: Frame,
+    layer: Layer,
+    hole: GPUTexture,
+    out: GPUTexture,
+    cw: number,
+    ch: number,
+  ): void {
+    const image = this.sources.at(frame, layer.originalId, cw, ch);
+    if (layer.inpaint && this.originals[layer.inpaint.originalId]) {
+      const inpainted = this.sources.at(frame, layer.inpaint.originalId, cw, ch);
+      this.core.mixInpaint(frame, image, inpainted, hole, out);
+      return;
+    }
+    this.core.holeFill(frame, image, hole, out);
+  }
+
   /**
-   * Lochgefülltes Original, gecacht. Loch: bei gespeicherter Maske der ausgeblendete Bereich, bei Tiefenbändern alles,
-   * was näher als fillBelow liegt (Inhalte vorderer Ebenen), oder ein gemalter Lochbereich (Hervorheben); leicht erweitert.
+   * Loch der Lochfüllung (leicht erweitert): bei gespeicherter Maske der ausgeblendete Bereich, bei Tiefenbändern alles,
+   * was näher als fillBelow liegt (Inhalte vorderer Ebenen), oder ein gemalter Lochbereich (Hervorheben). Liefert den
+   * Cache-Schlüssel und eine Funktion, die die erweiterte Lochmaske in eine Textur (Ebenen-Auflösung) schreibt.
    */
+  private holeBuilder(
+    frame: Frame,
+    layer: Layer,
+    geo: Geometry,
+    opts: RenderOptions,
+  ): { key: string; build: (grown: GPUTexture) => void } | null {
+    const [cw, ch] = geo.local;
+    const grow = Math.max(2, 0.004 * Math.max(cw, ch));
+    if (layer.holeMask) {
+      const holeBase = this.baseMask(frame, layer, layer.holeMask.base, geo, opts, false);
+      const hole = this.withStrokes(frame, layer, holeBase, layer.holeMask.strokes, geo, 1);
+      if (!hole) return null;
+      return {
+        key: `fill|${layer.originalId}+${hole.key}`,
+        build: (grown) => {
+          this.core.dilateMask(frame, hole.tex, grown, grow);
+        },
+      };
+    }
+    const m = layer.mask;
+    if (m.kind === 'full' || m.kind === 'empty') return null;
+    if (m.kind === 'depth' && m.fillBelow <= 0) return null;
+    const holeId = m.kind === 'stored' ? m.id : m.depthId;
+    const holeKey = m.kind === 'stored' ? (m.inverted ? 'inv' : '') : `below${m.fillBelow}`;
+    return {
+      key: `fill|${layer.originalId}+${holeId}@${cw}x${ch}|${holeKey}`,
+      build: (grown) => {
+        const hole = this.core.pool.acquire(cw, ch, 'hole');
+        if (m.kind === 'stored') {
+          // invertierte Ebenenmaske (Hintergrund) → das Loch ist die ursprüngliche Maske
+          this.core.loadMask(frame, this.sources.mask(m.id), hole, !m.inverted);
+        } else {
+          this.core.depthBand(frame, this.sources.mask(m.depthId), 0, m.fillBelow, 0, hole);
+        }
+        this.core.dilateMask(frame, hole, grown, grow);
+        this.core.pool.release(hole);
+      },
+    };
+  }
+
+  /** Lochgefülltes Original, gecacht (schnelle Füllung aus der Umgebung oder gespeichertes LaMa-Ergebnis). */
   private filledSource(
     frame: Frame,
     layer: Layer,
@@ -797,40 +867,51 @@ export class Compositor {
     opts: RenderOptions,
   ): { tex: GPUTexture; key: string } | null {
     const [cw, ch] = geo.local;
-    if (layer.holeMask) {
-      const holeBase = this.baseMask(frame, layer, layer.holeMask.base, geo, opts, false);
-      const hole = this.withStrokes(frame, layer, holeBase, layer.holeMask.strokes, geo, 1);
-      if (!hole) return null;
-      const key = `fill|${layer.originalId}+${hole.key}`;
-      const tex = this.sources.derive(key, cw, ch, (out) => {
-        const grown = this.core.pool.acquire(cw, ch, 'hole-grown');
-        this.core.dilateMask(frame, hole.tex, grown, Math.max(2, 0.004 * Math.max(cw, ch)));
-        this.core.holeFill(frame, this.sources.at(frame, layer.originalId, cw, ch), grown, out);
-        this.core.pool.release(grown);
-      });
-      return { tex, key };
-    }
-    const m = layer.mask;
-    if (m.kind === 'full' || m.kind === 'empty') return null;
-    if (m.kind === 'depth' && m.fillBelow <= 0) return null;
-    const holeId = m.kind === 'stored' ? m.id : m.depthId;
-    const holeKey = m.kind === 'stored' ? (m.inverted ? 'inv' : '') : `below${m.fillBelow}`;
-    const key = `fill|${layer.originalId}+${holeId}@${cw}x${ch}|${holeKey}`;
+    const hb = this.holeBuilder(frame, layer, geo, opts);
+    if (!hb) return null;
+    const key = `${hb.key}${this.inpaintKey(layer)}`;
     const tex = this.sources.derive(key, cw, ch, (out) => {
-      const hole = this.core.pool.acquire(cw, ch, 'hole');
       const grown = this.core.pool.acquire(cw, ch, 'hole-grown');
-      if (m.kind === 'stored') {
-        // invertierte Ebenenmaske (Hintergrund) → das Loch ist die ursprüngliche Maske
-        this.core.loadMask(frame, this.sources.mask(m.id), hole, !m.inverted);
-      } else {
-        this.core.depthBand(frame, this.sources.mask(m.depthId), 0, m.fillBelow, 0, hole);
-      }
-      this.core.dilateMask(frame, hole, grown, Math.max(2, 0.004 * Math.max(cw, ch)));
-      this.core.holeFill(frame, this.sources.at(frame, layer.originalId, cw, ch), grown, out);
-      this.core.pool.release(hole);
+      hb.build(grown);
+      this.fillHole(frame, layer, grown, out, cw, ch);
       this.core.pool.release(grown);
     });
     return { tex, key };
+  }
+
+  /**
+   * Eingabe für das Inpainting einer Ebene: Quellbild (linear) und erweiterte Lochmaske in Ebenen-Auflösung.
+   * null, wenn die Ebene kein Loch hat. Die Texturen gehören dem Aufrufer (release()).
+   */
+  inpaintInput(
+    frame: Frame,
+    project: Project,
+    layer: Layer,
+    opts: RenderOptions,
+  ): { image: GPUTexture; hole: GPUTexture; width: number; height: number; release: () => void } | null {
+    this.use(project);
+    const geo = this.geometry(layer, opts);
+    const hb = this.holeBuilder(frame, layer, geo, opts);
+    if (!hb) return null;
+    const [cw, ch] = geo.local;
+    const hole = this.core.pool.acquire(cw, ch, 'inpaint-hole');
+    hb.build(hole);
+    const image = this.core.pool.acquire(cw, ch, 'inpaint-image');
+    frame.encoder.copyTextureToTexture(
+      { texture: this.sources.at(frame, layer.originalId, cw, ch) },
+      { texture: image },
+      [cw, ch],
+    );
+    return {
+      image,
+      hole,
+      width: cw,
+      height: ch,
+      release: () => {
+        this.core.pool.release(hole);
+        this.core.pool.release(image);
+      },
+    };
   }
 
   /**

@@ -92,3 +92,78 @@ export async function serviceModelCommand(
     throw new Error(body.detail ?? `Dienst antwortet mit HTTP ${res.status}`);
   }
 }
+
+/** Inpainting im Dienst (LaMa): Bild + Lochmaske (PNG) → aufgefülltes Bild (PNG). */
+export async function serviceInpaint(
+  model: ModelEntry,
+  image: Blob,
+  mask: Blob,
+  licenseMode: LicenseMode,
+  onProgress: (p: Progress) => void,
+): Promise<Blob> {
+  const form = new FormData();
+  form.append('image', image, 'image.png');
+  form.append('mask', mask, 'mask.png');
+  form.append('model', model.id);
+  form.append('license_mode', licenseMode);
+  const job = await fetchJson<Job>(`${SERVICE_URL}/inpaint`, { method: 'POST', body: form }, 60_000);
+  for (;;) {
+    const s = await fetchJson<Job>(`${SERVICE_URL}/jobs/${job.id}`);
+    if (s.status === 'error') throw new Error(s.message ?? 'Dienst-Job fehlgeschlagen.');
+    onProgress({
+      stage: s.status === 'queued' ? 'load' : 'infer',
+      label: `${model.name} (Dienst)`,
+      loaded: s.progress,
+      total: 1,
+    });
+    if (s.status === 'done') break;
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  const res = await fetch(`${SERVICE_URL}/jobs/${job.id}/result`);
+  if (!res.ok) throw new Error(`Ergebnis des Dienstes nicht abrufbar (HTTP ${res.status}).`);
+  return res.blob();
+}
+
+/** Objekt-Aufteilung im Dienst (SAM 2.1 Large): Etikettenkarte (16 Bit) und Objektliste. */
+export async function serviceObjects(
+  model: ModelEntry,
+  original: Blob,
+  licenseMode: LicenseMode,
+  maxObjects: number,
+  grid: number,
+  onProgress: (p: Progress) => void,
+): Promise<{
+  labels: Uint16Array;
+  width: number;
+  height: number;
+  objects: { label: number; score: number; area: number }[];
+}> {
+  const form = new FormData();
+  form.append('image', original, 'image');
+  form.append('model', model.id);
+  form.append('license_mode', licenseMode);
+  form.append('max_objects', String(maxObjects));
+  form.append('grid', String(grid));
+  const job = await fetchJson<Job>(`${SERVICE_URL}/segment/objects`, { method: 'POST', body: form }, 60_000);
+  for (;;) {
+    const s = await fetchJson<Job>(`${SERVICE_URL}/jobs/${job.id}`);
+    if (s.status === 'error') throw new Error(s.message ?? 'Dienst-Job fehlgeschlagen.');
+    onProgress({
+      stage: s.status === 'queued' ? 'load' : 'infer',
+      label: `${model.name} (Dienst)`,
+      loaded: s.progress,
+      total: 1,
+    });
+    if (s.status === 'done') break;
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  const res = await fetch(`${SERVICE_URL}/jobs/${job.id}/result`);
+  if (!res.ok) throw new Error(`Ergebnis des Dienstes nicht abrufbar (HTTP ${res.status}).`);
+  const objects = JSON.parse(res.headers.get('X-Objects') ?? '[]') as {
+    label: number;
+    score: number;
+    area: number;
+  }[];
+  const map = decodeMaskPng(new Uint8Array(await res.arrayBuffer()));
+  return { labels: map.data, width: map.width, height: map.height, objects };
+}

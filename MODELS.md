@@ -40,6 +40,13 @@ Nicht verwendet: `onnx-community/ISNet-ONNX` (Lizenzangabe AGPL-3.0).
 | `depth-anything-v2-large`    | Tiefe (1022 px) | Depth Anything V2 Large                        | CC BY-NC 4.0                                                        | **nein**    | [depth-anything/Depth-Anything-V2-Large-hf](https://huggingface.co/depth-anything/Depth-Anything-V2-Large-hf) (`7581137`)                                                              | 2026-10-14 |
 | `rmbg-2.0`                   | Vordergrund     | BRIA RMBG 2.0                                  | bria-rmbg-2.0 (CC BY-NC 4.0, nur nicht-kommerziell)                 | **nein**    | [briaai/RMBG-2.0](https://huggingface.co/briaai/RMBG-2.0) (`5df4c9c`), **zugangsbeschränkt**: Lizenz auf Hugging Face akzeptieren und `HF_TOKEN` setzen (oder `huggingface-cli login`) | 2026-10-14 |
 | `adain`                      | Style-Transfer  | AdaIN (Decoder + normalisiertes VGG-19, 94 MB) | Code MIT; Gewichte ohne Lizenzangabe, Decoder mit WikiArt trainiert | **nein**    | [naoto0804/pytorch-AdaIN](https://github.com/naoto0804/pytorch-AdaIN) (Release `v0.0.0`), Original [xunhuang1995/AdaIN-style](https://github.com/xunhuang1995/AdaIN-style) (MIT)       | 2026-10-18 |
+| `lama`                       | Inpainting      | LaMa (big-lama), ONNX fp32, 512 × 512 (208 MB) | Apache-2.0                                                          | ja          | [advimman/lama](https://github.com/advimman/lama) (Code und Gewichte Apache-2.0); ONNX-Export [Carve/LaMa-ONNX](https://huggingface.co/Carve/LaMa-ONNX) (Apache-2.0, Revision c3c0c9e) | 2026-11-07 |
+| `sam2.1-large`               | Objekte (SAM)   | SAM 2.1 Hiera Large, transformers (898 MB)     | Apache-2.0                                                          | ja          | [facebook/sam2.1-hiera-large](https://huggingface.co/facebook/sam2.1-hiera-large) (Revision 665f8e2)                                                                                   | 2026-11-07 |
+
+**Phase 6:** `lama` und `sam2.1-large` sind „auf Wunsch“-Modelle (`onDemand`): der Dienst lädt sie nicht beim Start, sondern
+auf Knopfdruck im Dialog „Modelle“. LaMa läuft über onnxruntime (CPU, feste Eingabe 512 × 512; je Lochbereich wird ein Ausschnitt
+mit Umgebung skaliert), SAM 2.1 Large über `transformers` (`Sam2Model`, CPU; Apple-GPU mit `BLS_SAM_DEVICE=mps`).
+Für Tests liegt unter `testAssets` im Register SAM 2.1 Tiny im transformers-Format (nicht Teil der App).
 
 Die Tiefenmodelle laden über `transformers` (`AutoModelForDepthEstimation`, fp16 auf MPS, ohne `trust_remote_code`).
 BiRefNet und RMBG-2.0 werden über `transformers` mit `trust_remote_code=True` geladen (Modellcode aus dem Repository, auf die Revision festgelegt).
@@ -52,6 +59,7 @@ Die Modellkarte von RMBG-2.0 ist ohne Anmeldung nicht lesbar; die Einstufung „
 | ------------------------------------ | ------------------------- | ---------------------------------------- | ----------------------------------- |
 | onnxruntime-web                      | 1.30.0                    | MIT                                      | Browser                             |
 | @mediapipe/tasks-vision              | 1.1.0                     | Apache-2.0                               | Browser                             |
+| onnxruntime (Python)                 | 1.31.1                    | MIT                                      | Dienst (LaMa)                       |
 | torch                                | 2.14.1                    | BSD-3-Clause (u. a. freizügige Lizenzen) | Dienst                              |
 | transformers                         | 5.19.0                    | Apache-2.0                               | Dienst                              |
 | huggingface-hub                      | 2.2.0                     | Apache-2.0                               | Dienst                              |

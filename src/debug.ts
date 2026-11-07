@@ -7,6 +7,8 @@ import { saveMask } from './io/storage';
 import * as analysis from './ml/analysis';
 import { detectLandmarks } from './ml/backend';
 import { browserDepth } from './ml/browserBackend';
+import { clearInpaintCommand, inpaintAvailability, inpaintLayer } from './ml/inpaint';
+import { splitObjects } from './ml/objects';
 import { modelById } from './ml/registry';
 import * as split from './ml/split';
 import { getEngine } from './render/runtime';
@@ -62,7 +64,19 @@ export function installDebugApi(): void {
     getEngine,
     exportSettings,
     renderPng,
-    ml: { detectLandmarks, split, splitWithMask, browserDepth, modelById, analysis, injectMap },
+    ml: {
+      detectLandmarks,
+      split,
+      splitWithMask,
+      browserDepth,
+      modelById,
+      analysis,
+      injectMap,
+      inpaintLayer,
+      inpaintAvailability,
+      clearInpaintCommand,
+      splitObjects,
+    },
     presets: { store: usePresetStore, saved: presetsSaved },
     malplan: useMalplanStore,
   };

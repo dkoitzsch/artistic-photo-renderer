@@ -40,6 +40,7 @@ import {
   type FocusMapSpec,
   type Group,
   type PaintedMask,
+  type Provenance,
   type SceneNode,
   type FocusPoint,
   type LicenseMode,
@@ -514,7 +515,7 @@ export function extractSelectionCommand(layerId: string): void {
 export function resetLayerCommand(layerId: string): void {
   commit('Auf Original zurückgesetzt', (p) =>
     updateLayer(p, layerId, (l) => {
-      const { selection: _s, maskStrokes: _m, holeMask: _h, ...rest } = l;
+      const { selection: _s, maskStrokes: _m, holeMask: _h, inpaint: _i, ...rest } = l;
       const init = l.initial;
       const focusMap = l.focusMap ? { ...l.focusMap, strokes: [] } : undefined;
       return {
@@ -540,6 +541,27 @@ export function selectAllCommand(layerId: string): void {
 export function setHoleFillCommand(layerId: string, holeFill: boolean): void {
   commit(holeFill ? 'Lochfüllung ein' : 'Lochfüllung aus', (p) =>
     updateLayer(p, layerId, (l) => ({ ...l, holeFill })),
+  );
+}
+
+/** KI-Lochfüllung (LaMa) einer Ebene setzen: ein Verlaufseintrag, das Ergebnisbild wird Original des Projekts. */
+export function setInpaintCommand(layerId: string, original: OriginalRef, provenance: Provenance): void {
+  commit('Lochfüllung (LaMa)', (p) =>
+    updateLayer({ ...p, originals: { ...p.originals, [original.id]: original } }, layerId, (l) => ({
+      ...l,
+      holeFill: true,
+      inpaint: { originalId: original.id, provenance },
+    })),
+  );
+}
+
+/** Zurück zur schnellen Lochfüllung aus der Umgebung. */
+export function clearInpaintCommand(layerId: string): void {
+  commit('Schnelle Lochfüllung', (p) =>
+    updateLayer(p, layerId, (l) => {
+      const { inpaint: _drop, ...rest } = l;
+      return rest;
+    }),
   );
 }
 

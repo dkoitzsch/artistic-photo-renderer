@@ -25,6 +25,8 @@ class ServiceModel:
     std: tuple[float, float, float]
     # Dateien mit fester URL und SHA-256 (statt eines Hugging-Face-Repos): (Name, URL, SHA-256, Größe)
     files: tuple[tuple[str, str, str, int], ...] = ()
+    # nur auf Wunsch herunterladen (große Zusatzmodelle), nicht beim Start des Dienstes
+    on_demand: bool = False
 
 
 def load_registry(path: Path = REGISTRY_PATH) -> dict[str, ServiceModel]:
@@ -48,6 +50,7 @@ def load_registry(path: Path = REGISTRY_PATH) -> dict[str, ServiceModel]:
             mean=tuple(inp.get("mean", (0.485, 0.456, 0.406))),
             std=tuple(inp.get("std", (0.229, 0.224, 0.225))),
             files=tuple((f["name"], f["url"], f["sha256"], int(f["size"])) for f in m.get("files", [])),
+            on_demand=bool(m.get("onDemand", False)),
         )
     return out
 
